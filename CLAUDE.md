@@ -5,9 +5,11 @@ Instructions for Claude Code / any AI agent working in this repo.
 ## First steps every session
 1. Read `PROJECT_CONTEXT.md` for the business background, `HOW_IT_WORKS.md` for the
    task, and `RESULTS.md` for the current numbers.
-2. Set up if needed: `./setup.sh` (do NOT use a bare `python3 -m venv` — see below).
-3. Confirm the baseline before changing anything:
-   `./venv/bin/python sim_poc2.py --eval 25`
+2. Set up if needed: `cd ~/WaterFilterRobo && ./setup.sh` (do NOT use a bare
+   `python3 -m venv` — see below). The venv lives at the repo root, so commands from
+   `sim_poc/` use `../venv/bin/python`.
+3. Confirm the baseline before changing anything (from `sim_poc/`):
+   `../venv/bin/python sim_poc2.py --eval 25` and `../venv/bin/python sim_poc3.py --eval 25`
 
 ## Environment — read this before debugging an install
 - **Requires Python 3.10+.** Apple's system `python3` is 3.9, which has no MuJoCo
@@ -48,8 +50,8 @@ Instructions for Claude Code / any AI agent working in this repo.
 - `stats.json` — last eval output. See `RESULTS.md` for the current headline number.
 
 ## Hard rules
-- After ANY controller or scene change, run `./venv/bin/python sim_poc2.py --eval 25`
-  **and** `./venv/bin/python sim_poc3.py --eval 25`, and report both success rates
+- After ANY controller or scene change, run `../venv/bin/python sim_poc2.py --eval 25`
+  **and** `../venv/bin/python sim_poc3.py --eval 25` from `sim_poc/`, and report both success rates
   against the recorded baselines (v2: 100% locked; v3: 100% full swap). **Never
   claim a fix without an eval.** v3 imports v2, so a v2 change moves v3 too.
 - **Report the margin, not just the rate.** A pass/fail rate hid a systemic defect
