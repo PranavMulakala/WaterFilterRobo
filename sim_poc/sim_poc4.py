@@ -121,6 +121,23 @@ class RefurbConfig:
     agitate_amp_z: float = 0.010          # m, vertical bob amplitude
     clean_dwell_s: float = 2.5
 
+    # --- domain randomization (Phase C) ---------------------------------------
+    # A single fixed simulation is trivially overfittable: every number before this
+    # was measured against exactly one set of physical parameters that we chose. DR
+    # perturbs them per trial so the reported rate means "robust to this much
+    # uncertainty" rather than "works on our one model".
+    #   * mass      -- real cartridges vary with fill and scale build-up
+    #   * friction  -- surface finish, wetness, wear
+    #   * cell height -- THE fixture is never exactly where the robot thinks it is.
+    #     The whole cell (bench, socket, tray, bin, tank, nest, booth) shifts, while
+    #     the robot's commanded heights do NOT. That is a calibration error, which is
+    #     the single most common real-world cause of a working cell going wrong.
+    dr: bool = False
+    dr_scale: float = 1.0                 # multiplier on all three magnitudes
+    dr_mass: float = 0.20                 # +-20%
+    dr_friction: float = 0.30             # +-30%
+    dr_table: float = 0.005               # +-5 mm
+
     # --- honesty labels shown on the HUD --------------------------------------
     clean_caveat: str = "cleaning modeled as dip + dwell; chemistry not simulated"
     deposit_caveat: str = "scale deposits are visual only; fit/mass unchanged"
@@ -394,6 +411,32 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     dep = deposit_ids(model)
     spent_vadr = model.joint("spent_free").dofadr[0]
 
+    # --- domain randomization ---------------------------------------------
+    dz = 0.0
+    if cfg.dr:
+        k = cfg.dr_scale
+        for bid in (fresh_id, spent_id):
+            f = 1.0 + rng.uniform(-cfg.dr_mass, cfg.dr_mass) * k
+            model.body_mass[bid] *= f
+            model.body_inertia[bid] *= f
+        for gid in range(model.ngeom):
+            if model.geom_bodyid[gid] in (fresh_id, spent_id):
+                model.geom_friction[gid] *= (
+                    1.0 + rng.uniform(-cfg.dr_friction, cfg.dr_friction) * k)
+        # shift the whole cell vertically; the robot's targets stay put
+        dz = float(rng.uniform(-cfg.dr_table, cfg.dr_table) * k)
+        floor_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+        for gid in range(model.ngeom):
+            if model.geom_bodyid[gid] == 0 and gid != floor_id:
+                model.geom_pos[gid][2] += dz
+        hid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "housing")
+        model.body_pos[hid][2] += dz
+        for sname in ("inspect_pt", "tank_pt", "nest_pt", "bin_center"):
+            sid_ = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, sname)
+            if sid_ >= 0:
+                model.site_pos[sid_][2] += dz
+    seat_z = cfg.seat_z + dz
+
     mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
 
     # --- condition of the returned cartridge -------------------------------
@@ -405,7 +448,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     # --- spent cartridge: installed and twist-locked ------------------------
     lock_yaw = rng.uniform(*cfg.lock_yaw_range)
     b = model.joint("spent_free").qposadr[0]
-    data.qpos[b:b + 3] = [*cfg.sock, cfg.seat_z]
+    data.qpos[b:b + 3] = [*cfg.sock, seat_z]
     data.qpos[b + 3:b + 7] = [np.cos(lock_yaw / 2), 0, 0, np.sin(lock_yaw / 2)]
 
     # --- fresh cartridge in the tray, kept clear of the staging spot --------
@@ -415,7 +458,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
             break
     yaw0 = rng.uniform(0, 2 * np.pi)
     a_ = model.joint("cartridge_free").qposadr[0]
-    data.qpos[a_:a_ + 3] = [*spawn, SPAWN_Z + 0.002]
+    data.qpos[a_:a_ + 3] = [*spawn, SPAWN_Z + 0.002 + dz]
     data.qpos[a_ + 3:a_ + 7] = [np.cos(yaw0 / 2), 0, 0, np.sin(yaw0 / 2)]
     mujoco.mj_forward(model, data)
 
@@ -586,7 +629,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         if name in ("LOWER TO NEST", "RELEASE PART"):
             hang_live = float(np.clip(
                 data.site_xpos[site_id][2] - data.xpos[cart_id][2], 0.02, 0.12))
-            tgt_arr[2] = cfg.nest_release_part_z + hang_live
+            tgt_arr[2] = cfg.nest_release_part_z + hang_live + dz
         if name in ("CARRY TO INSPECT", "PRESENT A", "FLIP", "PRESENT B",
                     "CARRY TO RECHECK", "RECHECK A", "FLIP2", "RECHECK B"):
             # Put the PART on the camera axis, not the wrist. cap_hang was a fixed
@@ -646,18 +689,18 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         if name == "UNTWIST":
             done = abs(lug_err(cmat)) < v3.UNTWIST_TOL
         elif name == "EXTRACT":
-            done = data.xpos[cart_id][2] > cfg.seat_z + 0.085
+            done = data.xpos[cart_id][2] > seat_z + 0.085
         elif name in ("FLIP", "FLIP2"):
             done = phase_t > 1.2
         elif name == "AGITATE":
             done = phase_t > cfg.clean_dwell_s
         elif name == "DISCARD":
             done = (np.linalg.norm(data.xpos[cart_id][:2] - np.array(cfg.bin_xy)) < v3.BIN_XY_TOL
-                    and data.xpos[cart_id][2] < v3.BIN_Z_MAX)
+                    and data.xpos[cart_id][2] < v3.BIN_Z_MAX + dz)
         elif name == "LOWER TO NEST":
             done = abs(data.xpos[cart_id][2] - cfg.nest_release_part_z) < 0.006
         elif name == "RELEASE PART":
-            done = data.xpos[cart_id][2] < 0.080     # it has dropped into the nest
+            done = data.xpos[cart_id][2] < 0.080 + dz   # it has dropped into the nest
         elif name == "PLACE":
             # Judge the PART: it must be low AND still upright. The cap-grip hang
             # offset is unstable (measured 42-83 mm) so a wrist-height gate places
@@ -677,7 +720,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
             done = (data.site_xpos[site_id][2] < 0.129 and cmat[2, 2] > INSERT_UPRIGHT
                     and data.xpos[cart_id][2] < INSERT_DEPTH_Z)
         elif name == "DROP-SEAT":
-            done = data.xpos[cart_id][2] < cfg.seat_z + 0.008
+            done = data.xpos[cart_id][2] < seat_z + 0.008
         else:
             done = np.linalg.norm(tgt_arr - data.site_xpos[site_id]) < tol and yaw_ok
 
@@ -754,12 +797,12 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     upright = float(imat[2, 2])
     rel_twist = (abs(np.rad2deg(wrap_pi(np.arctan2(imat[1, 0], imat[0, 0]) - insert_end_yaw)))
                  if insert_end_yaw is not None else 0.0)
-    seated = (not aborted) and xy_off < 0.006 and ipos[2] < cfg.seat_z + 0.008 and upright > 0.95
+    seated = (not aborted) and xy_off < 0.006 and ipos[2] < seat_z + 0.008 and upright > 0.95
     locked = bool(seated and rel_twist > 30.0)
 
     spos = data.xpos[spent_id]
     binned = bool(np.linalg.norm(spos[:2] - np.array(cfg.bin_xy)) < v3.BIN_XY_TOL
-                  and spos[2] < v3.BIN_Z_MAX)
+                  and spos[2] < v3.BIN_Z_MAX + dz)
 
     correct_route = bool(pred == truth)
     # routing compliance = did the arm MECHANICALLY execute the route it chose,
@@ -782,6 +825,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         "aborted": bool(aborted), "part_lost": bool(part_lost), "retries": int(retries),
         "untwist_retries": int(untwist_retries),
         "cycle_s": float(data.time), "phases_done": int(wp), "n_phases": len(P),
+        "dr_dz_mm": float(dz * 1000),
     }
 
 
@@ -1006,6 +1050,9 @@ if __name__ == "__main__":
     ap.add_argument("--inspect-eval", type=int)
     ap.add_argument("--eval", type=int)
     ap.add_argument("--seed0", type=int, default=0)
+    ap.add_argument("--stats", default=None, help="write stats to this path")
+    ap.add_argument("--dr", type=float, default=None,
+                    help="enable domain randomization at this scale (1.0 = mass +-20%%, friction +-30%%, cell height +-5mm)")
     ap.add_argument("--render", nargs="+")
     ap.add_argument("--cards", action="store_true")
     ap.add_argument("--concat", action="store_true")
