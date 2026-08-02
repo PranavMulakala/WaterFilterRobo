@@ -1,0 +1,460 @@
+{
+ "trials": 25,
+ "seated_rate": 1.0,
+ "locked_rate": 1.0,
+ "avg_cycle_s": 22.803279999998246,
+ "avg_xy_mm": 1.6930486246335967,
+ "avg_twist_deg": 44.12116852238674,
+ "results": [
+  {
+   "seed": 0,
+   "spawn": [
+    0.4709569349857164,
+    -0.2784170628988904
+   ],
+   "spawn_yaw_deg": 14.750468617030087,
+   "xy_offset_mm": 1.6344229973365414,
+   "height_mm": 99.84509106237081,
+   "upright": 0.9999999997568889,
+   "twist_deg": 44.00202285158809,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 23.965999999997596,
+   "phases_done": 17
+  },
+  {
+   "seed": 1,
+   "spawn": [
+    0.46094572997602057,
+    -0.22396290429392518
+   ],
+   "spawn_yaw_deg": 51.897460579068145,
+   "xy_offset_mm": 1.8917678032552878,
+   "height_mm": 99.8452601203043,
+   "upright": 0.9999999999666664,
+   "twist_deg": 44.30194972774851,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.505999999998405,
+   "phases_done": 17
+  },
+  {
+   "seed": 2,
+   "spawn": [
+    0.4409289707399453,
+    -0.27612070852687015
+   ],
+   "spawn_yaw_deg": 293.1212666139409,
+   "xy_offset_mm": 1.5040172732095674,
+   "height_mm": 99.84526249455934,
+   "upright": 0.9999999999246704,
+   "twist_deg": 44.4119101741053,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.645999999998327,
+   "phases_done": 17
+  },
+  {
+   "seed": 3,
+   "spawn": [
+    0.42685193337148997,
+    -0.281055159472312
+   ],
+   "spawn_yaw_deg": 288.4588074743029,
+   "xy_offset_mm": 1.3943846961768038,
+   "height_mm": 99.84526137314825,
+   "upright": 0.9999999999121605,
+   "twist_deg": 44.62332132458741,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.82199999999823,
+   "phases_done": 17
+  },
+  {
+   "seed": 4,
+   "spawn": [
+    0.4954444884457894,
+    -0.2590937957748511
+   ],
+   "spawn_yaw_deg": 351.4477340547735,
+   "xy_offset_mm": 1.4470237898188776,
+   "height_mm": 99.84524804330293,
+   "upright": 0.9999999997122019,
+   "twist_deg": 44.22737274983158,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 24.23199999999745,
+   "phases_done": 17
+  },
+  {
+   "seed": 5,
+   "spawn": [
+    0.48440023389963044,
+    -0.2353647368210805
+   ],
+   "spawn_yaw_deg": 185.51720197517113,
+   "xy_offset_mm": 1.695184589390682,
+   "height_mm": 99.84475643326515,
+   "upright": 0.9999999998935065,
+   "twist_deg": 43.87120591527639,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 25.117999999996957,
+   "phases_done": 17
+  },
+  {
+   "seed": 6,
+   "spawn": [
+    0.4630531481177555,
+    -0.2725383304149329
+   ],
+   "spawn_yaw_deg": 132.8642063263362,
+   "xy_offset_mm": 1.521792419323618,
+   "height_mm": 99.8452606632554,
+   "upright": 0.9999999999207541,
+   "twist_deg": 44.157360798721164,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.54999999999838,
+   "phases_done": 17
+  },
+  {
+   "seed": 7,
+   "spawn": [
+    0.47000763732837336,
+    -0.22822289592243397
+   ],
+   "spawn_yaw_deg": 279.2468484882697,
+   "xy_offset_mm": 1.8144498974226826,
+   "height_mm": 99.84474383848713,
+   "upright": 0.9999999997043093,
+   "twist_deg": 44.1025637717341,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.129999999998613,
+   "phases_done": 17
+  },
+  {
+   "seed": 8,
+   "spawn": [
+    0.44615778212844487,
+    -0.22101785253296596
+   ],
+   "spawn_yaw_deg": 114.73590185478602,
+   "xy_offset_mm": 1.7427217847838716,
+   "height_mm": 99.84524573761898,
+   "upright": 0.999999999702497,
+   "twist_deg": 44.28181656919135,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.247999999998548,
+   "phases_done": 17
+  },
+  {
+   "seed": 9,
+   "spawn": [
+    0.4896199363176068,
+    -0.27705462327299557
+   ],
+   "spawn_yaw_deg": 217.13333401856227,
+   "xy_offset_mm": 1.5332713659895665,
+   "height_mm": 99.84507234354393,
+   "upright": 0.9999999999698649,
+   "twist_deg": 43.87696561976996,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.815999999998233,
+   "phases_done": 17
+  },
+  {
+   "seed": 10,
+   "spawn": [
+    0.49648013677031805,
+    -0.28338545519366826
+   ],
+   "spawn_yaw_deg": 298.24015869883107,
+   "xy_offset_mm": 1.699400095127519,
+   "height_mm": 99.8450906076998,
+   "upright": 0.9999999996817132,
+   "twist_deg": 44.26426950185151,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.397999999998465,
+   "phases_done": 17
+  },
+  {
+   "seed": 11,
+   "spawn": [
+    0.430285616221536,
+    -0.2600577710047908
+   ],
+   "spawn_yaw_deg": 216.5394087444087,
+   "xy_offset_mm": 1.8182225177284785,
+   "height_mm": 99.84500140223292,
+   "upright": 0.9999999999998024,
+   "twist_deg": 43.91052218917636,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.8739999999982,
+   "phases_done": 17
+  },
+  {
+   "seed": 12,
+   "spawn": [
+    0.4400659566486757,
+    -0.22425976457124605
+   ],
+   "spawn_yaw_deg": 68.15533843431406,
+   "xy_offset_mm": 1.8995684428558142,
+   "height_mm": 99.84526416330853,
+   "upright": 0.9999999998791528,
+   "twist_deg": 44.48004682834896,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.99999999999813,
+   "phases_done": 17
+  },
+  {
+   "seed": 13,
+   "spawn": [
+    0.48918380696132696,
+    -0.23157579880543527
+   ],
+   "spawn_yaw_deg": 291.96842356236317,
+   "xy_offset_mm": 1.7372402208870548,
+   "height_mm": 99.84524598390009,
+   "upright": 0.9999999997120295,
+   "twist_deg": 44.21166639578397,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.323999999998506,
+   "phases_done": 17
+  },
+  {
+   "seed": 14,
+   "spawn": [
+    0.48647866551112895,
+    -0.2711242666532595
+   ],
+   "spawn_yaw_deg": 252.98615000953976,
+   "xy_offset_mm": 1.8867694744187578,
+   "height_mm": 99.84477909131176,
+   "upright": 0.9999999994240287,
+   "twist_deg": 44.284965447265996,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.58999999999836,
+   "phases_done": 17
+  },
+  {
+   "seed": 15,
+   "spawn": [
+    0.4754194694372122,
+    -0.2347346310931154
+   ],
+   "spawn_yaw_deg": 123.98643280542841,
+   "xy_offset_mm": 1.641715499411942,
+   "height_mm": 99.84525928212982,
+   "upright": 0.9999999999523019,
+   "twist_deg": 44.16616124324039,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.26399999999854,
+   "phases_done": 17
+  },
+  {
+   "seed": 16,
+   "spawn": [
+    0.4653533471103492,
+    -0.26554046836078515
+   ],
+   "spawn_yaw_deg": 33.866577166148836,
+   "xy_offset_mm": 1.5578599942654547,
+   "height_mm": 99.8447224258715,
+   "upright": 0.9999999999368637,
+   "twist_deg": 43.7321873066546,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.83999999999822,
+   "phases_done": 17
+  },
+  {
+   "seed": 17,
+   "spawn": [
+    0.48760598342383216,
+    -0.28712215270647146
+   ],
+   "spawn_yaw_deg": 200.78803705164916,
+   "xy_offset_mm": 1.5508755396346552,
+   "height_mm": 99.84478908870646,
+   "upright": 0.9999999994937483,
+   "twist_deg": 43.766578845604535,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.717999999998288,
+   "phases_done": 17
+  },
+  {
+   "seed": 18,
+   "spawn": [
+    0.45194446153740586,
+    -0.24260682565694272
+   ],
+   "spawn_yaw_deg": 101.09639809296122,
+   "xy_offset_mm": 1.7505628179191555,
+   "height_mm": 99.84524506446012,
+   "upright": 0.9999999996670847,
+   "twist_deg": 44.3477229682188,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.175999999998588,
+   "phases_done": 17
+  },
+  {
+   "seed": 19,
+   "spawn": [
+    0.4536303036583409,
+    -0.2259304524146637
+   ],
+   "spawn_yaw_deg": 98.59319564338156,
+   "xy_offset_mm": 1.830849761083012,
+   "height_mm": 99.8449764716017,
+   "upright": 0.9999999998447928,
+   "twist_deg": 43.9333681904049,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.1559999999986,
+   "phases_done": 17
+  },
+  {
+   "seed": 20,
+   "spawn": [
+    0.4424060770104128,
+    -0.26310826321576464
+   ],
+   "spawn_yaw_deg": 43.81908932751907,
+   "xy_offset_mm": 1.8864147902556183,
+   "height_mm": 99.84507975998942,
+   "upright": 0.9999999999688922,
+   "twist_deg": 44.32881241028708,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.843999999998218,
+   "phases_done": 17
+  },
+  {
+   "seed": 21,
+   "spawn": [
+    0.48248940710539767,
+    -0.2515322376343226
+   ],
+   "spawn_yaw_deg": 255.52842854703303,
+   "xy_offset_mm": 1.5091413820592396,
+   "height_mm": 99.84525938774021,
+   "upright": 0.9999999999290099,
+   "twist_deg": 43.96144979171863,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.36999999999848,
+   "phases_done": 17
+  },
+  {
+   "seed": 22,
+   "spawn": [
+    0.4493077532345661,
+    -0.28405636964999337
+   ],
+   "spawn_yaw_deg": 31.88101437406041,
+   "xy_offset_mm": 1.6942442238028212,
+   "height_mm": 99.84476389039273,
+   "upright": 0.9999999999566955,
+   "twist_deg": 43.752881028439646,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.997999999998132,
+   "phases_done": 17
+  },
+  {
+   "seed": 23,
+   "spawn": [
+    0.4755146464525892,
+    -0.24868334232974157
+   ],
+   "spawn_yaw_deg": 46.31192075434904,
+   "xy_offset_mm": 1.785055693771341,
+   "height_mm": 99.84496315152755,
+   "upright": 0.9999999997873911,
+   "twist_deg": 44.002374475759716,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.65799999999832,
+   "phases_done": 17
+  },
+  {
+   "seed": 24,
+   "spawn": [
+    0.44642150693354526,
+    -0.2675858147488685
+   ],
+   "spawn_yaw_deg": 206.9056149577891,
+   "xy_offset_mm": 1.8992585459115565,
+   "height_mm": 99.84475136587454,
+   "upright": 0.9999999997200173,
+   "twist_deg": 44.0297169343596,
+   "seated": true,
+   "locked": true,
+   "aborted": false,
+   "retries": 0,
+   "cycle_s": 22.83799999999822,
+   "phases_done": 17
+  }
+ ]
+}
