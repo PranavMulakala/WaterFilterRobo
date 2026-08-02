@@ -827,12 +827,202 @@ def rows_as_inspection(rows):
     return [{"truth": r["truth"], "pred": r["pred"] or "heavy"} for r in rows]
 
 
+# ============================================================ rendering
+STAGE_SEQ = ["EXTRACT", "INSPECT", "CLEAN", "REPLACE", "INSTALL"]
+
+
+def make_frame_cb(frames, model, cfg=CFG):
+    from PIL import Image, ImageDraw
+    main_r = mujoco.Renderer(model, 720, 1280)
+    wrist_r = mujoco.Renderer(model, 216, 288)
+    font, font_b, font_s = _font("mono", 20), _font("mono_bold", 22), _font("mono", 15)
+    state = {"n": 0}
+    spf = max(1, int(round(1.0 / FPS / model.opt.timestep)))
+    site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "link_tcp")
+    spent_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "spent_cartridge")
+    fresh_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "cartridge")
+
+    def cb(m, d, phase, stage, seed, info):
+        state["n"] += 1
+        if state["n"] % spf:
+            return
+        main_r.update_scene(d, camera="main")
+        img = Image.fromarray(main_r.render())
+        wrist_r.update_scene(d, camera="wrist")
+        wr = Image.fromarray(wrist_r.render())
+        draw = ImageDraw.Draw(img, "RGBA")
+        px, py = 1280 - 288 - 16, 720 - 216 - 16
+        draw.rectangle([px - 3, py - 3, px + 288 + 3, py + 216 + 3], fill=(255, 255, 255, 220))
+        img.paste(wr, (px, py))
+        draw.text((px + 6, py + 4), "WRIST CAM", font=font_s, fill=(255, 255, 255, 230))
+
+        tcp = d.site_xpos[site_id]
+        sp, fr = d.xpos[spent_id], d.xpos[fresh_id]
+        truth, pred = info.get("truth"), info.get("pred")
+        route, ver = info.get("route"), info.get("verified")
+        grip = "CLOSED" if d.ctrl[mujoco.mj_name2id(
+            m, mujoco.mjtObj.mjOBJ_ACTUATOR, "gripper")] > 100 else "OPEN"
+        verdict = "inspecting..." if pred is None else f"{pred.upper()}  ->  {route.upper()} route"
+        lines = [
+            f"PHASE     {phase}",
+            f"t         {d.time:6.2f} s     GRIPPER {grip}",
+            f"TCP       x{tcp[0]*1000:7.1f} y{tcp[1]*1000:7.1f} z{tcp[2]*1000:6.1f} mm",
+            f"RETURNED  z{sp[2]*1000:6.1f} mm   (actual condition: {truth})",
+            f"CAMERA    {verdict}",
+        ]
+        if ver is not None:
+            lines.append(f"RE-CHECK  after cleaning: {'READS CLEAN' if ver else 'STILL DIRTY'}")
+        draw.rectangle([12, 12, 790, 12 + 24 + len(lines) * 26], fill=(10, 14, 20, 180))
+        draw.text((24, 20), f"REFURBISHMENT CELL - INSPECT / CLEAN / REPLACE (seed {seed})",
+                  font=font_b, fill=(120, 200, 255, 255))
+        for i, ln in enumerate(lines):
+            draw.text((24, 50 + i * 26), ln, font=font, fill=(235, 240, 245, 255))
+
+        x0, y0 = 24, 12 + 24 + len(lines) * 26 + 14
+        for st in STAGE_SEQ:
+            # only show steps this route actually performs -- a greyed chip for a
+            # stage that never runs implies work the cell did not do
+            if st == "CLEAN" and route in ("heavy", "clean"):
+                continue
+            if st == "REPLACE" and route in ("clean", "light"):
+                continue
+            w = int(draw.textlength(st, font=font)) + 26
+            on = (st == stage)
+            draw.rectangle([x0, y0, x0 + w, y0 + 32],
+                           fill=(41, 121, 255, 235) if on else (255, 255, 255, 38))
+            draw.text((x0 + 13, y0 + 6), st, font=font,
+                      fill=(255, 255, 255, 255) if on else (170, 180, 195, 255))
+            x0 += w + 8
+        note = cfg.clean_caveat if stage == "CLEAN" else cfg.deposit_caveat
+        draw.text((24, 700), note, font=font_s, fill=(160, 172, 188, 235))
+        frames.append(np.asarray(img).copy())
+    return cb
+
+
+def render_trial(idx, seed, speed=1):
+    import imageio
+    model = mujoco.MjModel.from_xml_path(CFG.xml)
+    frames = []
+    res = run_trial(seed, frame_cb=make_frame_cb(frames, model))
+    frames = frames[::max(1, speed)]
+    imageio.mimsave(f"refurb_{idx}.mp4", frames, fps=FPS, codec="libx264", quality=8,
+                    pixelformat="yuv420p")
+    print(f"refurb_{idx}.mp4: {len(frames)} frames ({len(frames)/FPS:.1f}s) | "
+          f"route={res['route']} truth={res['truth']} end_to_end={res['end_to_end']}")
+    return res
+
+
+def make_cards():
+    import imageio
+    from PIL import Image, ImageDraw
+    st = json.load(open(CFG.stats_path))
+    fb = lambda n: _font("sans_bold", n)
+    fr = lambda n: _font("sans", n)
+    fm = lambda n: _font("mono", n)
+
+    def card(lines, fname, secs, table=None):
+        img = Image.new("RGB", (1280, 720), (13, 17, 23))
+        d = ImageDraw.Draw(img)
+        d.rectangle([0, 0, 1280, 6], fill=(41, 121, 255))
+        y = 96
+        for txt, fnt, col in lines:
+            d.text(((1280 - d.textlength(txt, font=fnt)) / 2, y), txt, font=fnt, fill=col)
+            y += fnt.size + 20
+        if table:
+            for row in table:
+                d.text(((1280 - d.textlength(row, font=fm(24))) / 2, y), row,
+                       font=fm(24), fill=(190, 200, 215))
+                y += 30
+        imageio.mimsave(fname, [np.asarray(img)] * int(FPS * secs), fps=FPS,
+                        codec="libx264", quality=8, pixelformat="yuv420p")
+
+    card([
+        ("REFURBISHMENT CELL", fb(58), (235, 240, 245)),
+        ("Inspect, clean, or replace - simulation POC", fr(30), (150, 160, 175)),
+        ("", fr(8), (0, 0, 0)),
+        ("A used unit arrives with a filter cartridge locked inside. The robot", fr(25), (150, 160, 175)),
+        ("removes it, LOOKS at it with a camera, and decides what it needs:", fr(25), (150, 160, 175)),
+        ("", fr(8), (0, 0, 0)),
+        ("clean -> put straight back    scaled -> wash, re-check, put back", fr(25), (120, 200, 255)),
+        ("damaged -> bin it and install a new one", fr(25), (120, 200, 255)),
+        ("", fr(8), (0, 0, 0)),
+        ("DrinkPrime automation study - Phase 0 (pre-hardware)", fr(21), (110, 120, 135)),
+    ], "card_v4_title.mp4", 5.0)
+
+    M, n = st["confusion"], st["trials"]
+    fc = st["false_clean_rate"] * 100
+    tbl = ["            graded:  clean   light   heavy"]
+    for t in COND_NAMES:
+        tbl.append(f"  actually {t:<6}    " + "".join(f"{M[t][p]:>7}" for p in COND_NAMES))
+    card([
+        ("RESULTS", fb(54), (235, 240, 245)),
+        (f"{n} randomized trials, held out from tuning", fr(25), (150, 160, 175)),
+        ("", fr(8), (0, 0, 0)),
+        (f"FALSE-CLEAN RATE: {fc:.1f}%", fb(52), (80, 220, 130) if fc < 2 else (255, 190, 80)),
+        ("the error that matters - a part that needs work, passed as clean", fr(23), (150, 160, 175)),
+        ("", fr(8), (0, 0, 0)),
+        (f"inspection accuracy {st['inspection_accuracy']*100:.0f}%   |   "
+         f"every route completed {st['routing_compliance']*100:.0f}%   |   "
+         f"end-to-end {st['end_to_end']*100:.0f}%", fr(24), (150, 160, 175)),
+        ("", fr(8), (0, 0, 0)),
+    ], "card_v4_end.mp4", 7.0, table=tbl + [
+        "", "remaining errors are all on the SAFE side:",
+        "light parts over-graded as heavy (a wasted cartridge),",
+        "never a dirty part passed as clean.",
+        "", "cleaning = dip + dwell; chemistry not simulated."])
+    print("cards written")
+
+
+def concat(parts, out, tag=None, stride=1.0):
+    """Stitch clips. stride>1 decimates the TRIAL frames and stamps a speed tag, so a
+    compressed cut can never be mistaken for real-time."""
+    import imageio
+    from PIL import Image, ImageDraw
+    writer = imageio.get_writer(out, fps=FPS, codec="libx264", quality=8,
+                               pixelformat="yuv420p")
+    f_tag = _font("sans_bold", 26)
+    for path, is_trial in parts:
+        rd = imageio.get_reader(path)
+        frames = [f for f in rd]
+        rd.close()
+        if is_trial and stride > 1.0:
+            idx = [int(round(i * stride)) for i in range(int(len(frames) / stride))]
+            frames = [frames[i] for i in idx if i < len(frames)]
+        for fr_ in frames:
+            if is_trial and tag:
+                im = Image.fromarray(fr_)
+                d = ImageDraw.Draw(im, "RGBA")
+                w = int(d.textlength(tag, font=f_tag)) + 28
+                d.rectangle([1280 - w - 20, 20, 1280 - 20, 62], fill=(255, 190, 80, 230))
+                d.text((1280 - w - 6, 27), tag, font=f_tag, fill=(20, 24, 30, 255))
+                fr_ = np.asarray(im)
+            writer.append_data(fr_)
+    writer.close()
+    print(f"{out} written")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--inspect-eval", type=int)
     ap.add_argument("--eval", type=int)
     ap.add_argument("--seed0", type=int, default=0)
+    ap.add_argument("--render", nargs="+")
+    ap.add_argument("--cards", action="store_true")
+    ap.add_argument("--concat", action="store_true")
     a = ap.parse_args()
+    if a.render:
+        render_trial(int(a.render[0]), int(a.render[1]),
+                     int(a.render[2]) if len(a.render) > 2 else 1)
+        raise SystemExit
+    if a.cards:
+        make_cards(); raise SystemExit
+    if a.concat:
+        trials = [(f"refurb_{i}.mp4", True) for i in (1, 2, 3)]
+        concat([("card_v4_title.mp4", False)] + trials + [("card_v4_end.mp4", False)],
+               "refurb_cell_v4_full.mp4")
+        concat([("card_v4_title.mp4", False)] + trials + [("card_v4_end.mp4", False)],
+               "refurb_cell_v4.mp4", tag="1.8x SPEED", stride=1.8)
+        raise SystemExit
     if a.inspect_eval:
         inspect_eval(a.inspect_eval, seed0=a.seed0)
     elif a.eval:
