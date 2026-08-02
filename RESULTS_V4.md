@@ -55,14 +55,14 @@ The classifier's grade selects the route. That decision is live in every trial.
 ### REPLACE route — 100%
 
 Heavily-damaged parts: extract → inspect → bin → install a fresh cartridge → lock.
-**15/15 on held-out seeds.** This is the v3 path, unchanged.
+**27/27 on held-out seeds.** This is the v3 path, unchanged.
 
 ### Cleaning motion
 
 Dip + dwell + vertical agitation in a solution tank. **No fluid or chemical
 simulation.** Cleaning removes the same deposit geoms the camera graded, so a
 re-check observes the identical mechanism — success is verified from an image, not
-asserted. The motion executes; see below for why the verification does not yet report.
+asserted. Verified on 100% of 22 cleaned parts, and falsification-tested (below).
 
 ---
 
@@ -100,39 +100,20 @@ End-to-end is **capped by vision, not mechanics** — routing compliance is 100%
 every trial that fails does so because the classifier graded the part wrong, not
 because the arm failed. The weakest cell is light-vs-heavy (75%).
 
-### Superseded — the old blocker
+### For the record — the blocker this replaced
 
-**Both re-installation routes previously failed: 0%.** A cartridge that is clean, or that has been
-cleaned, is supposed to go back into the unit. It does not.
+Before Phase A both re-installation routes scored **0%**, and routing compliance was
+50%. The cause was that a **seated cartridge can only be gripped by its cap** — the
+collar and chamfer occlude the body below z = 126 mm — and that grip is a small
+friction patch carrying a 110 mm lever. v3 never exposed it because it only carried
+the part ~5 s to a bin, where precision did not matter. Asking the same grip to
+survive presentation, a tank dip and a re-insertion dropped the part every time: the
+hang offset wandered between 42 mm and 83 mm and the part left the jaws around 20 s in.
 
-**Cause — the cap grip cannot retain the part.** A seated cartridge can only be
-gripped by its cap: the collar and chamfer occlude the body below z = 126 mm. That
-grip is a small friction patch carrying a 110 mm lever. v3 never exposed the
-limitation because it only ever carried the part ~5 s to a bin, where precision did
-not matter. v4 asks the same grip to survive presentation, a tank dip and a
-re-insertion — and the part is dropped every time. Measured: the hang offset wanders
-between 42 mm and 83 mm, and the part leaves the jaws around 20 s in.
-
-Consequences on held-out seeds 200–229:
-
-| Metric | Value |
-|---|---|
-| Routing compliance (arm executed the route it chose) | 50.0% |
-| End-to-end success (right action **and** unit finished correctly) | 43.3% |
-| REPLACE route | 100% (15/15) |
-| CLEAN / LIGHT routes | 0% (0/15) |
-
-Both figures are dominated entirely by the reinstall failure.
-
-### Proposed fix (not yet built)
-
-A **chamfered staging nest** — a shallow cup with a 45° lead-in at the staging
-position. The part is set down into it and re-gripped by the **body**, which is the
-firm grip the whole insertion sequence was validated against. This is standard plant
-practice, and it is the same chamfer trick the socket already uses and that this
-project has already proven works at 3 mm clearance. Placing onto a flat tray was
-tried and fails: a compliant grip tips the part on contact, and a tilted part topples
-on release.
+**This is a real finding about the task, not just about our code.** If a robot cannot
+hold this cartridge by its cap through a wet process, a real cell will need a fixture
+too. That is a design input for DrinkPrime, discovered in simulation before anyone
+bought hardware — see PITCH_NOTES.
 
 ---
 
@@ -151,4 +132,7 @@ on release.
 - **No v4 demo video yet** — that is Phase B. All three routes now run, so the
   three-route cut is buildable. `media/refurb_cell_v3.mp4` remains the current demo
   until it exists.
-- Deposits remain **visual only**; real scale would change fit and mass.
+- Deposits are **visual only** — no collision, negligible mass.
+- Cleaning is **dip + dwell + agitate with no fluid or chemical simulation.** What is
+  verified is that the deposits the camera could see are gone, not that any real
+  descaling chemistry would work.
