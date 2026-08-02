@@ -112,6 +112,58 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v4 session — inspect / clean / replace (2026-08-02) — PARTIALLY COMPLETE
+
+- 2026-08-02 | THE BIG ONE: **a classifier validated on a test rig scored 90%, and 37
+  points lower in the actual cell.** Calibration presented the part by teleporting it
+  to the inspection pose. In the real trial the ARM holds it -- and the presentation
+  height came from a fixed `cap_hang = 83 mm` constant while the true hang is ~52 mm
+  and unstable. The part sat 31 mm high: cropped, off the backdrop, and the
+  segmentation swallowed bench and shadow (187k "part" pixels out of 307k). Coverage
+  read 0.0, everything graded "clean" -- **53% accuracy and a 34.8% false-clean rate,
+  the exact error we had called the dangerous one.** Fix was this project's own
+  recurring lesson: put the PART on the camera axis using the measured hang, not the
+  wrist at an assumed offset. Back to 90% in-cell, matching the rig. | ~50 min |
+  **a vision model is only as valid as the fixture that presents the part.** Calibrate
+  through the same motion path you deploy, never on a teleported ideal. Most
+  transferable finding of the session
+- 2026-08-02 | Small-sample luck nearly became a claim. In-cell inspection read
+  **100% on seeds 0-19** immediately after that fix; on 30 held-out seeds it was
+  **90.0%**. Twenty trials could not distinguish "fixed" from "lucky", and 100% is
+  precisely the number most likely to be believed and repeated. | 0 | held-out
+  evaluation has now caught an over-claim in three consecutive sessions
+- 2026-08-02 | **BLOCKER, unresolved: the cap grip cannot retain the part through
+  extended handling.** A seated cartridge can only be gripped by its cap -- the collar
+  and chamfer occlude the body below z=126 mm -- and that is a small friction patch
+  with a 110 mm lever hanging off it. v3 never exposed this because it only carried
+  the part ~5 s to a bin. v4 asks it to survive inspection, a tank dip and a
+  re-insertion, and the part is dropped every time: hang offset wanders 42-83 mm and
+  it slips out ~20 s in. Consequence: REPLACE route 100%, both REINSTALL routes 0%.
+  | ~2 h | grip quality needs to be a measured, reported quantity (hang drift over
+  time), not an assumption
+- 2026-08-02 | I re-implemented the v2 wedge defect twice, in new clothes, in one
+  session. (a) I derived the wrist Z target from the LIVE hang offset -- so as the
+  part slipped the target rose, the wrist chased it upward and it slipped further:
+  hang 52 -> 161 mm inside one phase. (b) PRE-INSERT's coarse centering law
+  `tcp + (SOCK - cart_xy)` is safe with a firm body grip but excites a pendulum on a
+  loose cap grip -- the part swung 17 mm off-axis and tilted 40 deg. **Both are the
+  same family as the original wedge: a loop closed on a workpiece that can stop
+  tracking, driving a command that can keep growing.** Latching the reference fixed
+  (a); deleting PRE-INSERT from the reinstall route fixed (b). | ~40 min | knowing a
+  defect class does not stop you rebuilding it -- anti-windup wants to be a reusable
+  primitive, not a lesson
+- 2026-08-02 | A dropped part turns every part-referencing law into a pursuit
+  controller. Once the cartridge left the jaws, the tip-following target tracked it
+  lying on the bench and the arm walked itself to a 700 mm wrist height chasing it.
+  Added an explicit lost-part guard (hang > 150 mm with jaws closed = fail honestly).
+  | ~15 min | every servo-on-the-workpiece law needs a workpiece-present precondition
+- 2026-08-02 | Placing a part is harder than picking one up, for a non-obvious reason:
+  a 113 mm/s descent through a compliant grip tips the part, and releasing a tilted
+  part topples it -- after which every downstream alignment gate times out on a
+  cartridge lying on its side. Slowing the descent and gating release on BOTH height
+  and uprightness helped, but did not fix it. | ~45 min | place operations need a
+  compliant self-centering nest, not a flat surface and good intentions
+
 ## v3 session — refurbishment swap cycle (2026-08-02)
 
 - 2026-08-02 | The extraction physics warning was CORRECT and the mitigation was
