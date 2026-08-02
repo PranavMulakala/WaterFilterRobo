@@ -50,8 +50,8 @@ Instructions for Claude Code / any AI agent working in this repo.
 - `stats.json` — last eval output. See `RESULTS.md` for the current headline number.
 
 ## Hard rules
-- After ANY controller or scene change, run `../venv/bin/python sim_poc2.py --eval 25`
-  **and** `../venv/bin/python sim_poc3.py --eval 25` from `sim_poc/`, and report both success rates
+- After ANY controller or scene change, run `../venv/bin/python sim_poc2.py --eval 25`,
+  `sim_poc3.py --eval 25` **and** `sim_poc4.py --eval 30 --seed0 200` from `sim_poc/`, and report both success rates
   against the recorded baselines (v2: 100% locked; v3: 100% full swap). **Never
   claim a fix without an eval.** v3 imports v2, so a v2 change moves v3 too.
 - **Report the margin, not just the rate.** A pass/fail rate hid a systemic defect
@@ -84,13 +84,29 @@ Instructions for Claude Code / any AI agent working in this repo.
   torsional slip** (22 mm contact patch transmitting torque through friction). Never
   dead-reckon a twist from wrist angle — close the loop on the MEASURED CARTRIDGE
   yaw, or the lug axis lands ~10° short of the slot and the lift jams.
+- **Calibrate vision through the real motion path, never on a teleported part.** The
+  v4 classifier scored 90% on a rig that placed the part perfectly and 53% in the
+  cell, because the presentation height used an assumed grip offset instead of the
+  measured one. A vision model is only as valid as the fixture presenting the part.
+- **The cap grip is weak and its hang offset is unstable (42-83 mm).** It is fine for
+  a short carry-and-drop (v3) and NOT fine for presentation, dipping or re-insertion.
+  Anything needing precision must re-grip the part by its body first.
 - Extraction has **no chamfer**. Going in, the funnel centres the part mechanically;
   going out, the lugs must thread back up 3 mm slot channels with no lead-in. During
   UNTWIST/EXTRACT the wrist holds the socket axis exactly — any commanded lateral
   motion there is pure risk.
 
 ## Backlog (priority order)
-0. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
+0a. **Refurb v4 — inspect / clean / replace. IN PROGRESS, PARTIALLY WORKING.**
+   `sim_poc4.py` + `cartridge_scene_v4.xml`. Inspection (real CV on rendered pixels)
+   **works: 90.0% in-cell on held-out seeds, 3.7% false-clean, no heavy part ever
+   graded clean.** Routing decision works. REPLACE route 100%. **Both REINSTALL
+   routes are 0%** — the cap grip cannot retain the part through extended handling
+   (a seated cartridge can only be gripped by its cap; the body is occluded below
+   z=126 mm). **Next step: a chamfered staging nest so the part can be set down and
+   re-gripped by the BODY.** See `RESULTS_V4.md`. No v4 video until all three routes
+   run — v3's reel remains the honest demo.
+0b. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
    `cartridge_scene_v3.xml`: extract a twist-locked spent cartridge, bin it, install
    a fresh one. 100% over 125 trials (25 + 100 held-out). See `RESULTS_V3.md`.
 1. **LeRobot dataset logging** — save wrist + overhead RGB observation/action pairs

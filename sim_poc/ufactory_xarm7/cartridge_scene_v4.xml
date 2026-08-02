@@ -1,0 +1,219 @@
+<mujoco model="refurbishment cell v4 (inspect / clean / replace)">
+  <include file="xarm7.xml"/>
+
+  <statistic center="0.4 0 0.3" extent="1.1"/>
+
+  <visual>
+    <headlight diffuse="0.65 0.65 0.65" ambient="0.38 0.38 0.4" specular="0.25 0.25 0.25"/>
+    <global azimuth="150" elevation="-25" offheight="720" offwidth="1280"/>
+    <quality shadowsize="4096"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.82 0.87 0.93" rgb2="0.5 0.6 0.72" width="256" height="256"/>
+    <texture name="floortex" type="2d" builtin="checker" rgb1="0.30 0.32 0.36" rgb2="0.36 0.38 0.42" width="256" height="256"/>
+    <material name="floormat" texture="floortex" texrepeat="6 6" reflectance="0.05"/>
+    <material name="benchmat" rgba="0.65 0.67 0.71 1" reflectance="0.1"/>
+    <material name="cartmat" rgba="0.16 0.5 0.82 1" reflectance="0.3"/>
+    <material name="capmat" rgba="0.95 0.95 0.97 1"/>
+    <material name="lugmat" rgba="0.95 0.75 0.1 1"/>
+    <material name="socketmat" rgba="0.88 0.89 0.91 1"/>
+    <material name="socketbase" rgba="0.2 0.22 0.25 1"/>
+    <material name="housingmat" rgba="0.93 0.94 0.96 1" reflectance="0.15"/>
+    <material name="traymat" rgba="0.35 0.38 0.42 1"/>
+    <material name="accentmat" rgba="0.16 0.5 0.82 1"/>
+    <!-- v3: the SPENT cartridge reads as used - desaturated, matte, no reflectance -->
+    <material name="spentmat" rgba="0.34 0.31 0.27 1" reflectance="0.0"/>
+    <material name="spentcapmat" rgba="0.55 0.53 0.50 1" reflectance="0.0"/>
+    <material name="spentlugmat" rgba="0.45 0.38 0.18 1" reflectance="0.0"/>
+    <material name="binmat" rgba="0.42 0.20 0.18 1" reflectance="0.05"/>
+    <!-- v4: limescale deposits. Chalky, bright, matte - deliberately NOT a flat recolour
+         of the body, so the inspection camera has to measure texture/coverage rather
+         than read back a colour we wrote. -->
+    <material name="scalemat" rgba="0.90 0.90 0.86 1" reflectance="0.0"/>
+    <material name="cleanmat" rgba="0.16 0.5 0.82 1" reflectance="0.3"/>
+    <!-- matte dark backdrop for the inspection booth: a controlled background is what
+         makes plant vision tractable, and it is what a real cell would have -->
+    <material name="backdropmat" rgba="0.07 0.08 0.09 1" reflectance="0.0"/>
+    <material name="tankmat" rgba="0.22 0.34 0.40 1" reflectance="0.08"/>
+    <material name="solutionmat" rgba="0.30 0.72 0.68 0.55" reflectance="0.25"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0.5 -0.5 1.6" dir="-0.3 0.3 -1" diffuse="0.7 0.7 0.7"/>
+    <light pos="0.3 0.6 1.4" dir="0 -0.4 -1" diffuse="0.45 0.45 0.45"/>
+
+    <geom name="floor" type="plane" size="0 0 0.05" pos="0 0 -0.7" material="floormat"/>
+    <geom name="bench" type="box" size="0.55 0.6 0.35" pos="0.35 0 -0.35" material="benchmat"/>
+
+    <camera name="main" pos="1.30 -0.85 0.72" xyaxes="0.6 0.8 0 -0.28 0.21 0.93"/>
+    <camera name="closeup" pos="0.95 0.62 0.35" xyaxes="-0.6 0.8 0 -0.25 -0.19 0.95"/>
+    <camera name="top" pos="0.45 0 1.4" xyaxes="0 -1 0 1 0 0"/>
+
+    <!-- purifier housing: the socket is mounted in an appliance-like body -->
+    <body name="housing" pos="0.46 0.26 0">
+      <geom type="box" size="0.10 0.13 0.008" pos="0 0 0.008" material="housingmat"/>
+      <geom type="box" size="0.10 0.030 0.09" pos="0 0.10 0.09" material="housingmat"/>
+      <geom type="box" size="0.014 0.13 0.055" pos="-0.086 0 0.055" material="housingmat"/>
+      <geom type="box" size="0.014 0.13 0.055" pos="0.086 0 0.055" material="housingmat"/>
+      <geom type="box" size="0.10 0.008 0.02" pos="0 -0.122 0.02" material="accentmat"/>
+      <geom name="socket_base" type="cylinder" size="0.052 0.0225" pos="0 0 0.0225" material="socketbase"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0305 0.0000 0.0790" euler="0 0 0.0000" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0297 0.0068 0.0790" euler="0 0 0.2244" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0275 0.0132 0.0790" euler="0 0 0.4488" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0238 0.0190 0.0790" euler="0 0 0.6732" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0190 0.0238 0.0790" euler="0 0 0.8976" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0132 0.0275 0.0790" euler="0 0 1.1220" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0132 0.0275 0.0790" euler="0 0 2.0196" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0190 0.0238 0.0790" euler="0 0 2.2440" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0238 0.0190 0.0790" euler="0 0 2.4684" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0275 0.0132 0.0790" euler="0 0 2.6928" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0297 0.0068 0.0790" euler="0 0 2.9172" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0305 0.0000 0.0790" euler="0 0 3.1416" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0297 -0.0068 0.0790" euler="0 0 3.3660" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0275 -0.0132 0.0790" euler="0 0 3.5904" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0238 -0.0190 0.0790" euler="0 0 3.8148" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0190 -0.0238 0.0790" euler="0 0 4.0392" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="-0.0132 -0.0275 0.0790" euler="0 0 4.2636" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0132 -0.0275 0.0790" euler="0 0 5.1612" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0190 -0.0238 0.0790" euler="0 0 5.3856" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0238 -0.0190 0.0790" euler="0 0 5.6100" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0275 -0.0132 0.0790" euler="0 0 5.8344" material="socketmat"/>
+      <geom type="box" size="0.0060 0.0043 0.0210" pos="0.0297 -0.0068 0.0790" euler="0 0 6.0588" material="socketmat"/>
+            <geom type="box" size="0.0035 0.0057 0.016" pos="0.0378 0.0000 0.1123" euler="0 0.785 0.0000" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0369 0.0084 0.1123" euler="0 0.785 0.2244" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0341 0.0164 0.1123" euler="0 0.785 0.4488" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0296 0.0236 0.1123" euler="0 0.785 0.6732" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0236 0.0296 0.1123" euler="0 0.785 0.8976" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0164 0.0341 0.1123" euler="0 0.785 1.1220" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0164 0.0341 0.1123" euler="0 0.785 2.0196" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0236 0.0296 0.1123" euler="0 0.785 2.2440" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0296 0.0236 0.1123" euler="0 0.785 2.4684" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0341 0.0164 0.1123" euler="0 0.785 2.6928" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0369 0.0084 0.1123" euler="0 0.785 2.9172" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0378 0.0000 0.1123" euler="0 0.785 3.1416" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0369 -0.0084 0.1123" euler="0 0.785 3.3660" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0341 -0.0164 0.1123" euler="0 0.785 3.5904" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0296 -0.0236 0.1123" euler="0 0.785 3.8148" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0236 -0.0296 0.1123" euler="0 0.785 4.0392" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="-0.0164 -0.0341 0.1123" euler="0 0.785 4.2636" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0164 -0.0341 0.1123" euler="0 0.785 5.1612" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0236 -0.0296 0.1123" euler="0 0.785 5.3856" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0296 -0.0236 0.1123" euler="0 0.785 5.6100" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0341 -0.0164 0.1123" euler="0 0.785 5.8344" material="socketmat"/>
+      <geom type="box" size="0.0035 0.0057 0.016" pos="0.0369 -0.0084 0.1123" euler="0 0.785 6.0588" material="socketmat"/>
+      <site name="socket_center" pos="0 0 0.047" size="0.004"/>
+    </body>
+
+    <!-- parts tray where cartridges arrive (spawn zone) -->
+    <geom type="box" size="0.09 0.09 0.006" pos="0.46 -0.26 0.006" material="traymat"/>
+    <geom type="box" size="0.09 0.005 0.018" pos="0.46 -0.175 0.018" material="traymat"/>
+    <geom type="box" size="0.09 0.005 0.018" pos="0.46 -0.345 0.018" material="traymat"/>
+    <geom type="box" size="0.005 0.09 0.018" pos="0.375 -0.26 0.018" material="traymat"/>
+    <geom type="box" size="0.005 0.09 0.018" pos="0.545 -0.26 0.018" material="traymat"/>
+
+
+    <!-- v4 INSPECTION BOOTH. Presentation point (0.28, 0.42, 0.3), matte backdrop 80 mm behind
+         it, fixed camera opposite. Deliberately a FIXED station camera rather than the
+         wrist cam: consistent framing and lighting is the whole reason plant vision
+         works. -->
+    <geom name="insp_backdrop" type="box" size="0.22 0.005 0.22"
+          pos="0.28 0.50 0.30" material="backdropmat"/>
+    <geom name="insp_post" type="cylinder" size="0.008 0.04" pos="0.28 0.505 0.04" material="socketbase"/>
+    <camera name="inspect" pos="0.28 0.17 0.30" xyaxes="1 0 0  0 0 1" fovy="42"/>
+    <site name="inspect_pt" pos="0.28 0.42 0.3" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- v4 SOLUTION TANK: open-top container. NOTE: no fluid dynamics. Cleaning is
+         modelled as a dip + dwell + agitate motion and verified by RE-INSPECTING the
+         part; the chemistry is not simulated. -->
+    <geom name="tank_floor" type="box" size="0.070 0.070 0.005" pos="0.28 -0.42 0.005" material="tankmat"/>
+    <geom name="tank_wy1" type="box" size="0.070 0.005 0.055" pos="0.28 -0.355 0.055" material="tankmat"/>
+    <geom name="tank_wy2" type="box" size="0.070 0.005 0.055" pos="0.28 -0.485 0.055" material="tankmat"/>
+    <geom name="tank_wx1" type="box" size="0.005 0.070 0.055" pos="0.21500000000000002 -0.42 0.055" material="tankmat"/>
+    <geom name="tank_wx2" type="box" size="0.005 0.070 0.055" pos="0.34500000000000003 -0.42 0.055" material="tankmat"/>
+    <geom name="tank_solution" type="box" size="0.062 0.062 0.040" pos="0.28 -0.42 0.045"
+          material="solutionmat" contype="0" conaffinity="0"/>
+    <site name="tank_pt" pos="0.28 -0.42 0.30" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- v3: open bin for spent cartridges. Sits between the tray and the housing,
+         0.46 m from the base so it is well inside the arm's reach. Walls are only
+         55 mm tall so the arm can drop over them without a tall clearance move. -->
+    <geom name="bin_floor" type="box" size="0.075 0.075 0.005" pos="0.46 0.0 0.005" material="binmat"/>
+    <geom name="bin_wy1" type="box" size="0.075 0.005 0.025" pos="0.46 0.07 0.030" material="binmat"/>
+    <geom name="bin_wy2" type="box" size="0.075 0.005 0.025" pos="0.46 -0.07 0.030" material="binmat"/>
+    <geom name="bin_wx1" type="box" size="0.005 0.075 0.025" pos="0.39 0.0 0.030" material="binmat"/>
+    <geom name="bin_wx2" type="box" size="0.005 0.075 0.025" pos="0.53 0.0 0.030" material="binmat"/>
+    <site name="bin_center" pos="0.46 0.0 0.06" size="0.004"/>
+
+    <!-- THE FRESH cartridge: cylinder + white cap + two bayonet lugs near the base -->
+    <body name="cartridge" pos="0.46 -0.26 0.075">
+      <joint name="cartridge_free" type="free" damping="0.02"/>
+      <geom name="cart_body" type="cylinder" size="0.0215 0.055" material="cartmat" mass="0.28"
+            friction="1.6 0.08 0.001" condim="6"/>
+      <geom name="cart_cap" type="cylinder" size="0.022 0.006" pos="0 0 0.058" material="capmat" mass="0.015"/>
+      <geom name="lug1" type="box" size="0.0065 0.004 0.004" pos="0.027499999999999997 0 -0.049" material="lugmat" mass="0.004"/>
+      <geom name="lug2" type="box" size="0.0065 0.004 0.004" pos="-0.027499999999999997 0 -0.049" material="lugmat" mass="0.004"/>
+      <site name="cart_top" pos="0 0 0.06" size="0.004"/>
+    </body>
+
+    <!-- v3: the SPENT cartridge, already installed. Same geometry and friction as
+         the fresh one (the refurb task is a like-for-like swap); only the materials
+         differ. Its qpos is also set explicitly at reset - the `home` keyframe
+         predates both free joints. Locked yaw = 35.0 deg. -->
+    <body name="spent_cartridge" pos="0.46 0.26 0.100" quat="0.953717 0 0 0.300706">
+      <joint name="spent_free" type="free" damping="0.02"/>
+      <geom name="spent_body" type="cylinder" size="0.0215 0.055" material="spentmat" mass="0.28"
+            friction="1.6 0.08 0.001" condim="6"/>
+      <geom name="spent_cap" type="cylinder" size="0.022 0.006" pos="0 0 0.058" material="spentcapmat" mass="0.015"/>
+      <geom name="spent_lug1" type="box" size="0.0065 0.004 0.004" pos="0.0275 0 -0.049" material="spentlugmat" mass="0.004"/>
+      <geom name="spent_lug2" type="box" size="0.0065 0.004 0.004" pos="-0.0275 0 -0.049" material="spentlugmat" mass="0.004"/>
+
+      <!-- v4: limescale deposit pool (visual only, revealed per trial) -->
+      <geom name="dep00" type="box" size="0.0040 0.0045 0.0079" pos="0.01801 0.01000 0.0067" euler="0 0 0.5071" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep01" type="box" size="0.0058 0.0059 0.0056" pos="-0.02060 0.00004 0.0109" euler="0 0 3.1396" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep02" type="box" size="0.0055 0.0045 0.0049" pos="0.01936 -0.00703 -0.0201" euler="0 0 5.9352" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep03" type="box" size="0.0065 0.0035 0.0067" pos="-0.01720 0.01134 0.0255" euler="0 0 2.5586" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep04" type="box" size="0.0049 0.0051 0.0053" pos="-0.01864 0.00877 -0.0111" euler="0 0 2.7019" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep05" type="box" size="0.0047 0.0051 0.0075" pos="0.00696 0.01939 0.0368" euler="0 0 1.2259" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep06" type="box" size="0.0039 0.0044 0.0071" pos="-0.01967 -0.00611 -0.0281" euler="0 0 3.4427" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep07" type="box" size="0.0048 0.0040 0.0069" pos="0.01228 0.01654 -0.0360" euler="0 0 0.9319" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep08" type="box" size="0.0073 0.0043 0.0045" pos="-0.01995 0.00514 -0.0089" euler="0 0 2.8892" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep09" type="box" size="0.0060 0.0044 0.0057" pos="0.00185 -0.02052 0.0066" euler="0 0 4.8021" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep10" type="box" size="0.0058 0.0055 0.0044" pos="-0.01655 -0.01227 0.0174" euler="0 0 3.7798" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep11" type="box" size="0.0038 0.0048 0.0045" pos="-0.01874 0.00856 -0.0327" euler="0 0 2.7130" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep12" type="box" size="0.0050 0.0055 0.0053" pos="-0.00559 0.01983 -0.0197" euler="0 0 1.8456" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep13" type="box" size="0.0067 0.0057 0.0035" pos="0.00583 -0.01976 0.0347" euler="0 0 4.9995" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep14" type="box" size="0.0064 0.0048 0.0057" pos="0.01667 0.01210 -0.0043" euler="0 0 0.6279" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep15" type="box" size="0.0050 0.0032 0.0065" pos="0.01487 -0.01426 0.0363" euler="0 0 5.5189" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep16" type="box" size="0.0062 0.0052 0.0038" pos="0.01919 -0.00750 0.0395" euler="0 0 5.9105" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep17" type="box" size="0.0068 0.0038 0.0072" pos="-0.01741 -0.01101 -0.0242" euler="0 0 3.7057" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep18" type="box" size="0.0041 0.0031 0.0070" pos="0.01052 -0.01771 -0.0045" euler="0 0 5.2485" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep19" type="box" size="0.0049 0.0037 0.0045" pos="-0.02059 0.00069 0.0115" euler="0 0 3.1079" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep20" type="box" size="0.0044 0.0035 0.0037" pos="0.00982 0.01811 0.0107" euler="0 0 1.0737" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep21" type="box" size="0.0045 0.0048 0.0041" pos="0.01998 0.00502 -0.0304" euler="0 0 0.2463" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep22" type="box" size="0.0036 0.0032 0.0048" pos="0.01431 0.01482 0.0372" euler="0 0 0.8029" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep23" type="box" size="0.0037 0.0059 0.0064" pos="-0.01866 -0.00873 0.0373" euler="0 0 3.5792" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep24" type="box" size="0.0041 0.0034 0.0050" pos="0.01680 -0.01192 0.0308" euler="0 0 5.6663" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep25" type="box" size="0.0047 0.0041 0.0059" pos="0.01835 0.00937 0.0456" euler="0 0 0.4722" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep26" type="box" size="0.0071 0.0058 0.0068" pos="-0.02054 -0.00153 -0.0445" euler="0 0 3.2158" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep27" type="box" size="0.0041 0.0057 0.0079" pos="0.00238 -0.02046 0.0077" euler="0 0 4.8281" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep28" type="box" size="0.0056 0.0055 0.0068" pos="0.01650 -0.01233 -0.0340" euler="0 0 5.6416" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep29" type="box" size="0.0036 0.0060 0.0051" pos="-0.00526 0.01992 -0.0045" euler="0 0 1.8291" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep30" type="box" size="0.0045 0.0048 0.0045" pos="-0.01579 -0.01322 -0.0066" euler="0 0 3.8386" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep31" type="box" size="0.0069 0.0060 0.0050" pos="-0.00399 -0.02021 -0.0039" euler="0 0 4.5173" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep32" type="box" size="0.0061 0.0046 0.0070" pos="-0.01556 -0.01350 0.0436" euler="0 0 3.8561" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep33" type="box" size="0.0062 0.0041 0.0074" pos="0.01960 -0.00634 -0.0371" euler="0 0 5.9702" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep34" type="box" size="0.0042 0.0032 0.0061" pos="0.01504 -0.01408 -0.0224" euler="0 0 5.5305" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep35" type="box" size="0.0059 0.0046 0.0055" pos="-0.02059 0.00047 0.0417" euler="0 0 3.1188" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep36" type="box" size="0.0039 0.0031 0.0052" pos="0.02029 0.00356 0.0306" euler="0 0 0.1736" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep37" type="box" size="0.0044 0.0041 0.0079" pos="0.00467 -0.02006 -0.0148" euler="0 0 4.9411" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep38" type="box" size="0.0044 0.0044 0.0051" pos="0.00817 -0.01891 -0.0278" euler="0 0 5.1201" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep39" type="box" size="0.0071 0.0036 0.0056" pos="-0.01958 0.00639 0.0200" euler="0 0 2.8260" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep40" type="box" size="0.0058 0.0032 0.0038" pos="-0.00725 -0.01928 -0.0225" euler="0 0 4.3530" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep41" type="box" size="0.0059 0.0058 0.0045" pos="0.02007 -0.00464 0.0435" euler="0 0 6.0560" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep42" type="box" size="0.0036 0.0050 0.0052" pos="0.01801 -0.01000 -0.0327" euler="0 0 5.7762" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <geom name="dep43" type="box" size="0.0044 0.0045 0.0055" pos="-0.02040 0.00290 -0.0425" euler="0 0 3.0006" material="scalemat" mass="0.00001" contype="0" conaffinity="0" rgba="0.90 0.90 0.86 0"/>
+      <site name="spent_top" pos="0 0 0.06" size="0.004"/>
+    </body>
+  </worldbody>
+</mujoco>
