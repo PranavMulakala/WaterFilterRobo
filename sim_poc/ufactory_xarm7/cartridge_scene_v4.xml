@@ -135,6 +135,57 @@
           material="solutionmat" contype="0" conaffinity="0"/>
     <site name="tank_pt" pos="0.28 -0.42 0.30" size="0.004" rgba="0 0 0 0"/>
 
+    <!-- v5/PhaseA: STAGING NEST. A cleaned part is set down here and re-gripped
+         by its BODY -- the cap grip only survives a short carry (see PAIN_JOURNAL).
+         BORE IS SIZED TO THE LUGS, NOT THE BODY: the bayonet lugs stick out to r=34mm
+         while the body is only r=21.5mm. A 27mm bore (5.5mm body clearance) was tried
+         first and interfered with the lugs by exactly 7.0mm; the solver resolved that
+         by launching the part back out. Bore is now r=38mm = 4mm lug clearance.
+         The wide bore does not let the part lean: a 110mm cylinder on a flat 43mm
+         base is self-standing (it only topples past ~21deg), so the walls just stop
+         it wandering and the 45-degree lead-in funnels it in.
+         Floor top z=13mm puts a seated part's CENTRE at 68mm -- identical to a
+         cartridge standing in the tray, so the proven body-grip insertion sequence is
+         reused with no new heights.
+         Chamfer plates use explicit xyaxes, NOT the socket's euler="0 0.785 th":
+         that euler tilts every plate about the same world Y axis rather than
+         radially, making a pinwheel that overhangs the bore. The socket survives it
+         only because its malformed plates land in the bayonet slot gaps. -->
+    <geom name="nest_floor" type="cylinder" size="0.042 0.0065" pos="0.32 -0.28 0.0065" material="socketbase"/>
+    <site name="nest_pt" pos="0.32 -0.28 0.30" size="0.004" rgba="0 0 0 0"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.36400 -0.28000 0.0355" euler="0 0 0.0000" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.36065 -0.26316 0.0355" euler="0 0 0.3927" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.35111 -0.24889 0.0355" euler="0 0 0.7854" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.33684 -0.23935 0.0355" euler="0 0 1.1781" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.32000 -0.23600 0.0355" euler="0 0 1.5708" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.30316 -0.23935 0.0355" euler="0 0 1.9635" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.28889 -0.24889 0.0355" euler="0 0 2.3562" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.27935 -0.26316 0.0355" euler="0 0 2.7489" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.27600 -0.28000 0.0355" euler="0 0 3.1416" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.27935 -0.29684 0.0355" euler="0 0 3.5343" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.28889 -0.31111 0.0355" euler="0 0 3.9270" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.30316 -0.32065 0.0355" euler="0 0 4.3197" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.32000 -0.32400 0.0355" euler="0 0 4.7124" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.33684 -0.32065 0.0355" euler="0 0 5.1051" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.35111 -0.31111 0.0355" euler="0 0 5.4978" material="socketmat"/>
+    <geom type="box" size="0.006 0.0090 0.0225" pos="0.36065 -0.29684 0.0355" euler="0 0 5.8905" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.36900 -0.28000 0.069" xyaxes="0.70711 0.00000 -0.70711 -0.00000 1.00000 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.36527 -0.26125 0.069" xyaxes="0.65328 0.27060 -0.70711 -0.38268 0.92388 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.35465 -0.24535 0.069" xyaxes="0.50000 0.50000 -0.70711 -0.70711 0.70711 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.33875 -0.23473 0.069" xyaxes="0.27060 0.65328 -0.70711 -0.92388 0.38268 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.32000 -0.23100 0.069" xyaxes="0.00000 0.70711 -0.70711 -1.00000 0.00000 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.30125 -0.23473 0.069" xyaxes="-0.27060 0.65328 -0.70711 -0.92388 -0.38268 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.28535 -0.24535 0.069" xyaxes="-0.50000 0.50000 -0.70711 -0.70711 -0.70711 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.27473 -0.26125 0.069" xyaxes="-0.65328 0.27060 -0.70711 -0.38268 -0.92388 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.27100 -0.28000 0.069" xyaxes="-0.70711 0.00000 -0.70711 -0.00000 -1.00000 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.27473 -0.29875 0.069" xyaxes="-0.65328 -0.27060 -0.70711 0.38268 -0.92388 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.28535 -0.31465 0.069" xyaxes="-0.50000 -0.50000 -0.70711 0.70711 -0.70711 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.30125 -0.32527 0.069" xyaxes="-0.27060 -0.65328 -0.70711 0.92388 -0.38268 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.32000 -0.32900 0.069" xyaxes="-0.00000 -0.70711 -0.70711 1.00000 -0.00000 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.33875 -0.32527 0.069" xyaxes="0.27060 -0.65328 -0.70711 0.92388 0.38268 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.35465 -0.31465 0.069" xyaxes="0.50000 -0.50000 -0.70711 0.70711 0.70711 0.00000" material="socketmat"/>
+    <geom type="box" size="0.004 0.0100 0.0156" pos="0.36527 -0.29875 0.069" xyaxes="0.65328 -0.27060 -0.70711 0.38268 0.92388 0.00000" material="socketmat"/>
+
     <!-- v3: open bin for spent cartridges. Sits between the tray and the housing,
          0.46 m from the base so it is well inside the arm's reach. Walls are only
          55 mm tall so the arm can drop over them without a tall clearance move. -->

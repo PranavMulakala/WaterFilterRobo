@@ -112,6 +112,45 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v4 Phase A — the staging nest (2026-08-02) — REINSTALL NOW WORKS
+
+- 2026-08-02 | **I sized the staging nest to the wrong feature.** Gave it a 27 mm
+  bore for a 21.5 mm cartridge body -- 5.5 mm clearance, generous -- and every drop
+  test failed. The bayonet **lugs** stick out to r=34 mm. MuJoCo reported the
+  penetration as exactly **-7.0 mm** = 34 - 27, and the solver resolved it by
+  launching the part back out of the nest. A fixture must clear the part's LARGEST
+  feature, not its nominal diameter. | ~40 min | the contact list gave the answer in
+  one query and I spent half an hour on drop-envelope sweeps first -- ask the solver
+  what it is touching BEFORE theorising about dynamics
+- 2026-08-02 | **The socket's chamfer has a latent orientation bug that has been
+  invisible for three versions.** `euler="0 0.785 th"` tilts every plate about the
+  same world Y axis instead of radially, so a full ring becomes a pinwheel that
+  overhangs its own bore. The socket survives it purely because its malformed plates
+  land exactly where the bayonet slot GAPS are -- they do not exist. Copying the
+  pattern to a nest with no gaps exposed it immediately. Rebuilt with explicit
+  `xyaxes`. | ~30 min | **working geometry is not necessarily correct geometry.**
+  Copying a pattern that works can transplant a bug into a context that has no luck
+  protecting it
+- 2026-08-02 | The cleaning verification was nearly theatre and a falsification test
+  caught it. Sabotaged the cleaning so deposits were deliberately NOT removed, then
+  asked whether the re-check still passed the part: **it wrongly passed 2 of 5.** The
+  re-check was classifying on a single view while the main inspection used two -- and
+  the FLIP2 phase existed for exactly that second view but its capture was never fed
+  in. With both views: 5/5 honest cleanings verified, 5/5 sabotaged cleanings caught.
+  | ~20 min | **any "verified" flag needs a test that deliberately breaks the thing
+  it verifies.** A check that cannot fail is not a check
+- 2026-08-02 | Re-fitting the classifier thresholds on IN-CELL presentations rather
+  than the teleport rig moved accuracy 85.0 -> 86.7% and, more importantly, the
+  false-clean rate **2.1% -> 0.0%** on 60 held-out trials. Same code, same classifier,
+  same seeds -- only the calibration fixture changed. | ~15 min | second confirmation
+  in one session that calibration fixture > model sophistication
+- 2026-08-02 | The ordering insight that unblocked everything: **do the wet work
+  AFTER re-gripping by the body.** Dipping a cap-gripped part drops it ~7 s in, every
+  time. Nest first, re-grip, then clean. Obvious in hindsight, and it is exactly what
+  a human would do -- you do not hold a jar by its lid to wash it. | 0 | a grip-
+  strategy planner would have said this immediately; I found it by exhausting the
+  alternatives
+
 ## v4 session — inspect / clean / replace (2026-08-02) — PARTIALLY COMPLETE
 
 - 2026-08-02 | THE BIG ONE: **a classifier validated on a test rig scored 90%, and 37
