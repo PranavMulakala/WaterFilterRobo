@@ -14,3 +14,6 @@ numpy==2.5.1
 ImageIO==2.37.4
 imageio-ffmpeg==0.6.0
 pillow==12.3.0
+
+# LeRobot v2.1 export (parquet). Only needed by sim_poc/lerobot_export.py.
+pyarrow==25.0.0

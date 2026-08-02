@@ -112,6 +112,32 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v4 Phase D — LeRobot dataset export (2026-08-02)
+
+- 2026-08-02 | The action stream was already in the simulator and did not need
+  reconstructing: `data.ctrl` IS the commanded joint position the controller sent, so
+  the demonstration can be recorded through the existing `frame_cb` hook without
+  touching the controller at all. Sanity-checked that it is a real command and not a
+  copy of the state — mean |action - state| is 0.016 rad of tracking error. Had that
+  been ~0 it would have meant we were logging the measured state twice and calling one
+  of them an action, which would train a policy to predict where it already is. | 0 |
+  **verify that your action and observation are actually different signals** — a
+  degenerate action channel is silent and fatal
+- 2026-08-02 | Exporting only successful episodes is correct AND a bias worth writing
+  down. A policy trained on failures learns the failures — but the controller has
+  retry logic that fires on ~7% of cycles, and skipping failed trials means the
+  dataset contains **no recovery demonstrations at all**, which is exactly the
+  behaviour imitation policies are worst at acquiring. Recorded in the dataset card
+  rather than left implicit. | 0 | dataset selection criteria belong in the dataset,
+  next to the data, not in the head of whoever generated it
+- 2026-08-02 | Validated the export structurally (parquet rows == declared length,
+  video frames == rows, contiguous frame_index, continuous global index,
+  episodes_stats.jsonl present as v2.1 requires) and then said plainly, in the code
+  and the card, that this is **NOT** a round-trip through the real `lerobot` library.
+  It would be very easy to write "LeRobot v2.1 dataset" and let the reader assume it
+  loads. | 0 | name the verification you did NOT do, especially when the thing you
+  did do looks thorough
+
 ## v4 Phase C — domain randomization (2026-08-02)
 
 - 2026-08-02 | **I shipped a silent no-op flag and read the smoke test as success.**
