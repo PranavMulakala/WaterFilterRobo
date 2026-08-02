@@ -21,6 +21,10 @@ sim_poc/refurb_cell_v3.mp4
 # reference, not published.
 _archive/
 
+# Generated LeRobot datasets -- ~6 MB per episode, regenerate with
+# sim_poc/lerobot_export.py rather than committing them.
+datasets/
+
 # macOS
 .DS_Store
 

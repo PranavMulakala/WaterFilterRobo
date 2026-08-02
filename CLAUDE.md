@@ -118,9 +118,12 @@ Instructions for Claude Code / any AI agent working in this repo.
 0b. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
    `cartridge_scene_v3.xml`: extract a twist-locked spent cartridge, bin it, install
    a fresh one. 100% over 125 trials (25 + 100 held-out). See `RESULTS_V3.md`.
-1. **LeRobot dataset logging** — save wrist + overhead RGB observation/action pairs
-   per step in LeRobot v2.1 format. The bridge to the learned-policy phase, and the
-   thing that makes the swap cycle useful beyond a scripted demo.
+1. ~~**LeRobot dataset logging**~~ **DONE** — `sim_poc/lerobot_export.py` writes a
+   LeRobot v2.1 dataset (parquet + per-camera mp4 + meta/, incl. `episodes_stats.jsonl`).
+   8-dim state/action, wrist + overhead cameras. Structurally validated;
+   **NOT round-tripped through the real lerobot library** — that remains unverified.
+   Only successful episodes are exported, so the set contains no recovery demos.
+   `--validate-only` re-checks an existing dataset. Datasets are gitignored (~6 MB/ep).
 2. **Swap in real geometry when DrinkPrime's refurb video + device arrive.** The
    founder is shipping a process video, tech documents and possibly a physical unit.
    Those define the REAL refurb steps (descaling, filter media, gaskets, seals — we
