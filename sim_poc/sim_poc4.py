@@ -76,7 +76,11 @@ class RefurbConfig:
     bin_xy: tuple = (0.46, 0.0)
     tank_xy: tuple = (0.28, -0.42)
     inspect_xyz: tuple = (0.28, 0.42, 0.30)
-    stage_xy: tuple = (0.515, -0.205)     # where a cleaned part is set down to re-grasp
+    nest_xy: tuple = (0.32, -0.28)        # staging nest (chamfered cup) -- see scene XML
+    # release the part with its bottom ~6 mm above the nest chamfer. Measured capture
+    # envelope of the nest: seats reliably up to 8 mm lateral offset and 8 deg tilt.
+    nest_release_part_z: float = 0.141
+    stage_xy: tuple = (0.515, -0.205)     # (unused since the nest replaced flat staging)
     stage_clearance: float = 0.060        # fresh spawn is kept this far from staging
 
     # --- condition model (swap-in point: real soiling grades) ------------------
@@ -90,11 +94,15 @@ class RefurbConfig:
     inspect_views: int = 2                # 180 deg apart; see PAIN_JOURNAL
     cam_w: int = 640
     cam_h: int = 480
-    # FROZEN on calibration seeds 9000+, which are disjoint from every eval seed.
+    # FROZEN on calibration seeds 9000+, disjoint from every eval seed, and fit on
+    # IN-CELL presentations -- the arm actually holding and presenting the part -- not
+    # on a rig that teleports it into position. Fitting on the rig was worth 37 points
+    # of accuracy when deployed (see PAIN_JOURNAL); a vision model is only as valid as
+    # the fixture that presents the part.
     # score = coverage + TEX_W * texture
     tex_w: float = 0.70
-    t_clean: float = 0.1062
-    t_light: float = 0.1547
+    t_clean: float = 0.1018
+    t_light: float = 0.1576
     v_part: float = 0.13                  # part vs matte backdrop
     v_deposit: float = 0.62               # chalky deposit vs dull body
     s_lug: float = 0.45                   # drops the saturated yellow lugs
@@ -317,11 +325,22 @@ def _insertion_phases(body, det_key, grasp_z, cfg, reinstall=False):
             ("RELEASE",      (*S, 0.131),      GRIP_OPEN,   0.8, 0.012, 1.0,  False, 3.0,  body),
             ("RETREAT",      (*S, 0.34),       GRIP_OPEN,   0.4, 0.030, 1.0,  False, 4.0,  None),
         ]
+    return _pick_phases(body, det_key, grasp_z) + _insert_tail(body, cfg)
+
+
+def _pick_phases(body, det_key, grasp_z):
+    """pick a standing cartridge (tray or staging nest) with the proven BODY grip"""
     return [
         ("APPROACH",     (det_key, 0.28),      GRIP_OPEN,   0.1, 0.015, 1.0,  False, 6.0,  body),
         ("DESCEND",      (det_key, grasp_z),   GRIP_OPEN,   0.3, 0.008, 0.6,  False, 5.0,  body),
         ("GRASP",        (det_key, grasp_z),   GRIP_CLOSED, 1.2, 0.012, 1.0,  False, 3.0,  body),
         ("LIFT",         (det_key, 0.35),      GRIP_CLOSED, 0.2, 0.020, 1.0,  False, 4.0,  body),
+    ]
+
+
+def _insert_tail(body, cfg):
+    S = cfg.sock
+    return [
         ("TRANSIT",      (*S, 0.35),           GRIP_CLOSED, 0.5, 0.012, 0.5,  False, 8.0,  body),
         ("RECOVER GRIP", (*S, 0.131),          GRIP_CLOSED, 0.6, 0.012, 0.5,  False, 3.0,  body),
         ("RECOVER LIFT", (*S, 0.30),           GRIP_CLOSED, 0.3, 0.020, 0.6,  False, 6.0,  body),
@@ -347,7 +366,8 @@ for _n in ("CARRY TO TANK", "DIP", "AGITATE", "LIFT OUT", "DRAIN"):
     STAGE_OF[_n] = "CLEAN"
 for _n in ("CARRY TO BIN", "DISCARD", "CLEAR BIN"):
     STAGE_OF[_n] = "REPLACE"
-for _n in ("CARRY TO STAGE", "PLACE", "RELEASE PART", "STEP BACK"):
+for _n in ("CARRY TO NEST", "LOWER TO NEST", "RELEASE PART", "STEP BACK",
+           "CARRY TO STAGE", "PLACE"):
     STAGE_OF[_n] = "REINSTALL"
 for _n in ("APPROACH", "DESCEND", "GRASP", "LIFT", "TRANSIT", "RECOVER GRIP",
            "RECOVER LIFT", "ORIENT LUGS", "PRE-INSERT", "INSERT", "DROP-SEAT",
@@ -432,18 +452,36 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     # part's desired centre height; the wrist target is derived each step from the
     # LIVE measured hang offset, so the same numbers work for a 4 mm body grip and an
     # 80 mm cap grip alike.
-    ROUTE_CLEAN = _insertion_phases("spent", None, grasp_z, cfg, reinstall=True)
-    ROUTE_LIGHT = [
-        ("CARRY TO TANK",    (*TK, 0.30),           GRIP_CLOSED, 0.4, 0.015, 0.5,  False,  9.0,  "spent"),
-        ("DIP",              (*TK, cfg.dip_tcp),    GRIP_CLOSED, 0.4, 0.008, 0.3,  False,  7.0,  "spent"),
-        ("AGITATE",          (*TK, cfg.dip_tcp),    GRIP_CLOSED, 0.2, 0.030, 0.5,  "agit", 8.0,  "spent"),
-        ("LIFT OUT",         (*TK, 0.30),           GRIP_CLOSED, 0.3, 0.020, 0.35, False,  8.0,  "spent"),
-        ("DRAIN",            (*TK, 0.30),           GRIP_CLOSED, 0.8, 0.020, 0.5,  False,  4.0,  "spent"),
+    # REINSTALL: set the part into the chamfered staging nest, release, then re-grip
+    # it by the BODY and run the proven insertion. Inserting straight from the cap
+    # grip was tried and fails -- that grip's hang offset wanders 42-83 mm, so the
+    # part arrives tilted and is dropped. The nest exists so the weak grip only has
+    # to get the part roughly over a hole, and the chamfer does the rest.
+    NST = cfg.nest_xy
+    NEST_PLACE = [
+        ("CARRY TO NEST",  (*NST, 0.30),        GRIP_CLOSED, 0.5, 0.012, 0.5, False, 10.0, "spent"),
+        ("LOWER TO NEST",  (*NST, 0.30),        GRIP_CLOSED, 0.4, 0.010, 0.10, False, 12.0, "spent"),
+        ("RELEASE PART",   (*NST, 0.30),        GRIP_OPEN,   1.0, 0.030, 0.10, False,  4.0, "spent"),
+        ("STEP BACK",      (*NST, 0.34),        GRIP_OPEN,   0.3, 0.030, 0.8, False,  5.0, None),
+    ]
+    NEST_PICK = _pick_phases("spent", "STAGED", grasp_z)
+    TANK = [
+        ("CARRY TO TANK",  (*TK, 0.30),         GRIP_CLOSED, 0.4, 0.015, 0.5, False,  9.0, "spent"),
+        ("DIP",            (*TK, cfg.dip_tcp),  GRIP_CLOSED, 0.4, 0.008, 0.3, False,  7.0, "spent"),
+        ("AGITATE",        (*TK, cfg.dip_tcp),  GRIP_CLOSED, 0.2, 0.030, 0.5, "agit", 8.0, "spent"),
+        ("LIFT OUT",       (*TK, 0.30),         GRIP_CLOSED, 0.3, 0.020, 0.35, False, 8.0, "spent"),
+        ("DRAIN",          (*TK, 0.30),         GRIP_CLOSED, 0.8, 0.020, 0.5, False,  4.0, "spent"),
+    ]
+    RECHECK = [
         ("CARRY TO RECHECK", (IX[0], IX[1], present_z), GRIP_CLOSED, 0.5, 0.012, 0.5, False, 10.0, "spent"),
         ("RECHECK A",        (IX[0], IX[1], present_z), GRIP_CLOSED, 0.6, 0.010, 0.4, False, 5.0, "spent"),
         ("FLIP2",            (IX[0], IX[1], present_z), GRIP_CLOSED, 0.4, 0.012, 0.5, "flip", 8.0, "spent"),
         ("RECHECK B",        (IX[0], IX[1], present_z), GRIP_CLOSED, 0.6, 0.010, 0.4, False, 5.0, "spent"),
-    ] + ROUTE_CLEAN
+    ]
+    # Cleaning happens AFTER the part is re-gripped by its BODY. Dipping it while
+    # still held by the cap drops it ~7 s into the wet sequence, every time.
+    ROUTE_CLEAN = NEST_PLACE + NEST_PICK + _insert_tail("spent", cfg)
+    ROUTE_LIGHT = NEST_PLACE + NEST_PICK + TANK + RECHECK + _insert_tail("spent", cfg)
     ROUTE_HEAVY = [
         ("CARRY TO BIN",     (*cfg.bin_xy, 0.30),   GRIP_CLOSED, 0.4, 0.015, 0.5,  False,  9.0,  "spent"),
         ("DISCARD",          (*cfg.bin_xy, 0.26),   GRIP_OPEN,   1.0, 0.020, 0.6,  False,  4.0,  "spent"),
@@ -470,7 +508,7 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     part_ref = False
     part_lost = False
     hang_ref = None
-    feats_a, feats_b = [], []
+    feats_a, feats_b, feats_r = [], [], []
     pred = pred_score = None
     verified_clean = None
     route = None
@@ -545,6 +583,10 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         elif name in FOLLOW:
             tgt_arr[:2] = cart_xy
 
+        if name in ("LOWER TO NEST", "RELEASE PART"):
+            hang_live = float(np.clip(
+                data.site_xpos[site_id][2] - data.xpos[cart_id][2], 0.02, 0.12))
+            tgt_arr[2] = cfg.nest_release_part_z + hang_live
         if name in ("CARRY TO INSPECT", "PRESENT A", "FLIP", "PRESENT B",
                     "CARRY TO RECHECK", "RECHECK A", "FLIP2", "RECHECK B"):
             # Put the PART on the camera axis, not the wrist. cap_hang was a fixed
@@ -612,6 +654,10 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         elif name == "DISCARD":
             done = (np.linalg.norm(data.xpos[cart_id][:2] - np.array(cfg.bin_xy)) < v3.BIN_XY_TOL
                     and data.xpos[cart_id][2] < v3.BIN_Z_MAX)
+        elif name == "LOWER TO NEST":
+            done = abs(data.xpos[cart_id][2] - cfg.nest_release_part_z) < 0.006
+        elif name == "RELEASE PART":
+            done = data.xpos[cart_id][2] < 0.080     # it has dropped into the nest
         elif name == "PLACE":
             # Judge the PART: it must be low AND still upright. The cap-grip hang
             # offset is unstable (measured 42-83 mm) so a wrist-height gate places
@@ -648,20 +694,25 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
                 feats_b.append(capture())
                 pred, pred_score = classify(feats_a + feats_b, cfg)
                 route = pred
-                part_ref = pred in ("clean", "light")   # reinstall keeps hold of the part
+                part_ref = False        # reinstall re-grips by the body via the nest
                 P = P + ROUTES[pred]
             elif name == "AGITATE":
                 # cleaning removes the SAME deposit geoms the camera graded, so the
                 # re-check observes the identical mechanism -- not a material swap.
                 set_deposits(model, dep, 0, rng)
             elif name == "RECHECK B":
-                fa, fb = capture(), None
-                verified_clean = classify([fa], cfg)[0] == "clean"
+                # BOTH views, like the first inspection. Using only this one view
+                # missed 2 of 5 deliberately-uncleaned parts in a falsification test:
+                # deposits on the far face are invisible, so a dirty part reads clean.
+                # The FLIP2 phase exists precisely to expose the other face.
+                feats_r.append(capture())
+                verified_clean = classify(feats_r, cfg)[0] == "clean"
             elif name == "STEP BACK":
                 # re-perceive the part where it actually came to rest
                 dyn["STAGED"] = data.xpos[spent_id][:2] + rng.normal(0, PERCEPTION_NOISE, 2)
             elif name == "RECHECK A":
-                feats_a.append(capture())
+                feats_r.append(capture())      # dedicated list: the pre-clean features
+                                               # must not leak into the verification
 
             wp += 1; phase_t = 0.0
             flip_from = agit_from = None

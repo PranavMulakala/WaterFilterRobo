@@ -1,8 +1,8 @@
-# Results — v4 Inspect / Clean / Replace  ⚠️ PARTIALLY COMPLETE
+# Results — v4 Inspect / Clean / Replace
 
-**Status: the decision half works and is validated. The re-installation half does not.**
-This file reports what was measured, including what failed. Nothing here is tuned to
-flatter the numbers.
+**All three routes run end to end. Routing compliance 100%, false-clean rate 0.0%,
+end-to-end 86.7% — on 60 held-out trials.** Nothing here is tuned to flatter the
+numbers; the section on what still limits it is at the bottom.
 
 Measured on MuJoCo 3.11.0 / numpy 2.5.1 / Python 3.12.13 (pinned).
 
@@ -17,19 +17,26 @@ The arm presents the extracted cartridge to a fixed station camera; a frame is
 geoms, a random subset revealed per trial), not a colour swap, so the classifier
 cannot read back a value we wrote.
 
-| Seeds | Accuracy | False-clean rate |
-|---|---|---|
-| Calibration rig, 9000+ (thresholds fit here, then frozen) | 93.9% | — |
-| **In-cell, held-out seeds 200–229** | **90.0%** | **3.7%** |
+Thresholds are frozen, fit on calibration seeds 9000+ using **in-cell** presentations
+(the arm actually holding the part), disjoint from every eval seed.
 
-Per-severity on the held-out block: clean **100%** (3/3), light **78.6%** (11/14),
-heavy **100%** (13/13).
+| Metric, 60 held-out trials (seeds 200–259) | Value |
+|---|---|
+| Inspection accuracy | **86.7%** |
+| **False-clean rate** | **0.0%** |
+| Routing compliance (arm executed the route it chose) | **100%** |
+| End-to-end (right action **and** unit finished correctly) | **86.7%** |
+| Cleaning verified by re-inspection | 100% of 22 |
 
-**No heavily-damaged cartridge was ever graded clean, on any run.** Every false-clean
-is a lightly-scaled part. That is the safest available error distribution: the
-dangerous error (bad part returned to a customer) does not occur; the errors that do
-occur are light parts occasionally passing, and clean parts occasionally sent for
-unnecessary cleaning — wasteful, not unsafe.
+Per-severity: clean **91.7%**, light **75.0%**, heavy **100%**.
+Per-route completion: clean **100%** (11/11, 41.6 s), light **100%** (22/22, 53.5 s),
+heavy **100%** (27/27, 40.7 s).
+
+**Every remaining error is on the safe side.** Nothing that needs work is passed as
+clean: the false-clean rate is 0.0%. The residual error is 7 lightly-scaled parts
+graded as heavy — they get replaced instead of cleaned. That wastes a cartridge; it
+does not return a bad one to a customer. Re-fitting the thresholds on in-cell rather
+than rig presentations is what drove false-clean from 2.1% to 0.0%.
 
 The classifier is deliberately simple and explainable — HSV threshold + region
 statistics (deposit coverage over the cartridge body, plus intensity texture), with
@@ -59,9 +66,43 @@ asserted. The motion executes; see below for why the verification does not yet r
 
 ---
 
-## What does not work
+## How the re-installation was fixed
 
-**Both re-installation routes fail: 0%.** A cartridge that is clean, or that has been
+Both reinstall routes were **0%** before Phase A. Two changes fixed them.
+
+**1. A chamfered staging nest.** The part is set into a shallow cup with a 45° lead-in
+and re-gripped by its **body** — the firm grip the whole insertion sequence was
+validated against. The cap grip only has to get the part roughly over a hole; the
+chamfer does the rest. Measured capture envelope: seats reliably up to **8 mm lateral
+offset and 8° tilt**, and the arm delivers ~3°.
+
+Two bugs had to be found first. The nest was sized to the 21.5 mm cartridge **body**
+and interfered with the 34 mm bayonet **lugs** by exactly 7.0 mm. And the chamfer ring
+copied the socket's `euler="0 0.785 θ"`, which tilts every plate about the same world
+Y axis rather than radially — a pinwheel overhanging its own bore. The socket survives
+that only because its malformed plates land where the bayonet slot gaps are.
+
+**2. Wet work happens after the re-grip.** Dipping a cap-gripped part drops it ~7 s in,
+every time. Nest first, re-grip by the body, then clean.
+
+## Cleaning verification is falsifiable
+
+Cleaning removes the same deposit geoms the camera graded, and success is verified by
+re-inspecting on a fresh render. To prove that check is real, the cleaning was
+**deliberately sabotaged** so deposits were left in place — the re-check must then
+fail the part. It initially passed 2 of 5 sabotaged parts, because it classified on a
+single view while the main inspection used two. With both views: **5/5 honest
+cleanings verified, 5/5 sabotaged cleanings caught.**
+
+## What still limits it
+
+End-to-end is **capped by vision, not mechanics** — routing compliance is 100%, so
+every trial that fails does so because the classifier graded the part wrong, not
+because the arm failed. The weakest cell is light-vs-heavy (75%).
+
+### Superseded — the old blocker
+
+**Both re-installation routes previously failed: 0%.** A cartridge that is clean, or that has been
 cleaned, is supposed to go back into the unit. It does not.
 
 **Cause — the cap grip cannot retain the part.** A seated cartridge can only be
@@ -107,6 +148,7 @@ on release.
   The 100% was small-sample luck and is not the number.
 - Deposits are **visual only** — no collision, negligible mass. Real scale would
   change fit and mass. Not modelled.
-- **No demo video for v4.** The requested cut shows three routes back to back; two of
-  them do not work. A video showing only the working route would misrepresent the
-  state of the build. `media/refurb_cell_v3.mp4` remains the current honest demo.
+- **No v4 demo video yet** — that is Phase B. All three routes now run, so the
+  three-route cut is buildable. `media/refurb_cell_v3.mp4` remains the current demo
+  until it exists.
+- Deposits remain **visual only**; real scale would change fit and mass.

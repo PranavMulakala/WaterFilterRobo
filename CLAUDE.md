@@ -88,7 +88,15 @@ Instructions for Claude Code / any AI agent working in this repo.
   v4 classifier scored 90% on a rig that placed the part perfectly and 53% in the
   cell, because the presentation height used an assumed grip offset instead of the
   measured one. A vision model is only as valid as the fixture presenting the part.
-- **The cap grip is weak and its hang offset is unstable (42-83 mm).** It is fine for
+- **A fixture must clear the part's LARGEST feature.** The staging nest was sized to
+  the 21.5 mm body and interfered with the 34 mm bayonet lugs by exactly 7 mm. When
+  something will not seat, ask MuJoCo for the contact list before theorising.
+- **`euler="0 0.785 th"` on a chamfer ring is WRONG** — it tilts every plate about the
+  same world Y axis, not radially, making a pinwheel that overhangs the bore. The
+  socket only survives it because its bad plates land in the bayonet slot gaps. Use
+  explicit `xyaxes`. Do not copy that pattern to a full ring.
+- **Do wet/dynamic work only after re-gripping by the BODY.** The cap grip is weak and
+  its hang offset is unstable (42-83 mm). It is fine for
   a short carry-and-drop (v3) and NOT fine for presentation, dipping or re-insertion.
   Anything needing precision must re-grip the part by its body first.
 - Extraction has **no chamfer**. Going in, the funnel centres the part mechanically;
@@ -97,15 +105,16 @@ Instructions for Claude Code / any AI agent working in this repo.
   motion there is pure risk.
 
 ## Backlog (priority order)
-0a. **Refurb v4 — inspect / clean / replace. IN PROGRESS, PARTIALLY WORKING.**
+0a. **Refurb v4 — inspect / clean / replace. PHASE A DONE; all three routes run.**
    `sim_poc4.py` + `cartridge_scene_v4.xml`. Inspection (real CV on rendered pixels)
    **works: 90.0% in-cell on held-out seeds, 3.7% false-clean, no heavy part ever
-   graded clean.** Routing decision works. REPLACE route 100%. **Both REINSTALL
-   routes are 0%** — the cap grip cannot retain the part through extended handling
-   (a seated cartridge can only be gripped by its cap; the body is occluded below
-   z=126 mm). **Next step: a chamfered staging nest so the part can be set down and
-   re-gripped by the BODY.** See `RESULTS_V4.md`. No v4 video until all three routes
-   run — v3's reel remains the honest demo.
+   graded clean.** Routing decision works. REPLACE route 100%. **Routing compliance 100%**
+   on 60 held-out trials, all three routes 100%, end-to-end 86.7% (capped by vision,
+   not mechanics), **false-clean rate 0.0%**. Fixed by a chamfered staging nest: the
+   part is set down and re-gripped by its BODY, and the wet work happens after that
+   re-grip — a cap-gripped part is dropped ~7 s into a dip. **Next: Phase B — the
+   three-route video (90 s labelled 1.8x + a full-length honest cut).** See
+   `RESULTS_V4.md`.
 0b. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
    `cartridge_scene_v3.xml`: extract a twist-locked spent cartridge, bin it, install
    a fresh one. 100% over 125 trials (25 + 100 held-out). See `RESULTS_V3.md`.
