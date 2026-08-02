@@ -1,4 +1,4 @@
-# Pitch Notes — DrinkPrime / Ronch
+# Pitch Notes — DrinkPrime
 
 *Working notes for the customer conversation, kept next to the demo so the framing and
 the open questions don't live in a text thread. Not a deck. Last updated 2026-08-02.*
@@ -33,22 +33,39 @@ steps, because we haven't seen them.
 
 The structure worth stating plainly, because it's the whole reason this is interesting:
 
-> **DrinkPrime funds the POC. Ronch is the scale customer.**
+> **DrinkPrime is the customer, and they run their own plant. The volume story is
+> their own growth, not a third party.**
 
-- **DrinkPrime** — Bangalore water-purifier subscription business. **[verbal]** ~1,000
-  units/day manufactured; refurbishment is their **biggest pain point**; the founder
-  has indicated **$20–30K for robot arms** if the refurb process can be credibly
-  simulated. Teja knows the founder personally.
-- **Ronch Polymers** — the assembler. **[verbal]** **500K purifiers + 4.5M filter
-  elements per year.** If the cell works, this is where volume lives.
+- **DrinkPrime** — Bangalore water-purifier subscription business, **[verbal]** ~1,000
+  units/day manufactured. Refurbishment is their **biggest pain point**, and
+  **[verbal]** they are **expanding to 100 cities** — which is *why* it's the pain
+  point: refurb volume scales with the installed base, not with new sales, so it grows
+  faster than everything else and lands on them all at once. **[verbal]** They run
+  **their own plant**. Teja knows the founder personally.
+- **[verbal]** Funding bar (2026-08-02, explicit): **$20–30K for robot arms** for a
+  *complete refurb simulation*, specifically including **(a) image-processing
+  inspection of the unit's condition** and **(b) a cleaning step where the arm cleans
+  the filter with a solution**. See §3.
 
-So the near-term deal is a wedge, not the market. A POC that only ever serves
-DrinkPrime is a services engagement; the same cell running at Ronch's volume is a
-product. Worth being explicit about that in any funding conversation — it changes what
-the $20–30K is *for*.
+So the buyer and the volume are the same organisation. A cell that serves DrinkPrime's
+own refurb line across a 100-city footprint is the product — there is no separate
+"scale customer" to graduate to, and no third-party relationship to broker.
 
-**[open]** Nobody has confirmed the Ronch path. Who owns that relationship, and is
-there an intro route that doesn't depend on DrinkPrime's goodwill?
+**[open] Contract manufacturers as a someday-hypothesis — explicitly unvalidated.**
+If the cell works for DrinkPrime, the same station plausibly sells to contract
+manufacturers of purifiers or filter elements. Nobody has validated this: no named
+account, no volumes, no intro path. Keep it out of any deck and out of any
+conversation with the founder. It is a note-to-self, not a strategy.
+
+> **Correction, 2026-08-02.** An earlier version of this section named **Ronch
+> Polymers** as "the assembler" and "the real scale customer", with **[verbal]**
+> volumes of 500K purifiers + 4.5M filter elements/year. **That is wrong — DrinkPrime
+> has its own plant.** Removed. Worth noting *why* this is recorded rather than
+> quietly deleted: it is the second time in two days that a **[verbal]** figure moved
+> materially, which is exactly what the confidence tagging at the top of this file
+> exists to catch. Had that number gone into a deck as fact, it would have been
+> presented to the founder as a claim about his own supply chain that he knows to be
+> false. Keep tagging.
 
 ## 3. The two asks (current)
 
@@ -61,7 +78,7 @@ equity? Who signs off, and on what timeline?
 *Why it's phrased this way:* asking an open "what's your bar?" with nothing attached
 invites an expensive answer. Anchor it against the demo that already exists.
 
-**Ask 2 — the refurb process video, tech documents, and a physical device.**
+**Ask 2 — the plant process video, tech documents, and a physical device.**
 This is the gating item for everything technical. Their real process is what turns a
 generic swap into *their* line.
 
@@ -151,8 +168,9 @@ what someone should want before funding a robotics team.
 |---|---|
 | Generic swap-cycle sim | **Done** — 125/125 **[demo]** |
 | Demo video for the founder | **Ready** — `media/refurb_cell_v3.mp4` |
-| Funding bar defined in writing | **Open** — Ask 1 |
-| Refurb video / tech docs / device | **Open** — Ask 2, gating |
+| Funding bar | **Named [verbal]** — complete refurb sim w/ image inspection + cleaning. Still needs to be IN WRITING (Ask 1) |
+| v4 inspect / clean / replace loop | In progress |
+| Plant video / tech docs / device | **Open** — Ask 2, gating. Expected within days |
 | Real cartridge geometry | Blocked on Ask 2 |
 | LeRobot data logging | Next technical item |
 | Hardware purchase | **On hold** until funding is confirmed in writing |
