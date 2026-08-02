@@ -3,11 +3,16 @@
 **Can a robot arm refurbish a water purifier?** This repo answers that in simulation,
 before we spend anything on hardware.
 
-The headline task is the **refurbishment swap cycle**: a used unit arrives with a spent
-filter cartridge twist-locked inside it. The robot has to untwist that cartridge out of
-its bayonet mount, drop it in a bin, then find a fresh cartridge lying at a random
-position and rotation in a parts tray and install it — unassisted, every time.
-**It currently completes 125 out of 125 randomized swap cycles.**
+The headline task is the **refurbishment decision loop**. A used unit arrives with a
+filter cartridge twist-locked inside it. The robot untwists it out of the bayonet
+mount, holds it up to a camera, and — from the actual image — decides what it needs:
+
+- **clean** → put it straight back in
+- **lightly scaled** → wash it, re-check it with the same camera, put it back
+- **damaged** → bin it and install a fresh one
+
+Every route completes **100%** of the time, with a **0.0% false-clean rate** — it never
+passes a part that needs work as clean.
 
 > **New here? Read [HOW_IT_WORKS.md](HOW_IT_WORKS.md).** It explains the whole thing in
 > plain English with no robotics background assumed. This README is the summary and
@@ -17,13 +22,16 @@ position and rotation in a parts tray and install it — unassisted, every time.
 
 ## The demos
 
-**[media/refurb_cell_v3.mp4](media/refurb_cell_v3.mp4)** — the **refurbishment swap
-cycle**: extract → discard → insert → lock. This is the current headline demo, and the
-file to send to people; refurbishment is the process DrinkPrime identified as their
-biggest pain point.
+**[media/refurb_cell_v4.mp4](media/refurb_cell_v4.mp4)** — **the one to send people.**
+All three routes back to back with the live camera verdict on screen (~81 s). Trial
+footage runs at a clearly-labelled 1.8× so three real cycles fit; the stats cards are
+not sped up.
 
-**[media/cartridge_cell_v2.mp4](media/cartridge_cell_v2.mp4)** — the underlying
-insertion cycle on its own, three runs with wrist-cam and live telemetry.
+**[media/refurb_cell_v4_full.mp4](media/refurb_cell_v4_full.mp4)** — the same thing
+uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
+
+**[media/refurb_cell_v3.mp4](media/refurb_cell_v3.mp4)** — the earlier swap-only cycle.
+**[media/cartridge_cell_v2.mp4](media/cartridge_cell_v2.mp4)** — insertion alone.
 
 ---
 
@@ -31,6 +39,7 @@ insertion cycle on its own, three runs with wrist-cam and live telemetry.
 
 | | |
 |---|---|
+| **Refurb decision loop (v4)** | routing **100%**, end-to-end **86.7%**, false-clean **0.0%** (60 held-out) |
 | **Refurb swap cycle (v3)** | **100%** (125/125 full cycles) |
 | **Insertion cycle (v2)** | **100%** (200/200 trials) |
 | Insertion was previously | 88% on its own test seeds, 72% on unseen ones |
@@ -60,12 +69,13 @@ Needs Python 3.10 or newer. Three commands:
 ```bash
 git clone git@github.com:PranavMulakala/WaterFilterRobo.git
 cd WaterFilterRobo && ./setup.sh
-cd sim_poc && ../venv/bin/python sim_poc3.py --eval 25
+cd sim_poc && ../venv/bin/python sim_poc4.py --eval 30 --seed0 200
 ```
 
-That last command runs 25 complete randomized refurb swap cycles and prints the
-success rate. It takes about two minutes. For the insertion cycle alone, run
-`sim_poc2.py --eval 25` instead.
+That runs 30 complete randomized refurb cycles on held-out seeds and prints inspection
+accuracy, the false-clean rate, routing compliance and end-to-end success. Takes a few
+minutes. `sim_poc3.py --eval 25` is the swap cycle alone; `sim_poc2.py --eval 25` the
+insertion alone.
 
 > Don't run a bare `python3 -m venv venv`. On a stock Mac `python3` is Python 3.9,
 > which has no MuJoCo build available, and the failure message points at something
@@ -97,7 +107,9 @@ success rate. It takes about two minutes. For the insertion cycle alone, run
 | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Business context — the venture, the people, the economics |
 | [PITCH_NOTES.md](PITCH_NOTES.md) | Customer-facing framing, open questions for the founder, Ronch |
 | [PAIN_JOURNAL.md](PAIN_JOURNAL.md) | Every gotcha hit, with time lost. Deliberate product research |
+| [RESULTS_V4.md](RESULTS_V4.md) | **Current numbers** — the decision loop, and what still limits it |
 | [RESULTS_V3.md](RESULTS_V3.md) | The swap-cycle numbers, and why the untwist slips |
+| `sim_poc/sim_poc4.py` | **v4 refurb loop** — inspection CV, routing, cleaning station |
 | `sim_poc/sim_poc3.py` | **v3 refurb swap cycle** — extends v2 by import, adds extract + discard |
 | `sim_poc/sim_poc2.py` | The insertion system — perception, planning, control, evaluation |
 | `sim_poc/ufactory_xarm7/` | Robot model; `cartridge_scene_v3.xml` adds the spent cartridge + bin |

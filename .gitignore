@@ -8,6 +8,8 @@ __pycache__/
 # `--render` / `--cards` / `--concat`; only the final demo in media/ is tracked.
 trial_*.mp4
 swap_*.mp4
+refurb_[0-9]*.mp4
+sim_poc/refurb_cell_v4*.mp4
 card_*.mp4
 concat.txt
 concat_v3.txt

@@ -112,6 +112,21 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v4 Phase B — the three-route video (2026-08-02)
+
+- 2026-08-02 | Compressing a demo is an honesty decision, not an editing one. Three
+  real routes are 135 s of cycle time and the target cut was 90 s, so the trial
+  footage runs at **1.8x with a permanent on-screen tag**, and a full-length
+  uncompressed cut ships alongside it. Cards are NOT sped up, so the stats are never
+  skimmed past. Without the tag the video silently claims a cycle time the cell does
+  not achieve. | 0 | speed-ramping a robot demo is so normal that nobody labels it;
+  labelling it costs nothing and is the difference between a demo and a claim
+- 2026-08-02 | The stage ribbon originally greyed out CLEAN on the already-clean
+  route rather than hiding it, which implies the cell performed a cleaning step it
+  skipped. Small, but it is exactly the kind of thing a customer notices and cannot
+  un-notice. Hidden per-route now. | ~10 min | demo UI is a truth surface; a greyed
+  step reads as "done" to anyone not reading carefully
+
 ## v4 Phase A — the staging nest (2026-08-02) — REINSTALL NOW WORKS
 
 - 2026-08-02 | **I sized the staging nest to the wrong feature.** Gave it a 27 mm
