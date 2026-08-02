@@ -1,0 +1,16 @@
+# PINNED ON PURPOSE.
+#
+# Contact-rich physics is NOT reproducible across MuJoCo versions. We learned this
+# the hard way: the same code and the same random seeds scored 84% on the MuJoCo
+# version used to record the original demo, and 88% on MuJoCo 3.11 -- with seed 12
+# flipping from failure to success with zero code changes.
+#
+# A success rate quoted without an engine version is not a reproducible claim.
+# If you bump any of these, re-run `python3 sim_poc2.py --eval 25` and expect the
+# number to move. See PAIN_JOURNAL.md.
+
+mujoco==3.11.0
+numpy==2.5.1
+ImageIO==2.37.4
+imageio-ffmpeg==0.6.0
+pillow==12.3.0
