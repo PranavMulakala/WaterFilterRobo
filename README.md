@@ -95,6 +95,7 @@ success rate. It takes about two minutes. For the insertion cycle alone, run
 | [RESULTS.md](RESULTS.md) | The numbers, the bug that was found, and how it was verified |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical detail: control loop, geometry, phase table |
 | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Business context — the venture, the people, the economics |
+| [PITCH_NOTES.md](PITCH_NOTES.md) | Customer-facing framing, open questions for the founder, Ronch |
 | [PAIN_JOURNAL.md](PAIN_JOURNAL.md) | Every gotcha hit, with time lost. Deliberate product research |
 | [RESULTS_V3.md](RESULTS_V3.md) | The swap-cycle numbers, and why the untwist slips |
 | `sim_poc/sim_poc3.py` | **v3 refurb swap cycle** — extends v2 by import, adds extract + discard |
