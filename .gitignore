@@ -14,17 +14,10 @@ concat_v3.txt
 sim_poc/cartridge_cell_v2.mp4
 sim_poc/refurb_cell_v3.mp4
 
-# The demo reel lives in media/. This root-level copy is the older 84% cut,
-# kept locally for reference but not published.
-/cartridge_cell_v2.mp4
-
-# Redundant with the tracked source tree.
-sim_poc_v2.zip
-
-# Superseded by README.md, and their setup instructions are the ones that break on
-# a stock Mac (bare `python3 -m venv`). Kept locally, not published.
-README_START_HERE.md
-KICKOFF_PROMPT.txt
+# Superseded local files (old 84% demo cut, original zip, the two READMEs whose
+# setup instructions break on a stock Mac). Kept on disk under _archive/ for
+# reference, not published.
+_archive/
 
 # macOS
 .DS_Store

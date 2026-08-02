@@ -46,8 +46,8 @@ cat <<'EOF'
 Setup complete. The code lives in sim_poc/, so:
 
     cd sim_poc
-    ../venv/bin/python sim_poc2.py --eval 25     # reliability run, prints success rate
-    ../venv/bin/python -m mujoco.viewer --mjcf ufactory_xarm7/cartridge_scene_v2.xml
+    ../venv/bin/python sim_poc3.py --eval 25     # full refurb swap cycle, prints success rate
+    ../venv/bin/python -m mujoco.viewer --mjcf ufactory_xarm7/cartridge_scene_v3.xml
 
 (Or `source venv/bin/activate` first and just use `python`.)
 EOF
