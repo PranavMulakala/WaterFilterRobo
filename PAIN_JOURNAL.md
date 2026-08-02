@@ -112,6 +112,41 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v3 session — refurbishment swap cycle (2026-08-02)
+
+- 2026-08-02 | The extraction physics warning was CORRECT and the mitigation was
+  free, because it was designed in rather than discovered. Untwisting through a
+  friction grip on a 22 mm cap loses a measured **16–18% of the commanded rotation
+  to torsional slip** (seed 0: wrist turned 79.2°, cartridge turned 65.6°). Dead-
+  reckoning the wrist by −55° would have left the lug axis ~10° short of the slot
+  and jammed the lift. It cost nothing only because the servo was closed on the
+  MEASURED CARTRIDGE yaw from the first line of code — it just keeps commanding
+  until the *part* reaches the slot axis. | ~0 min | this is the strongest argument
+  yet for "close every loop on the workpiece, never on the tool"; it turned a
+  predicted showstopper into an invisible 16% tax
+- 2026-08-02 | Verified the bayonet is a REAL constraint before trusting any swap
+  result: pulled the seated cartridge straight up with 15 N (5× its weight) at the
+  locked angle — it rose 3.1 mm and stopped, lugs bottomed against the collar
+  underside. At 90° (slots aligned) the same pull launched it 860 m. Without that
+  check a "successful extraction" could have just been the part being yanked
+  through geometry that never held it, and the whole refurb demo would have been
+  worthless. | ~10 min | scene-level assertions ("this joint must resist X") should
+  be a first-class test type, not something you think to write by hand
+- 2026-08-02 | Anti-windup was applied to the untwist BEFORE seeing it fail, purely
+  because it is the same shape as the v2 wedge: a loop closed on a part that can
+  stop moving, driving a command that can keep growing. It never triggered in 125
+  trials. That is the correct outcome and also means it is UNTESTED in anger — the
+  same trap as the v2 recovery path, which looked fine until it was exercised with
+  zero retries. Flagged rather than assumed. | 0 | "this guard never fired" needs to
+  be surfaced by the eval, not discovered by reading code
+- 2026-08-02 | The bin acceptance check nearly became a lie. First draft only tested
+  xy-distance to the bin centre, which a cartridge still hanging in the gripper
+  directly above the bin would pass. Added a height bound AND a separate `removed`
+  check (part must be demonstrably out of the socket), so "discarded" cannot be
+  satisfied by a part that never left the jaws. | ~10 min | success predicates for
+  place/drop actions need a "and it is no longer attached to the robot" term; easy
+  to forget, and it silently inflates the number
+
 - 2026-08-01 | `dwell_left` is cumulative, not consecutive — it's only reset on a
   phase change, so it decrements on any step where `done` momentarily holds. A
   jammed insert whose TCP oscillates around the 129 mm threshold can burn the

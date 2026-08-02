@@ -1,12 +1,13 @@
 # Water Filter Robot — Simulation POC
 
-**Can a robot arm install a water-filter cartridge?** This repo answers that in
-simulation, before we spend anything on hardware.
+**Can a robot arm refurbish a water purifier?** This repo answers that in simulation,
+before we spend anything on hardware.
 
-A simulated robot arm picks up a filter cartridge that has been dropped in a tray at a
-random position and a random rotation, works out where it is, carries it to the
-housing, lines up the bayonet tabs, inserts it through a 3 mm gap, and twists it 55°
-to lock. **It currently succeeds on 200 out of 200 randomized attempts.**
+The headline task is the **refurbishment swap cycle**: a used unit arrives with a spent
+filter cartridge twist-locked inside it. The robot has to untwist that cartridge out of
+its bayonet mount, drop it in a bin, then find a fresh cartridge lying at a random
+position and rotation in a parts tray and install it — unassisted, every time.
+**It currently completes 125 out of 125 randomized swap cycles.**
 
 > **New here? Read [HOW_IT_WORKS.md](HOW_IT_WORKS.md).** It explains the whole thing in
 > plain English with no robotics background assumed. This README is the summary and
@@ -14,10 +15,15 @@ to lock. **It currently succeeds on 200 out of 200 randomized attempts.**
 
 ---
 
-## The demo
+## The demos
 
-**[media/cartridge_cell_v2.mp4](media/cartridge_cell_v2.mp4)** — three full runs with a
-wrist-camera view and live telemetry. This is the file to send to people.
+**[media/refurb_cell_v3.mp4](media/refurb_cell_v3.mp4)** — the **refurbishment swap
+cycle**: extract → discard → insert → lock. This is the current headline demo, and the
+file to send to people; refurbishment is the process DrinkPrime identified as their
+biggest pain point.
+
+**[media/cartridge_cell_v2.mp4](media/cartridge_cell_v2.mp4)** — the underlying
+insertion cycle on its own, three runs with wrist-cam and live telemetry.
 
 ---
 
@@ -25,16 +31,25 @@ wrist-camera view and live telemetry. This is the file to send to people.
 
 | | |
 |---|---|
-| **Success rate** | **100%** (200/200 randomized trials) |
-| Previously | 88% on its own test seeds, 72% on unseen ones |
-| Seating accuracy | 1.7 mm average |
-| Cycle time | ~23 seconds |
+| **Refurb swap cycle (v3)** | **100%** (125/125 full cycles) |
+| **Insertion cycle (v2)** | **100%** (200/200 trials) |
+| Insertion was previously | 88% on its own test seeds, 72% on unseen ones |
+| Seating accuracy | 1.7 mm (insert) / 2.0 mm (swap) |
+| Cycle time | ~23 s insert, ~33 s full swap |
 | Physics engine | MuJoCo 3.11.0, pinned |
 | Robot | UFACTORY xArm7 (a real, purchasable ~$11K arm) |
 | Status | **Pre-hardware.** Simulation only. No robot has been bought. |
 
-Full breakdown, including what was wrong and how each fix was verified:
-**[RESULTS.md](RESULTS.md)**.
+Full breakdowns: **[RESULTS_V3.md](RESULTS_V3.md)** (swap cycle) and
+**[RESULTS.md](RESULTS.md)** (insertion, including the bug that was found and how each
+fix was verified).
+
+> **Scope note.** v3 is the *generic* swap cycle, built while we wait for DrinkPrime's
+> real refurb process video, tech documents and possibly a physical unit. Actual
+> refurbishment plausibly also involves descaling, filter-media replacement and gasket
+> inspection — none of which are modelled yet, because we don't know them. That
+> material will tell us whether the swap cycle is the right demo or the first scene of
+> it.
 
 ---
 
@@ -45,11 +60,12 @@ Needs Python 3.10 or newer. Three commands:
 ```bash
 git clone git@github.com:PranavMulakala/WaterFilterRobo.git
 cd WaterFilterRobo && ./setup.sh
-cd sim_poc && ../venv/bin/python sim_poc2.py --eval 25
+cd sim_poc && ../venv/bin/python sim_poc3.py --eval 25
 ```
 
-That last command runs 25 complete randomized attempts and prints the success rate.
-It takes about a minute.
+That last command runs 25 complete randomized refurb swap cycles and prints the
+success rate. It takes about two minutes. For the insertion cycle alone, run
+`sim_poc2.py --eval 25` instead.
 
 > Don't run a bare `python3 -m venv venv`. On a stock Mac `python3` is Python 3.9,
 > which has no MuJoCo build available, and the failure message points at something
@@ -59,14 +75,14 @@ It takes about a minute.
 
 ```bash
 # watch it live in an interactive 3D viewer — drag to orbit
-../venv/bin/python -m mujoco.viewer --mjcf ufactory_xarm7/cartridge_scene_v2.xml
+../venv/bin/python -m mujoco.viewer --mjcf ufactory_xarm7/cartridge_scene_v3.xml
 
-# re-render one attempt as a video (output index, seed, speed)
-../venv/bin/python sim_poc2.py --render 1 12 1
+# re-render one swap cycle as a video (output index, seed, speed)
+../venv/bin/python sim_poc3.py --render 1 3 1
 
 # rebuild the title/results cards and stitch the demo reel
-../venv/bin/python sim_poc2.py --cards
-../venv/bin/python sim_poc2.py --concat
+../venv/bin/python sim_poc3.py --cards      # (or sim_poc2.py for the insert-only reel)
+../venv/bin/python sim_poc3.py --concat
 ```
 
 ---
@@ -80,9 +96,11 @@ It takes about a minute.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical detail: control loop, geometry, phase table |
 | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Business context — the venture, the people, the economics |
 | [PAIN_JOURNAL.md](PAIN_JOURNAL.md) | Every gotcha hit, with time lost. Deliberate product research |
-| `sim_poc/sim_poc2.py` | The whole system — perception, planning, control, evaluation |
-| `sim_poc/ufactory_xarm7/` | Robot model and the cartridge/socket scene |
-| `sim_poc/stats.json` | Results of the last evaluation run |
+| [RESULTS_V3.md](RESULTS_V3.md) | The swap-cycle numbers, and why the untwist slips |
+| `sim_poc/sim_poc3.py` | **v3 refurb swap cycle** — extends v2 by import, adds extract + discard |
+| `sim_poc/sim_poc2.py` | The insertion system — perception, planning, control, evaluation |
+| `sim_poc/ufactory_xarm7/` | Robot model; `cartridge_scene_v3.xml` adds the spent cartridge + bin |
+| `sim_poc/stats.json`, `stats_v3.json` | Results of the last insertion / swap evaluation |
 | `setup.sh`, `requirements.txt` | Environment setup, with versions pinned on purpose |
 
 ---
@@ -104,8 +122,10 @@ Honest framing: **this de-risks the approach, not the deployment.**
 
 ## Next steps
 
-1. **DrinkPrime founder call** — labour costs, willingness to pay, whether they'd ship
-   us a real cartridge. This is the gating item; everything else waits on it.
+1. **DrinkPrime's refurb process video + tech documents** (and possibly a physical
+   unit) — the founder is shipping these. They define the REAL refurb steps, which
+   decide whether this swap cycle is the right demo or just its first scene. Gating
+   item; everything else waits on it.
 2. **Log demonstrations in LeRobot format** — the bridge from this scripted controller
    to a learned policy (π0.5 / OpenPi), which is what would generalise to parts we
    haven't modelled.
@@ -113,4 +133,6 @@ Honest framing: **this de-risks the approach, not the deployment.**
    A single fixed simulation is the easiest thing in the world to overfit to.
 4. **Swap in real cartridge geometry** once DrinkPrime confirms the SKU.
 
-Hardware purchase stays **on hold** until customer interest is confirmed.
+The founder has indicated **$20–30K of funding for robot arms** if the refurb process
+can be credibly simulated — which is why refurb fidelity now outranks polish on the
+insertion cycle. Hardware purchase stays on hold until that is confirmed in writing.
