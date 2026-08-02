@@ -25,6 +25,44 @@ how often it succeeded.
 
 ---
 
+## 1b. The refurbishment cycle — the current headline
+
+DrinkPrime told us **refurbishment is their biggest pain point**, so that is now the
+main thing being simulated. A refurb starts from a *used* unit: the old cartridge is
+already installed and locked in place. The robot has to do a full **swap**:
+
+| Stage | What happens |
+|---|---|
+| **EXTRACT** | Grip the old cartridge's cap, **untwist** it out of its lock, lift it straight out |
+| **DISCARD** | Carry it across to a bin and drop it in |
+| **INSERT** | Find the fresh cartridge in the tray (random position and rotation) and install it |
+| **LOCK** | Twist 55° to lock, then verify |
+
+**It completes 125 out of 125 randomized swap cycles**, taking about 33 seconds each.
+
+Getting the old one *out* turned out to be the interesting half, for a reason that's
+easy to miss: **there is no funnel on the way out.** Going in, the cone-shaped lead-in
+around the socket physically guides the cartridge into place — that's why it tolerates
+a 3 mm gap. Coming out, the tabs have to thread back up through those same narrow
+slots with nothing guiding them.
+
+And the untwist has to be applied by **gripping the cap and rotating** — a small
+contact patch, turning the part through friction alone. It slips: we measured the
+wrist turning 79° while the cartridge only turned 66°, so **about 17% of the rotation
+is lost.** If the robot had simply assumed "turn 55° and it's unlocked," it would have
+stopped ~10° short of alignment and the part would have jammed on the way up. It works
+because the robot watches *the cartridge* rather than trusting its own wrist, and keeps
+turning until the part is genuinely lined up.
+
+> A general lesson worth keeping: **measure the thing you care about, not the thing
+> you're holding.**
+
+**Important caveat.** This is the *generic* swap cycle. Real refurbishment probably
+also involves descaling, replacing filter media, checking gaskets and seals, and
+testing — none of which is modelled, because we don't know their process yet. The
+founder's process video and tech documents will tell us whether this swap is the right
+demo or just the first scene of it.
+
 ## 2. The job the robot has to do
 
 The cartridge doesn't just drop in. It's a **bayonet mount** — the same mechanism
