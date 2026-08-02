@@ -112,6 +112,55 @@ Format: date | what happened | time lost | what would have prevented it
   tilt 60.7 deg. Tuning and reporting on seeds 0-24 hid a third of the real failure
   rate. | 0 | held-out seeds should be the default in the eval harness, not something
   you remember to do
+## v4 Phase C — domain randomization (2026-08-02)
+
+- 2026-08-02 | **I shipped a silent no-op flag and read the smoke test as success.**
+  Added `--dr` / `--stats` to the eval CLI with a `str.replace` anchored on
+  `if a.eval:` when the file actually said `elif a.eval:`. `str.replace` on a
+  non-matching pattern does nothing and returns happily, so both flags were parsed and
+  discarded. My "smoke test" printed plausible numbers and I accepted them without
+  checking that the DR banner had printed. Four parallel sweep runs then produced
+  **byte-identical nominal results** and each silently overwrote the others' stats
+  file. Four independent reviewers all caught it; I had not. | ~40 min | **a config
+  flag that is silently ignored is worse than one that crashes** — it reads as "this
+  variable has no effect", which is a wrong scientific conclusion rather than an
+  error. Fixes now in place: the eval prints its resolved CONFIG line before running,
+  and every scripted edit asserts its anchor matched before writing
+- 2026-08-02 | Corollary worth keeping: **"the smoke test passed" is not a verification
+  unless you name in advance what the test would show if the change had NOT applied.**
+  Here the tell was one line of banner text and a `dr_dz_mm` column that would read
+  0.0. Both were available and I looked at neither. The DR verification now asserts
+  `dr_dz_mm != 0` directly
+- 2026-08-02 | Reviewers surfaced a real coverage gap in a metric I had been quoting:
+  **`clean_verified_rate` = 100% is not coverage.** Only parts routed to CLEANING get
+  re-inspected, so the 7 light parts wrongly graded heavy were binned and never
+  re-graded — the metric structurally cannot see the dominant error class. A
+  verification rate is only meaningful alongside what it is blind to | 0 | report the
+  denominator of every "verified" number, not just the rate
+
+- 2026-08-02 | The obvious fix for the DR height sensitivity was **tried and it made
+  things worse.** Pick heights are absolute z, so a cell sitting 5 mm high should mean
+  every grasp misses by 5 mm — referencing the measured part height looked like the
+  same "reference the part, not the tool" lesson that had paid off four times already.
+  Measured: routing **90.0 -> 85.0%** at ±5 mm, aborts 6 -> 9, nominal unchanged.
+  Reverted. Commanding an absolute descent and letting the gripper contact the surface
+  is evidently more forgiving than aiming at a measured height — compliance beats
+  precision here. | ~25 min | **a lesson that generalised four times still does not
+  generalise a fifth by default.** The reason it kept working before was that those
+  loops closed on a part in free flight; a pick ends in contact, where softness is
+  worth more than accuracy
+- 2026-08-02 | The DR sweep would have produced a nonsense conclusion if the RNG had
+  not been separated. DR draws initially came from the trial's own `rng`, consuming
+  values and shifting everything downstream, so a DR-on run got **different parts,
+  spawns and lock angles** than DR-off. The tell was the per-route counts moving
+  (11/22/27 -> 23/21/16) between configs that were supposed to be the same 60
+  scenarios, and it showed up as DR apparently *improving* accuracy 86.7 -> 93.3%.
+  With an independent stream the scenarios are byte-identical across configs and
+  inspection accuracy is flat at 86.7%, which is the physically sensible answer —
+  mass, friction and table height cannot affect a camera. | ~20 min | **any A/B where
+  the treatment draws randomness must draw it from a separate stream**, or you are
+  comparing two different experiments and calling the difference an effect
+
 ## v4 Phase B — the three-route video (2026-08-02)
 
 - 2026-08-02 | Compressing a demo is an honesty decision, not an editing one. Three

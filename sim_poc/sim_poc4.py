@@ -414,17 +414,25 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
     # --- domain randomization ---------------------------------------------
     dz = 0.0
     if cfg.dr:
+        # Draw DR from an INDEPENDENT stream. Drawing it from `rng` consumes values
+        # and shifts everything downstream, so a DR-on run gets different parts,
+        # spawns and lock angles than DR-off -- the runs stop being comparable and
+        # the difference between them stops meaning "the effect of DR". Caught it
+        # because the per-route counts moved (11/22/27 -> 23/21/16) between configs
+        # that were supposed to be the same 60 scenarios.
+        dr_rng = np.random.default_rng(int(seed) + 10_000_000)
+        rng_dr, rng = dr_rng, rng
         k = cfg.dr_scale
         for bid in (fresh_id, spent_id):
-            f = 1.0 + rng.uniform(-cfg.dr_mass, cfg.dr_mass) * k
+            f = 1.0 + rng_dr.uniform(-cfg.dr_mass, cfg.dr_mass) * k
             model.body_mass[bid] *= f
             model.body_inertia[bid] *= f
         for gid in range(model.ngeom):
             if model.geom_bodyid[gid] in (fresh_id, spent_id):
                 model.geom_friction[gid] *= (
-                    1.0 + rng.uniform(-cfg.dr_friction, cfg.dr_friction) * k)
+                    1.0 + rng_dr.uniform(-cfg.dr_friction, cfg.dr_friction) * k)
         # shift the whole cell vertically; the robot's targets stay put
-        dz = float(rng.uniform(-cfg.dr_table, cfg.dr_table) * k)
+        dz = float(rng_dr.uniform(-cfg.dr_table, cfg.dr_table) * k)
         floor_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         for gid in range(model.ngeom):
             if model.geom_bodyid[gid] == 0 and gid != floor_id:
@@ -626,6 +634,12 @@ def run_trial(seed, frame_cb=None, cfg=CFG):
         elif name in FOLLOW:
             tgt_arr[:2] = cart_xy
 
+        # NOTE: making the pick height part-referenced was TRIED AND REVERTED. It
+        # looked like the obvious fix for the DR height sensitivity, and it made
+        # things WORSE: routing 90.0 -> 85.0% at +-5 mm, aborts 6 -> 9, with no
+        # nominal gain. Commanding an absolute descent and letting the gripper
+        # contact the surface is evidently more forgiving than aiming at a measured
+        # height. Do not re-apply without measuring. See PAIN_JOURNAL.
         if name in ("LOWER TO NEST", "RELEASE PART"):
             hang_live = float(np.clip(
                 data.site_xpos[site_id][2] - data.xpos[cart_id][2], 0.02, 0.12))
@@ -1070,7 +1084,22 @@ if __name__ == "__main__":
         concat([("card_v4_title.mp4", False)] + trials + [("card_v4_end.mp4", False)],
                "refurb_cell_v4.mp4", tag="1.8x SPEED", stride=1.8)
         raise SystemExit
+    from dataclasses import replace
+    cfg = CFG
+    if a.dr is not None:
+        cfg = replace(cfg, dr=True, dr_scale=a.dr)
+    if a.stats:
+        cfg = replace(cfg, stats_path=a.stats)
+    # Always state the configuration out loud. An earlier version parsed --dr and
+    # --stats and then dropped them on the floor, so four "DR sweep" runs produced
+    # byte-identical nominal results and each silently overwrote the others' stats
+    # file. A silent no-op flag is worse than a crash: it reads as "DR has no effect".
+    print(f"CONFIG: dr={'OFF' if not cfg.dr else 'ON scale=' + str(cfg.dr_scale)}"
+          + (f" (mass +-{cfg.dr_mass*cfg.dr_scale*100:.0f}%, "
+             f"friction +-{cfg.dr_friction*cfg.dr_scale*100:.0f}%, "
+             f"cell height +-{cfg.dr_table*cfg.dr_scale*1000:.1f}mm)" if cfg.dr else "")
+          + f" | stats -> {cfg.stats_path}")
     if a.inspect_eval:
-        inspect_eval(a.inspect_eval, seed0=a.seed0)
+        inspect_eval(a.inspect_eval, cfg=cfg, seed0=a.seed0)
     elif a.eval:
-        evaluate(a.eval, seed0=a.seed0)
+        evaluate(a.eval, cfg=cfg, seed0=a.seed0)

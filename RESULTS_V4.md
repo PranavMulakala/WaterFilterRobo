@@ -94,6 +94,43 @@ fail the part. It initially passed 2 of 5 sabotaged parts, because it classified
 single view while the main inspection used two. With both views: **5/5 honest
 cleanings verified, 5/5 sabotaged cleanings caught.**
 
+## Robustness — how much error the cell tolerates (Phase C)
+
+Every number above is measured on **one** set of physical parameters that we chose.
+Domain randomization perturbs them per trial: cartridge mass ±20%, friction ±30%, and
+a vertical shift of the **whole cell** (bench, socket, tray, bin, tank, nest, booth)
+while the robot's commanded heights stay put — i.e. a calibration error, the most
+common real-world reason a working cell stops working.
+
+All four configurations run the **identical 60 scenarios** (verified: DR is drawn from
+an independent RNG stream, so the parts, spawns and lock angles are byte-identical
+across configs).
+
+| | inspection | false-clean | routing | end-to-end | aborts |
+|---|---|---|---|---|---|
+| **DR off** | 86.7% | 0.0% | **100%** | 86.7% | 0 |
+| **±2.5 mm / ±10% mass / ±15% friction** | 86.7% | 0.0% | **100%** | 86.7% | 0 |
+| **±5 mm / ±20% / ±30%** | 86.7% | 0.0% | **90.0%** | 78.3% | 6 |
+| **±10 mm / ±40% / ±60%** | 91.7% | 2.1% | **55.0%** | 48.3% | 27 |
+
+**Inspection is completely unaffected** (86.7% at every level up to 2×) — mass,
+friction and table height cannot influence a camera, which is a useful sanity check
+that DR is perturbing what we think it is. All the damage is mechanical.
+
+**The usable envelope is about ±2.5 mm of cell-position error**, where there is no
+measurable loss at all. At ±5 mm the cell still runs but loses ~9 points of
+end-to-end. At ±10 mm it breaks down.
+
+**This converts the simulation into a requirement:** a real cell would need its
+fixtures located to better than ±2.5 mm, and would need re-calibration if anything
+moved by more than that. That is a concrete, checkable spec discovered before buying
+hardware — and a more useful thing to hand a customer than a success rate.
+
+One honest note: the obvious fix — referencing the measured part height instead of an
+absolute descent — was implemented, measured, and **made things worse** (routing
+90.0 → 85.0% at ±5 mm). It was reverted. Commanding an absolute descent and letting
+the gripper contact the surface is more forgiving than aiming at a measured height.
+
 ## What still limits it
 
 End-to-end is **capped by vision, not mechanics** — routing compliance is 100%, so
