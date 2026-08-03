@@ -1,6 +1,10 @@
 # Pain Journal — every gotcha is product research
 Format: date | what happened | time lost | what would have prevented it
 
+Companion: **[LEARNINGS.md](LEARNINGS.md)** — the same journey written as concepts
+rather than incidents, in plain English. This file is what went wrong; that one is
+what we now understand.
+
 - 2026-08-01 | v1: MuJoCo include paths break when scene XML lives outside the
   model folder (mesh paths resolve relative to main file). Moved scene into
   ufactory_xarm7/. | ~15 min | better error messages / scene scaffolding tool
