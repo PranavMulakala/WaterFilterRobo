@@ -4,7 +4,8 @@ Instructions for Claude Code / any AI agent working in this repo.
 
 ## First steps every session
 1. Read `PROJECT_CONTEXT.md` for the business background, `HOW_IT_WORKS.md` for the
-   task, and `RESULTS.md` for the current numbers.
+   task, `RESULTS_V4.md` for the current numbers, and `LEARNINGS.md` for the concepts
+   the humans on this project have already been taught (do not re-explain them there).
 2. Set up if needed: `cd ~/WaterFilterRobo && ./setup.sh` (do NOT use a bare
    `python3 -m venv` — see below). The venv lives at the repo root, so commands from
    `sim_poc/` use `../venv/bin/python`.
@@ -67,6 +68,14 @@ Instructions for Claude Code / any AI agent working in this repo.
 - Do not break the CLI interface or the `stats.json` schema.
 - Append every gotcha, surprise, or manual workaround to `PAIN_JOURNAL.md` — it is
   deliberate product research for a possible robotics-devtools product.
+- **Every session that lands a significant change appends a `LEARNINGS.md` entry.
+  Written for the humans, not for agents.** Plain English, zero unexplained jargon,
+  ≤15 lines, three sections: what we built (one sentence), the concept behind it
+  (explained to a smart reader who is new to robotics), and why it matters for the
+  real robot. This is how two software engineers compress a robotics education into
+  a couple of months — treat it as a first-class deliverable, not a changelog.
+  `PAIN_JOURNAL.md` records what went wrong; `LEARNINGS.md` records what we now
+  understand. If a new term appears without an explanation, that is a bug in the file.
 - Small incremental changes; explain the **physics** reasoning, not just the code.
 
 ## Known physics gotchas (learned the hard way — see PAIN_JOURNAL.md)
@@ -99,6 +108,14 @@ Instructions for Claude Code / any AI agent working in this repo.
   its hang offset is unstable (42-83 mm). It is fine for
   a short carry-and-drop (v3) and NOT fine for presentation, dipping or re-insertion.
   Anything needing precision must re-grip the part by its body first.
+- **A drop in simulation is not automatically a real failure.** Anirudh (2026-08-02):
+  sim-side drops and lost friction are *sometimes* artifacts of the simulator, up to
+  outright geometry bugs where a gripper passes through the part — "obviously in the real
+  world, you're not going to have that." He said *sometimes*, not usually, and he did NOT
+  question the 16–18% untwist slip (he read it back approvingly as the gripper losing
+  friction). This does not overturn the cap-grip finding above, which is measured and
+  reproducible; it means the finding is a hypothesis about the real cell until a real
+  gripper holds a real cartridge.
 - Extraction has **no chamfer**. Going in, the funnel centres the part mechanically;
   going out, the lugs must thread back up 3 mm slot channels with no lead-in. During
   UNTWIST/EXTRACT the wrist holds the socket axis exactly — any commanded lateral
@@ -115,6 +132,12 @@ Instructions for Claude Code / any AI agent working in this repo.
    re-grip — a cap-gripped part is dropped ~7 s into a dip. **Next: Phase B — the
    three-route video (90 s labelled 1.8x + a full-length honest cut).** See
    `RESULTS_V4.md`.
+   **Before investing further in the classifier, ask DrinkPrime how their own workers
+   grade a cartridge** (Anirudh, 2026-08-02): visual inspection, a wear indicator or
+   colour change, or *feel*? There is no single off-the-shelf classifier for this. If the
+   wear is clearly visual an off-the-shelf VLM may beat the hand-tuned HSV thresholds; if
+   workers grade by feel, camera-only inspection is the wrong architecture and the 86.7%
+   is measuring the wrong thing. A custom trained model is a later problem, not this one.
 0b. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
    `cartridge_scene_v3.xml`: extract a twist-locked spent cartridge, bin it, install
    a fresh one. 100% over 125 trials (25 + 100 held-out). See `RESULTS_V3.md`.
@@ -130,6 +153,12 @@ Instructions for Claude Code / any AI agent working in this repo.
    do not yet know), which determine whether the swap cycle is the right demo or
    merely the first scene of it. Do not over-invest in generic refurb content until
    they land. Replace the cartridge/socket geometry and re-run the eval.
+   **The CAD file is a separate and much faster ask than the device** — request the
+   cartridge **STL or STEP file** now. Per Anirudh (2026-08-02), a manufacturer almost
+   certainly already has one, it can be asked for immediately because it does not need
+   the physical object, and reverse-engineering geometry from a real part is far harder
+   than importing a file. This item is still blocked, but on an ask nobody has made yet,
+   not on a shipment. See `meetings/anirudh_call_2_transcript.md`.
 3. Config dataclass to replace magic numbers (geometry, speeds, tolerances).
 4. Domain randomization: mass ±20%, friction ±30%, table height ±5 mm; re-eval.
 5. Second scene: screw-down station with torque-limited driver.

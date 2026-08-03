@@ -106,6 +106,7 @@ insertion alone.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical detail: control loop, geometry, phase table |
 | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Business context — the venture, the people, the economics |
 | [PITCH_NOTES.md](PITCH_NOTES.md) | Customer-facing framing, open questions for the founder, Ronch |
+| [LEARNINGS.md](LEARNINGS.md) | **The robotics concepts, in plain English.** Written for us, not for customers |
 | [PAIN_JOURNAL.md](PAIN_JOURNAL.md) | Every gotcha hit, with time lost. Deliberate product research |
 | [RESULTS_V4.md](RESULTS_V4.md) | **Current numbers** — the decision loop, and what still limits it |
 | [RESULTS_V3.md](RESULTS_V3.md) | The swap-cycle numbers, and why the untwist slips |
