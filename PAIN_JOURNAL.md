@@ -512,3 +512,100 @@ what we now understand.
   is precisely why that check exists. | ~20 min | a physical parameter nobody set still
   HAS a value, and it is whatever the engine defaults to. Grep the scene for geoms with
   neither mass nor density before quoting any mass anywhere
+
+- 2026-08-04 | **The triage classifier's search region took four rounds, and each round's
+  false positives looked like real defects.** The dent channel is the safety-critical one
+  (dents have no remedy in any of the ten stages), and it kept filling with things that
+  were not dents: (1) a projected 2D BOUNDING BOX swallowed the turntable rim, the bench
+  edge and the device's own cast shadow -- measured 3381 of 3398 dent pixels on no defect
+  geom at all; (2) a convex hull of a CIRCUMSCRIBED box, sized to cover every index angle
+  at once, was still 154 mm half-extent against a 90 x 125 mm device and left ~1000 false
+  px per view; (3) a hull at the COMMANDED index angle, lifted clear of the bench, still
+  left 62.6% of the dent channel as structural edge; (4) PER-FACE regions finally fixed
+  it -- 7.1% edge, 86.2% real dents. The residue in round 3 was the shading STEP between
+  two faces and the top-cover seam: long dark lines that survive erosion and read as
+  compact. Inside a single face there is no such step. | ~2 h | a defect detector's
+  hardest problem is the part's own geometry, not the defect. Segment to a region where
+  the only thing that can be anomalous IS a defect -- per feature, not per object
+- 2026-08-04 | **A background threshold cut the defects out of the image.** `v_bg` was
+  0.30, chosen to separate the device (0.788) from the backdrop (0.085). Dents render at
+  0.298. So every dent fell BELOW the background threshold, was excluded from the body
+  mask, and became a HOLE -- and the erosion that follows then chewed a ring around each
+  hole, which is what the classifier was actually measuring. Units with 14-17 dents
+  detected ZERO real dent pixels while reporting thousands of false ones. Visible
+  immediately in a mask overlay as black squares where the dents were; invisible in every
+  number. | ~30 min | a threshold that separates foreground from background must also sit
+  clear of the DARKEST thing you care about finding. Check a threshold against every
+  class, not just the two it was drawn for
+- 2026-08-04 | **The calibration number was the overfit, not the held-out number.** Fitted
+  two thresholds on 45 calibration seeds: 88.9% on calibration, 73.3% held out -- and the
+  instinct is to distrust the held-out figure. Refitting on 100 calibration seeds gave
+  74.0% ON CALIBRATION. The calibration score CONVERGED DOWN to the held-out score once
+  there was enough data; the 88.9% was two thresholds fitted to 45 points. | ~15 min |
+  when calibration and held-out disagree, the cheap check is to enlarge the CALIBRATION
+  set and watch which number moves. The one that moves is the one that was lying
+- 2026-08-04 | **I burned a held-out set by looking at it twice.** Ran the 60-seed eval
+  (200-259), changed the frozen thresholds, ran it again. That is two looks, and the
+  better of the two numbers is no longer a clean held-out result no matter how it is
+  described. Also, with 60 units split three ways there were only 12 EASY units, so that
+  cell's accuracy swung 41.7% -> 0.0% between the runs on a difference of five units.
+  Resolution: report both looks openly and re-evaluate on FRESH untouched seeds (300+)
+  with a bigger sample. | ~0 | a held-out set is consumed by use. Decide the number of
+  looks BEFORE running, size the eval so the smallest class has enough units to be
+  meaningful, and keep a reserve of seeds nobody has rendered
+
+- 2026-08-04 | **A diagonal scratch has a square bounding box.** The triage classifier
+  tells a scratch from a dent by shape, and the first shape test was the bounding-box
+  aspect ratio. A 40 px scratch at 45 degrees has a ~30x30 bounding box -- aspect 1.0,
+  i.e. "perfectly compact" -- so it was counted as a DENT. Scratch geoms are placed at
+  uniformly random angles, so MOST scratches defeated the test, and the two errors were
+  the same defects counted in the wrong channel: dents over by +3.2 per unit, scratches
+  under by -3.2. Replacing the bbox with the principal-axis ratio from the pixel
+  covariance (rotation invariant) took the count error to +0.3 / -0.4 and the held-out
+  accuracy from 55.0% to 90.0%. | ~40 min | any shape descriptor computed from an
+  axis-aligned box encodes the axes, not the shape. If the thing being measured can
+  arrive at any angle, the descriptor has to be rotation-invariant -- and the failure is
+  silent, because a wrongly-classified defect is still a detected defect
+- 2026-08-04 | Scratches fragment before they are counted. A 1-2 px line, anti-aliased and
+  then thresholded, breaks into a dashed row of specks -- each speck compact, each
+  therefore a "dent". Fixed with a morphological closing (dilate then erode, radius 2)
+  before component labelling. Separately, a size floor was needed: measured, real defect
+  components run a median 114 px while spurious ones from residual edges run a median 2 px
+  (p95 = 18), so a 25 px floor keeps 94% of real defects and removes 96% of spurious.
+  Both numbers came from measuring the two populations, not from picking a round number.
+  | ~30 min | when counting objects rather than pixels, the failure modes are splitting
+  and merging. Measure the size/shape distribution of TRUE and FALSE components
+  separately before choosing any cutoff
+
+- 2026-08-04 | **A parallel-jaw grip is the wrong way to hold a process tool, and it took
+  five fixes to prove it.** V5-C's wiping pad was first held in the gripper. Failures, in
+  order: (1) a ROUND shank pivots in parallel jaws -- the pad's offset from the TCP went
+  from (21.7, 0, 36.4) mm wrist-down to (87.6, 0, -16.1) mm wrist-horizontal, most of a
+  right angle, coverage 0%; (2) keying the shank cut that to 9.6 mm but the tool still
+  CREPT 60-70 mm across one face's raster; (3) that creep was INSENSITIVE to grip command
+  (245 vs 255) and press depth (3.0 vs 1.5 mm), which rules out friction and rules in
+  grip geometry. Replaced with a modelled TOOL CHANGER (weld equality, engaged only
+  inside a 4 mm / 4 deg capture envelope, welding at the pose actually achieved): drift
+  0.26 mm across the whole job. | ~3 h | when a fix is insensitive to the knob you think
+  governs it, stop turning the knob. And a compliant grip is not a compliance STRATEGY --
+  ours was absorbing path error by slipping, which looked like it worked right up until
+  the coverage metric was believed
+- 2026-08-04 | **Fixing the grip made the forces worse, and that was the honest outcome.**
+  With the tool positively coupled, median contact force went from ~1 N (a slipping grip
+  transmits little) to 101 N, peak 933 N. Nothing absorbed path error any more. Two
+  causes: (a) the pad's geom ORIGIN is its centre, so commanding the centre onto the face
+  plane buried it by half a thickness -- 12.5 mm of penetration before any press at all;
+  (b) the arm's ~1.5 mm positioning error lands directly on the force when the coupling is
+  rigid. The slipping grip had been acting as an accidental, terrible compliance element.
+  Real surface-finishing cells use BOTH a changer (for location) and an active contact
+  flange (for force) -- that is now a hardware recommendation in CELL_SPEC. | ~1 h |
+  removing a bad mechanism can make the numbers worse while making the cell more honest.
+  The force was always there; the grip was hiding it by failing
+- 2026-08-04 | **Press depth had no effect on contact force, which was the clue.** Sweeping
+  the commanded press 2.5 -> 1.0 -> 0.0 mm moved the median force 60.7 -> 60.3 -> 61.1 N.
+  A parameter that does not move the thing it should move is not a weak parameter, it is
+  the wrong parameter. Counting the pad's contact partners found 1.2 M contacts with
+  `cab_backpanel` (153 k above 100 N): the face-plane calculation read `cab_body` only,
+  while the back panel stands 10 mm PROUD of it, so at index 180 the raster drove the pad
+  10 mm into the panel. | ~40 min | when a knob does nothing, stop tuning and ask what is
+  actually generating the quantity. `mj_contactForce` per partner answered it in one run

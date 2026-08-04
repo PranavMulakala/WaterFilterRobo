@@ -631,6 +631,48 @@ def indexed_test(args):
     return ok
 
 
+def riser_sweep(args):
+    """How much reach does the arm's own pedestal cost?
+
+    The 120 mm offset from bench top to arm flange is inherited from the stock arm model
+    and was never modelled as a solid -- so every reachability number before this was
+    quoted for a cell with nothing holding the arm up. This resizes the riser and
+    re-measures, so the cost is a measurement rather than an assumption.
+    """
+    xml = args.riser
+    print(f"V5-A riser sensitivity -- {xml}")
+    print("  Every number in V5_PLAN/CELL_SPEC was measured with NO riser modelled.\n")
+    print(f"{'riser dia':>10} {'front':>8} {'top':>8} {'left':>8} {'right':>8}   "
+          f"{'front strict':>12} {'sides strict':>12}")
+    for dia in (0.0, 0.120, 0.150, 0.200, 0.250):
+        model, data, ids = load(xml)
+        g = model.geom("arm_riser").id
+        if dia == 0.0:
+            model.geom_contype[g] = 0
+            model.geom_conaffinity[g] = 0
+        else:
+            model.geom_size[g][0] = dia / 2
+        mujoco.mj_forward(model, data)
+        cg = ids["cab_geom"]
+        sz, bx = model.geom_size[cg], data.geom_xpos[cg]
+        zs = [(data.geom_xpos[i][2] - model.geom_size[i][2],
+               data.geom_xpos[i][2] + model.geom_size[i][2])
+              for i in range(model.ngeom)
+              if model.geom_bodyid[i] == ids["cab_body"] and model.geom_contype[i]]
+        z1 = max(b for _, b in zs)
+        centre = np.array([bx[0], bx[1], z1 / 2])
+        ras = raster_test(model, data, ids, centre, 2 * sz[1], 2 * sz[0], z1, 8, 6)
+        lab = "none" if dia == 0 else f"{dia*1000:.0f} mm"
+        print(f"{lab:>10} {ras['front']['coverage']*100:>7.1f}% "
+              f"{ras['top']['coverage']*100:>7.1f}% {ras['left']['coverage']*100:>7.1f}% "
+              f"{ras['right']['coverage']*100:>7.1f}%   "
+              f"{ras['front']['strict']*100:>11.1f}% "
+              f"{(ras['left']['strict']+ras['right']['strict'])/2*100:>11.1f}%")
+    print("\n  'strict' = exact-normal press. The 30-degree tilt cone hides most of the")
+    print("  cost, which is exactly why both columns are reported.")
+    return True
+
+
 def scene_check(args):
     """Re-run the V5-0 tests against the REAL generated scene, not the bare probe.
 
@@ -689,12 +731,16 @@ if __name__ == "__main__":
                     default=None, help="validate the real generated scene")
     ap.add_argument("--indexed", nargs="?", const="ufactory_xarm7/refurb_scene_v5.xml",
                     default=None, help="test every face via the rotary indexer")
+    ap.add_argument("--riser", nargs="?", const="ufactory_xarm7/refurb_scene_v5.xml",
+                    default=None, help="sweep arm-riser diameter vs reach")
     ap.add_argument("--w", type=float, default=0.25)
     ap.add_argument("--d", type=float, default=0.18)
     ap.add_argument("--h", type=float, default=0.45)
     ap.add_argument("--x", type=float, default=0.50)
     a = ap.parse_args()
-    if a.indexed:
+    if a.riser:
+        sys.exit(0 if riser_sweep(a) else 1)
+    elif a.indexed:
         sys.exit(0 if indexed_test(a) else 1)
     elif a.scene:
         sys.exit(0 if scene_check(a) else 1)

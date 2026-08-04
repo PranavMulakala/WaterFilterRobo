@@ -17,9 +17,9 @@ Checks, and the bug each one catches (all 2026-08-04, see PAIN_JOURNAL):
   3. Every patch carries its MATERIAL'S RGB with alpha 0.
      -> written as rgba="0 0 0 0", revealing a patch made it BLACK regardless of
         material, so brown soil / white scratches / grey dents were indistinguishable.
-  4. The back face carries NO pools.
-     -> it is unreachable at every placement tested; soil there would be uncleanable and
-        would silently cap the coverage metric.
+  4. All FIVE exposed faces carry pools, including the back.
+     -> the back was excluded while it was unreachable at every placement; the rotary
+        indexer reaches it now, and leaving it clean would flatter every coverage number.
   5. Nothing interpenetrates at spawn, and the pad tool RESTS on its post.
      -> the pad first floated 45 mm above a post whose locating ring was narrower than
         the pad's own diagonal, exactly the v4 staging-nest mistake.
@@ -36,7 +36,7 @@ CAB_HEIGHT = 0.450
 NOMINAL_HEIGHT = TT_RISE + CAB_HEIGHT
 POOLS = ("soil", "scr", "dent")
 POOL_RGB = {"soil": (0.42, 0.36, 0.28),
-            "scr": (0.97, 0.97, 0.98),
+            "scr": (0.34, 0.34, 0.35),
             "dent": (0.30, 0.30, 0.32)}
 
 fails = []
@@ -88,7 +88,10 @@ def main():
               for i in range(m.nu)), "indexer is a commanded axis, not scenery")
 
     lo, hi = bp - bs, bp + bs
-    faces = {"front": (0, lo[0], -1), "back": (0, hi[0], 1),
+    # the BACK face is the back PANEL's outer surface, 10 mm proud of the body
+    pan = m.geom("cab_backpanel").id
+    pan_x = float(d.geom_xpos[pan][0] + m.geom_size[pan][0])
+    faces = {"front": (0, lo[0], -1), "back": (0, pan_x, 1),
              "left": (1, lo[1], -1), "right": (1, hi[1], 1),
              "top": (2, NOMINAL_HEIGHT, 1)}
 
@@ -113,10 +116,17 @@ def main():
             wrong_frame += 1
         if (p[ax] - val) * sgn <= 0:
             sunk += 1
+        if fname == "back":
+            flo = np.array([lo[0], d.geom_xpos[pan][1] - m.geom_size[pan][1],
+                            d.geom_xpos[pan][2] - m.geom_size[pan][2]])
+            fhi = np.array([hi[0], d.geom_xpos[pan][1] + m.geom_size[pan][1],
+                            d.geom_xpos[pan][2] + m.geom_size[pan][2]])
+        else:
+            flo, fhi = lo, hi
         for su in (-1, 1):
             for sv in (-1, 1):
                 c = p + R[:, 0] * sz[0] * su + R[:, 1] * sz[1] * sv
-                if any(c[a] < lo[a] - 1e-6 or c[a] > hi[a] + 1e-6
+                if any(c[a] < flo[a] - 1e-6 or c[a] > fhi[a] + 1e-6
                        for a in range(3) if a != ax):
                     off_edge += 1
                     break
@@ -127,7 +137,12 @@ def main():
     check(wrong_frame == 0, "all patch frames point OUTWARD (thickness axis == normal)")
     check(sunk == 0, "all patches protrude rather than sink below the surface")
     check(off_edge == 0, "no patch overhangs its face edge")
-    check("back" not in per_face, "back face carries no pools (it is unreachable)")
+    # FLIPPED. The back was excluded while it was unreachable at every placement; the
+    # rotary indexer made it reachable, so leaving it clean would have flattered every
+    # cleaning-coverage number V5-C produces.
+    check(per_face.get("back", 0) > 0,
+          f"back face CARRIES pools ({per_face.get('back', 0)}) -- the indexer reaches it")
+    check(len(per_face) == 5, f"all five exposed faces carry pools ({sorted(per_face)})")
 
     for pre, exp in POOL_RGB.items():
         ids = [i for i in range(m.ngeom) if gname(i).startswith(pre)]
