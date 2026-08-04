@@ -41,6 +41,7 @@ import numpy as np
 import mujoco
 
 import v5_triage as TR
+import v5_reach as RE
 from sim_poc2 import ik_step
 
 XML = "ufactory_xarm7/refurb_scene_v5.xml"
@@ -106,6 +107,25 @@ class CleanConfig:
     pad_radius: float = 0.030       # m, in-plane wipe radius of the 60 mm square pad
     pad_reach: float = 0.022        # m, how far off the pad plane a patch still counts
     contact_min_n: float = 0.5      # N, below this the pad is not really touching
+    # A WIPE IS DONE WHEN THE PAD HAS SWEPT THE POINT, not when the wrist hits a
+    # positional tolerance it cannot hold while loaded. Waiting on 4 mm of TCP error was
+    # unreachable under contact -- 0.8 deg of joint lag is 14 mm at that extension -- so
+    # every top-face point and 60% of front-face points ran the full 2.5 s timeout
+    # pressing at full command. Measured cost of that stall: peak 326 N and only 74.8%
+    # of samples in band, on a pad validated to 60 N. Terminating on established contact
+    # is both the physical completion criterion for a wipe and the thing that bounds the
+    # press duration. The COVERAGE criterion is untouched: a patch still only counts when
+    # real contact force passes over it.
+    # First attempt at this was "break once contact has lasted 0.1 s", which fired on the
+    # first graze while the wrist was still 20-90 mm out: coverage fell 100% -> 88.9%.
+    # A position-controlled arm pressing into a surface converges to a STEADY-STATE
+    # error; the useful signal is that it has stopped closing, not that it has touched.
+    wipe_stall_s: float = 0.20      # window over which progress is judged
+    wipe_stall_m: float = 0.0005    # less closing than this, while in contact, is a stall
+    # ...and 'in contact' has to mean SEATED, not grazing. contact_min_n is 0.5 N, which
+    # the pad reaches on the way in while the wrist is still tens of mm out; stalling on
+    # that ended points before the pad had swept them and cost 11 points of coverage.
+    wipe_seat_n: float = 5.0        # N the pad must carry before a stall counts as done
 
     # --- force band. Upper bound from the pad curve (60 N is still monotonic); lower
     #     bound is "actually touching".
@@ -135,6 +155,50 @@ def grasp_mat():
     return np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]).T
 
 
+# --- the tilt cone. THIS IS NOT A RELAXATION WE INVENTED TO PASS. v5_reach's gate has
+#     always reported coverage inside a 30-degree cone alongside the exact-normal
+#     "strict" figure, because a 20 mm compliant pad genuinely conforms over about that
+#     much. What went wrong is that the gate allowed the cone and the CLEANER did not
+#     use it: tool_mat_face() returned one fixed exact-normal frame for every point, so
+#     the station was living in the strict column -- front 83%, sides 27%, top 63% --
+#     while a green gate reported the 100% one. Worse, re-running the placement sweep
+#     with the tool's real 105 mm wrist-to-pad length shows NO placement presses
+#     exact-normal on all five faces. The cone is load-bearing, not optional.
+#
+#     THE CONE IS IMPORTED FROM THE GATE, not restated here. That is fix 5, and it is the
+#     one that stops this recurring: a gate is only a gate for the quantity it measures,
+#     and a consumer that quietly uses a DIFFERENT quantity turns a green light into
+#     decoration. v5_reach reports strict and relaxed side by side precisely so the
+#     relaxation stays visible; the cleaner now spends that same allowance, from the same
+#     constant, and reports the tilt it actually used against the limit.
+TILT_TOL_DEG = RE.TILT_TOL_DEG
+TILT_DIRS = RE.TILT_DIRS
+COLD = np.array([0.0, -0.3, 0.0, 0.9, 0.0, 1.1, 0.0])
+POS_TOL, ROT_TOL = 0.004, np.deg2rad(4)
+PLAN_ITERS = 220
+
+
+def tilted_mats(base):
+    """(matrix, tilt_deg) pressing into the same face, smallest deviation first.
+
+    Same construction as v5_reach.tilted_mats, but about a base frame handed in rather
+    than rebuilt from a normal -- the tool changer cares about the in-plane orientation
+    and re-deriving it here would quietly rotate the jaws.
+    """
+    for tilt in TILT_TOL_DEG:
+        if tilt == 0.0:
+            yield base, 0.0
+            continue
+        t = np.deg2rad(tilt)
+        for k in range(TILT_DIRS):
+            a = 2 * np.pi * k / TILT_DIRS
+            axis = np.cos(a) * base[:, 0] + np.sin(a) * base[:, 1]
+            quat, Rm = np.zeros(4), np.zeros(9)
+            mujoco.mju_axisAngle2Quat(quat, axis, t)
+            mujoco.mju_quat2Mat(Rm, quat)
+            yield Rm.reshape(3, 3) @ base, tilt
+
+
 class Cell:
     def __init__(self, cfg=CFG):
         self.cfg = cfg
@@ -155,6 +219,12 @@ class Cell:
         self.stem = m.geom("pad_stem").id
         self.acf_q = m.jnt_qposadr[m.joint("acf").id]
         self.cab_bodyid = m.body("cabinet").id
+        # the device's own COLLIDABLE geoms -- what surface_x rays against. Condition
+        # patches are excluded by contype: they are 1 mm decals lying ON the surface, and
+        # letting the probe hit one would put the raster plane a patch-thickness proud of
+        # the face at exactly the points that matter most.
+        self.cab_geoms = [g for g in range(m.ngeom)
+                          if m.geom_bodyid[g] == self.cab_bodyid and m.geom_contype[g]]
         self.geomgroup = np.array([1, 1, 1, 1, 1, 1], np.uint8)
         self.pad_body = m.body("padtool").id
         name = lambda i: mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, i) or ""
@@ -165,6 +235,23 @@ class Cell:
         self.gb = m.body("xarm_gripper_base_link").id
         self.eq = next(k for k in range(m.neq)
                        if mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_EQUALITY, k) == "toollock")
+        # a THIRD MjData, for planning only. mj_forward has to run to get contacts, and
+        # running it on the live data would teleport the arm mid-cycle.
+        self.plan = mujoco.MjData(m)
+        base = m.body("link_base").id
+        arm_bodies = set()
+        for b in range(m.nbody):
+            p = b
+            while p != 0:
+                if p == base:
+                    arm_bodies.add(b)
+                    break
+                p = m.body_parentid[p]
+        self.arm_geoms = {g for g in range(m.ngeom) if m.geom_bodyid[g] in arm_bodies}
+        tool_bodies = {m.body("padtool").id, m.body("padhead").id}
+        self.tool_geoms = {g for g in range(m.ngeom) if m.geom_bodyid[g] in tool_bodies}
+        self.pad_jq = m.jnt_qposadr[m.body_jntadr[m.body("padtool").id]]
+        self.tool_rel = None
 
     # ------------------------------------------------------- tool changer
     def couple(self):
@@ -194,6 +281,9 @@ class Cell:
         m.eq_data[self.eq][6:10] = q
         m.eq_data[self.eq][10] = 1.0             # torquescale
         d.eq_active[self.eq] = 1
+        # keep the weld transform so the PLANNER can put the tool where the arm will
+        # actually carry it. Without this the planner is blind to its own tool.
+        self.tool_rel = (relpos.copy(), q.copy())
         mujoco.mj_forward(m, d)
         return True, perr, aerr
 
@@ -209,6 +299,10 @@ class Cell:
         truth, nd, ns, no = TR.sample_condition(rng, TR.CFG)
         TR.set_pools(m, self.pools, nd, ns, no, rng)
         self.revealed_soil = [g for g in self.pools["soil"] if m.geom_rgba[g][3] > 0]
+        self.raster_planned = self.raster_skipped = self.raster_infeasible = 0
+        self.tilts = []
+        self.q_warm = None
+        self.face_unreachable = {}
         mujoco.mj_forward(m, d)
         self.q_des = d.qpos[self.qadr].copy()
         return truth, nd, ns, no
@@ -254,6 +348,130 @@ class Cell:
                 self.m.geom_rgba[g][3] = 0.0
                 n += 1
         return n
+
+    # ------------------------------------------------------------- planning
+    def plan_pose(self, tgt, base_mat, q_seed=None):
+        """Smallest-tilt joint solution that is reachable, limit-clear and NOT colliding.
+
+        WHY THIS EXISTS. The cleaner used to servo straight at a Cartesian target with a
+        resolved-rate step and no notion of collision. Measured consequence: link1 jammed
+        against link6 at 130-271 N with joint 4 pinned at its 30 Nm limit, and every
+        setup waypoint missed by 100-400 mm -- the whole raster then ran from the wrong
+        place. A local Jacobian step cannot climb out of a self-collision basin because
+        nothing in it knows the basin is there. Solve first, reject the bad branches,
+        then drive to a configuration already known to be good.
+
+        Returns (q, mat, tilt_deg) or None.
+        """
+        for mat, tilt in tilted_mats(base_mat):
+            q = self.solve_at(tgt, mat, q_seed)
+            if q is not None:
+                return q, mat, tilt
+        return None
+
+    def plan_pad(self, pad_pt, base_mat, pad_rel, q_seed=None):
+        """Same, but for a raster point where PAD_PT is what must be hit, not the TCP.
+
+        The tilt loop has to live out here: the pad hangs 105 mm off the wrist, so
+        tilting the tool SWINGS THE TARGET. Solving a fixed TCP target and then tilting
+        would land the pad somewhere else on the face -- which is the whole reason the
+        tool's length matters to this station in the first place.
+        """
+        for mat, tilt in tilted_mats(base_mat):
+            tgt = pad_pt - mat @ pad_rel
+            q = self.solve_at(tgt, mat, q_seed)
+            if q is not None:
+                return q, mat, tilt, tgt
+        return None
+
+    def _carry_tool(self):
+        """Put the welded tool where the arm would actually carry it, in the PLAN copy.
+
+        The padtool is a free body held by an equality, so moving arm joints in a copy of
+        the state leaves it behind -- its pose there is whatever the live sim last had.
+        The first version of the planner therefore EXCLUDED the tool from its collision
+        test, which made it blind to the one part of the machine that touches anything:
+        it planned bottom-row poses whose 60 mm pad reached below the platter (measured
+        pad z down to 1 mm against a platter top of 10 mm, with tt_disc and bench in the
+        contact list), and top-face poses the pad could not physically reach. Result:
+        0 of 48 top points and only 40% of front-face points ever arrived -- each one
+        pressing at full command for the whole 2.5 s timeout, which is where the 326 N
+        peak and the 74.8% in-band came from.
+
+        Reconstructing the weld transform is exact and costs one quaternion multiply.
+        The flange is set to its FREE extension, which is the conservative end: that is
+        the longest the tool can be, so anything that clears here clears in practice.
+        """
+        if self.tool_rel is None:
+            return
+        relpos, relq = self.tool_rel
+        mujoco.mj_kinematics(self.m, self.plan)
+        p1 = self.plan.xpos[self.gb]
+        R1 = self.plan.xmat[self.gb].reshape(3, 3)
+        q1 = np.zeros(4)
+        mujoco.mju_mat2Quat(q1, R1.flatten())
+        qt = np.zeros(4)
+        mujoco.mju_mulQuat(qt, q1, relq)
+        self.plan.qpos[self.pad_jq:self.pad_jq + 3] = p1 + R1 @ relpos
+        self.plan.qpos[self.pad_jq + 3:self.pad_jq + 7] = qt
+        self.plan.qpos[self.acf_q] = self.m.jnt_range[self.m.joint("acf").id][0]
+
+    def solve_at(self, tgt, mat, q_seed=None):
+        """One pose, one orientation: reachable AND limit-clear AND collision-free."""
+        m = self.m
+        lo, hi = self.rng_j[:, 0], self.rng_j[:, 1]
+        seeds = [q_seed, COLD] if q_seed is not None else [COLD]
+        for q0 in seeds:
+            q = np.array(q0, float)
+            for _ in range(PLAN_ITERS):
+                self.plan.qpos[:] = self.d.qpos
+                self.plan.qpos[self.qadr] = q
+                mujoco.mj_kinematics(m, self.plan)
+                mujoco.mj_comPos(m, self.plan)
+                dq, _ = ik_step(m, self.plan, self.site, tgt, mat, self.dof,
+                                damping=0.08, gain=0.55)
+                step = np.max(np.abs(dq))
+                if step > 0.12:
+                    dq = dq * (0.12 / step)
+                q = np.clip(q + dq, lo, hi)
+                if step < 1e-5:
+                    break
+            self.plan.qpos[:] = self.d.qpos
+            self.plan.qpos[self.qadr] = q
+            self._carry_tool()
+            mujoco.mj_forward(m, self.plan)
+            if np.linalg.norm(tgt - self.plan.site_xpos[self.site]) > POS_TOL:
+                continue
+            R = self.plan.site_xmat[self.site].reshape(3, 3)
+            quat, rv = np.zeros(4), np.zeros(3)
+            mujoco.mju_mat2Quat(quat, (mat @ R.T).flatten())
+            mujoco.mju_quat2Vel(rv, quat, 1.0)
+            if np.linalg.norm(rv) > ROT_TOL:
+                continue
+            if np.min(np.minimum(q - lo, hi - q)) < np.deg2rad(1.0):
+                continue
+            # THE ARM may touch nothing. THE PAD may touch the device and nothing else --
+            # pad-on-device IS the motion, pad-on-platter is the bug that made the
+            # bottom rows stall. Anything else (bench, platter, riser, backdrop, post) is
+            # a rejection for either.
+            hit = False
+            for k in range(self.plan.ncon):
+                g1, g2 = self.plan.contact[k].geom1, self.plan.contact[k].geom2
+                tool = (g1 in self.tool_geoms) or (g2 in self.tool_geoms)
+                arm = (g1 in self.arm_geoms) or (g2 in self.arm_geoms)
+                if tool and not arm:
+                    other = g2 if g1 in self.tool_geoms else g1
+                    if self.m.geom_bodyid[other] == self.cab_bodyid:
+                        continue                 # the wipe itself
+                    hit = True
+                    break
+                if arm:
+                    hit = True
+                    break
+            if hit:
+                continue
+            return q
+        return None
 
     # ---------------------------------------------------------------- motion
     def step_to(self, tgt, mat, grip, index_deg=0.0, frames=None, tag=""):
@@ -311,6 +529,55 @@ class Cell:
                 settle = 0.0
         return cleaned
 
+    def move_planned(self, q_goal, tgt, grip, index_deg=0.0, tol=0.004, t_max=6.0,
+                     wipe=False, log=None, frames=None, tag=""):
+        """Drive to a PLANNED joint configuration, waiting for the MEASURED TCP.
+
+        The setpoint is the planner's configuration, so the arm is not re-deriving a
+        branch every control step and cannot wander into one the planner already
+        rejected. Completion is still judged on the measured TCP -- the commanded
+        configuration says nothing about whether the arm got there, which is exactly the
+        distinction that took four bugs to untangle.
+        """
+        m, d = self.m, self.d
+        t, cleaned, settle = 0.0, 0, 0.0
+        stall_t, stall_err = 0.0, np.inf
+        while t < t_max:
+            dq = q_goal - self.q_des
+            mx = np.max(np.abs(dq))
+            lim = 0.02 * self.cfg.speed
+            if mx > lim:
+                dq = dq * (lim / mx)
+            self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
+            d.ctrl[self.act] = self.q_des
+            d.ctrl[self.grip] = grip
+            d.ctrl[self.tt_act] = np.deg2rad(index_deg)
+            d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
+            mujoco.mj_step(m, d)
+            t += self.dt
+            if wipe:
+                cleaned += self.wipe()
+                f = self.pad_contact_force()
+                if log is not None:
+                    log.append(f)
+                stall_t += self.dt
+                if stall_t >= self.cfg.wipe_stall_s:
+                    e = float(np.linalg.norm(d.site_xpos[self.site] - tgt))
+                    if f >= self.cfg.wipe_seat_n and \
+                            stall_err - e < self.cfg.wipe_stall_m:
+                        break
+                    stall_err, stall_t = e, 0.0
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
+            if float(np.linalg.norm(d.site_xpos[self.site] - tgt)) < tol:
+                settle += self.dt
+                if settle >= 0.06:
+                    break
+            else:
+                settle = 0.0
+        return cleaned
+
     def dwell(self, s, mat, tgt, grip, index_deg=0.0, frames=None, tag=""):
         t = 0.0
         while t < s:
@@ -323,20 +590,33 @@ class Cell:
         Exact where a plane fit is not: it sees whatever geom is actually presented at
         this point -- body, proud back panel, top cover ledge -- with no assumption about
         which face the indexer has brought round.
+
+        RAYS ONLY THE CABINET'S OWN GEOMS, one at a time, and takes the nearest hit.
+        The scene-wide `mj_ray` returns the FIRST geom along the beam, and the beam starts
+        at x = 0.20 and travels +X -- straight through the space the arm and the pad
+        occupy while wiping. Whenever a link was in the way the hit belonged to the arm,
+        this returned None, and the raster loop silently `continue`d: no wipe, no force
+        sample, no entry in the contact statistics. Measured on seed 800: 154 of 450
+        raster points skipped (34.2%), the beam landing on xarm_gripper_base_link x61,
+        link7 x33, link4 x26 and the pad itself x14. Because skipped points log nothing,
+        the reported "contact during raster" was a fraction of the points that RAN --
+        74.4% where the true figure over the planned raster was about 49%.
+
+        Per-geom rays cannot be occluded by anything that is not the device, so the
+        answer no longer depends on where the arm happens to be standing.
         """
         pnt = np.array([0.20, y, z])
         vec = np.array([1.0, 0.0, 0.0])
-        geomid = np.zeros(1, np.int32)
-        # bodyexclude = -1: exclude NOTHING. Passing the cabinet here excludes the very
-        # thing we are trying to hit -- the ray then flew past it and returned the
-        # backdrop at x = 0.854 for every point, on every face.
-        dist = mujoco.mj_ray(self.m, self.d, pnt, vec,
-                             self.geomgroup, 1, -1, geomid)
-        if dist < 0 or geomid[0] < 0:
+        best = -1.0
+        for g in self.cab_geoms:
+            d = mujoco.mju_rayGeom(self.d.geom_xpos[g], self.d.geom_xmat[g],
+                                   self.m.geom_size[g], pnt, vec,
+                                   int(self.m.geom_type[g]))
+            if d >= 0 and (best < 0 or d < best):
+                best = d
+        if best < 0:
             return None
-        if self.m.geom_bodyid[geomid[0]] != self.cab_bodyid:
-            return None                        # hit something that is not the device
-        return float(pnt[0] + dist)
+        return float(pnt[0] + best)
 
     # ---------------------------------------------------------------- geometry
     def front_face_plane(self, index_deg):
@@ -411,8 +691,10 @@ class Cell:
             # and every face after it was "wiped" with an empty gripper, while the force
             # log kept reporting healthy contact. A real cell sequences it the same way,
             # for the same reason.
-            self.move(safe, tool_mat_face(deg), cfg.grip_open, index_deg=prev_deg,
-                      t_max=8.0, tag="SAFE", frames=frames)
+            pl = self.plan_pose(safe, tool_mat_face(deg), self.q_des)
+            if pl is not None:
+                self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
+                                  tol=0.006, t_max=8.0, tag="SAFE", frames=frames)
             self.dwell(1.2, tool_mat_face(deg), safe, cfg.grip_open,
                        index_deg=deg, frames=frames, tag=f"INDEX {deg:.0f}")
             prev_deg = deg
@@ -427,9 +709,14 @@ class Cell:
             # the lift is not the offset during the wipe. Measuring at the lift and using
             # it here put coverage at 0%.
             approach = np.array([fx - cfg.standoff, cy, zc]) - tm @ self.pad_rel
-            self.move(approach, tm, cfg.grip_open,
-                      index_deg=deg, t_max=10.0, tag="TO FACE", frames=frames)
-            self.dwell(0.3, tm, approach, cfg.grip_open, index_deg=deg,
+            pl = self.plan_pose(approach, tm, self.q_des)
+            if pl is None:
+                self.face_unreachable[deg] = "approach"
+                continue
+            q_ap, mat_ap, _ = pl
+            self.move_planned(q_ap, approach, cfg.grip_open, index_deg=deg,
+                              tol=0.006, t_max=10.0, tag="TO FACE", frames=frames)
+            self.dwell(0.3, mat_ap, approach, cfg.grip_open, index_deg=deg,
                        frames=frames, tag="SETTLE")
             tcp_n = self.d.site_xpos[self.site]
             Rn = self.d.site_xmat[self.site].reshape(3, 3)
@@ -459,18 +746,38 @@ class Cell:
                     # presented face -- so the pad was commanded short of the surface and
                     # did not touch for 29% of the raster. A ray gives the ACTUAL surface
                     # at this point, and handles the proud back panel for free.
+                    # COUNT what gets skipped. A `continue` here used to be invisible:
+                    # the point contributed no wipe and no force sample, so a raster that
+                    # never ran a third of its points still reported healthy contact.
+                    # Anything the station declines to attempt has to show up in the
+                    # numbers, or the metric is measuring the subset that succeeded.
+                    self.raster_planned += 1
                     hit = self.surface_x(cy + u, zc + v)
                     if hit is None:
+                        self.raster_skipped += 1
                         continue
                     pad_pt = np.array([hit - cfg.pad_thick_half + cfg.press,
                                        cy + u, zc + v])
-                    tgt = pad_pt - tm @ pad_rel
-                    cleaned += self.move(tgt, tm, cfg.grip_open, index_deg=deg,
-                                         tol=cfg.wipe_tol, t_max=2.5, wipe=True,
-                                         log=forces, tag=f"WIPE {deg:.0f}", frames=frames)
+                    # PLAN the point before driving at it, and let it TILT. The target
+                    # moves with the tilt, because the pad is offset from the wrist: the
+                    # pad face has to land on pad_pt whatever angle the tool arrives at.
+                    warm = self.q_warm if self.q_warm is not None else self.q_des
+                    got = self.plan_pad(pad_pt, tm, pad_rel, warm)
+                    if got is None:
+                        self.raster_infeasible += 1
+                        continue
+                    q_pt, mat_pt, tilt_pt, tgt = got
+                    self.q_warm = q_pt
+                    self.tilts.append(tilt_pt)
+                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open, index_deg=deg,
+                                                 tol=cfg.wipe_tol, t_max=2.5, wipe=True,
+                                                 log=forces, tag=f"WIPE {deg:.0f}",
+                                                 frames=frames)
             retract = np.array([fx - cfg.standoff - 0.05, cy, zc]) - tm @ pad_rel
-            self.move(retract, tm, cfg.grip_open,
-                      index_deg=deg, t_max=8.0, tag="RETRACT", frames=frames)
+            pl = self.plan_pose(retract, tm, self.q_des)
+            if pl is not None:
+                self.move_planned(pl[0], retract, cfg.grip_open, index_deg=deg,
+                                  tol=0.006, t_max=8.0, tag="RETRACT", frames=frames)
             if verbose:
                 on_face = sum(1 for g in self.revealed_soil
                               if self.m.geom_rgba[g][3] > 0)
@@ -478,19 +785,36 @@ class Cell:
                       f"pad_rel {np.round(pad_rel,4)}, fx={fx:.4f}, "
                       f"cleaned so far {n0 - on_face}/{n0}")
 
-        self.move(safe, tool_mat_face(0.0), cfg.grip_open, index_deg=prev_deg,
-                  t_max=8.0, tag="SAFE", frames=frames)
+        pl = self.plan_pose(safe, tool_mat_face(0.0), self.q_des)
+        if pl is not None:
+            self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
+                              tol=0.006, t_max=8.0, tag="SAFE", frames=frames)
 
         # --- the TOP face. Stage 3 names the top cover explicitly, and the vertical
         #     loop above never touches it -- soil there would have been permanently
         #     uncleanable while the coverage number quietly ignored it.
+        #
+        # INDEX FORWARD TO 360, NOT BACK TO 0. The top raster spans the cabinet's LOCAL
+        # half-extents (180 x 250 mm) along world X and Y, so it is only correct with the
+        # device square-on. It used to get there by accident: every top-pass move left
+        # index_deg at its 0.0 default, so the indexer was commanded to unwind 270 deg
+        # WHILE the arm was already travelling over the device -- the exact sequencing
+        # error the vertical loop documents above. 360 deg keeps every step of the cycle
+        # a +90 deg move in one direction, which is also how a real indexer is driven.
+        top_deg = 360.0
+        self.dwell(1.4, tool_mat_face(0.0), safe, cfg.grip_open, index_deg=top_deg,
+                   frames=frames, tag=f"INDEX {top_deg:.0f}")
         tmt = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]).T
         cg = self.m.geom("cab_body").id
         cx, cyy = self.d.geom_xpos[cg][0], self.d.geom_xpos[cg][1]
-        _, _, _, _, ztop = self.front_face_plane(0.0)
+        _, _, _, _, ztop = self.front_face_plane(top_deg)
         appr = np.array([cx, cyy, ztop + 0.10])
-        self.move(appr, tmt, cfg.grip_open, t_max=10.0, tag="TO TOP", frames=frames)
-        self.dwell(0.3, tmt, appr, cfg.grip_open, frames=frames, tag="SETTLE")
+        pl = self.plan_pose(appr, tmt, self.q_des)
+        if pl is not None:
+            self.move_planned(pl[0], appr, cfg.grip_open, index_deg=top_deg,
+                              tol=0.006, t_max=10.0, tag="TO TOP", frames=frames)
+        self.dwell(0.3, tmt, appr, cfg.grip_open, index_deg=top_deg,
+                   frames=frames, tag="SETTLE")
         tcp_n = self.d.site_xpos[self.site]
         Rn = self.d.site_xmat[self.site].reshape(3, 3)
         prel = Rn.T @ (self.d.geom_xpos[self.pad_face] - tcp_n)
@@ -506,11 +830,24 @@ class Cell:
                 dv = -uy + 2 * uy * cc / (cols - 1)
                 pad_pt = np.array([cx + du, cyy + dv,
                                    ztop + cfg.pad_thick_half - cfg.press])
-                cleaned += self.move(pad_pt - tmt @ prel, tmt, cfg.grip_open,
-                                     tol=cfg.wipe_tol, t_max=2.5, wipe=True, log=forces,
-                                     tag="WIPE top", frames=frames)
-        self.move(np.array([cx, cyy, ztop + 0.12]), tmt, cfg.grip_open,
-                  t_max=8.0, tag="TOP CLEAR", frames=frames)
+                self.raster_planned += 1
+                warm = self.q_warm if self.q_warm is not None else self.q_des
+                got = self.plan_pad(pad_pt, tmt, prel, warm)
+                if got is None:
+                    self.raster_infeasible += 1
+                    continue
+                q_pt, mat_pt, tilt_pt, tgt = got
+                self.q_warm = q_pt
+                self.tilts.append(tilt_pt)
+                cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
+                                             index_deg=top_deg, tol=cfg.wipe_tol,
+                                             t_max=2.5, wipe=True, log=forces,
+                                             tag="WIPE top", frames=frames)
+        clear = np.array([cx, cyy, ztop + 0.12])
+        pl = self.plan_pose(clear, tmt, self.q_des)
+        if pl is not None:
+            self.move_planned(pl[0], clear, cfg.grip_open, index_deg=top_deg,
+                              tol=0.006, t_max=8.0, tag="TOP CLEAR", frames=frames)
 
         # measure how far the tool moved relative to the wrist across the whole job,
         # while it is STILL LATCHED -- measuring after unlatch just reports the holder
@@ -525,13 +862,18 @@ class Cell:
         acf_mm = float(self.d.qpos[self.acf_q] * 1000)
 
         # --- return the tool to its holder and unlatch
-        self.move(want + np.array([0, 0, 0.14]), gm, cfg.grip_open,
+        # HOLD the indexer where the job left it for the tool return. Letting index_deg
+        # fall back to its 0.0 default here commands a 360 deg unwind while the arm is
+        # crossing the cell to the holder -- same class of sequencing error as the top
+        # pass, and free to avoid.
+        self.move(want + np.array([0, 0, 0.14]), gm, cfg.grip_open, index_deg=top_deg,
                   t_max=12.0, tag="RETURN", frames=frames)
-        self.move(want, gm, cfg.grip_open, tol=0.004, t_max=8.0, tag="PLACE",
-                  frames=frames)
+        self.move(want, gm, cfg.grip_open, index_deg=top_deg, tol=0.004, t_max=8.0,
+                  tag="PLACE", frames=frames)
         self.decouple()
-        self.dwell(0.3, gm, want, cfg.grip_open, frames=frames, tag="UNLATCH")
-        self.move(want + np.array([0, 0, 0.14]), gm, cfg.grip_open,
+        self.dwell(0.3, gm, want, cfg.grip_open, index_deg=top_deg,
+                   frames=frames, tag="UNLATCH")
+        self.move(want + np.array([0, 0, 0.14]), gm, cfg.grip_open, index_deg=top_deg,
                   t_max=8.0, tag="CLEAR", frames=frames)
 
         left = sum(1 for g in self.revealed_soil if self.m.geom_rgba[g][3] > 0)
@@ -546,7 +888,14 @@ class Cell:
                 "f_max": float(f.max()),
                 "in_band": float(((touching >= cfg.force_lo) &
                                   (touching <= cfg.force_hi)).mean()) if len(touching) else 0.0,
-                "contact_frac": float((f >= cfg.contact_min_n).mean())}
+                "contact_frac": float((f >= cfg.contact_min_n).mean()),
+                "raster_planned": self.raster_planned,
+                "raster_skipped": self.raster_skipped,
+                "raster_infeasible": self.raster_infeasible,
+                "tilt_mean": float(np.mean(self.tilts)) if self.tilts else 0.0,
+                "tilt_max": float(np.max(self.tilts)) if self.tilts else 0.0,
+                "tilt_zero_frac": float(np.mean([t == 0.0 for t in self.tilts]))
+                                  if self.tilts else 0.0}
 
 
 def report(rows):
@@ -567,17 +916,42 @@ def report(rows):
     cf = np.array([r["contact_frac"] for r in ok]) if ok else np.array([0.0])
     print(f"  contact force   : median {fm.mean():.1f} N, peak {fx.max():.1f} N "
           f"(pad validated monotonic to 60 N)")
+    rp = sum(r.get("raster_planned", 0) for r in ok)
+    rs = sum(r.get("raster_skipped", 0) for r in ok)
+    # Contact is reported over the PLANNED raster, not the executed subset. Skipped
+    # points log no force sample, so averaging only what ran quietly excused every point
+    # the station declined to attempt.
+    cf_planned = cf.mean() * (1 - rs / max(rp, 1))
     print(f"  in force band   : {ib.mean()*100:.1f}%   contact during raster: "
-          f"{cf.mean()*100:.1f}%")
+          f"{cf.mean()*100:.1f}% of points RUN, {cf_planned*100:.1f}% of points PLANNED")
+    ri = sum(r.get("raster_infeasible", 0) for r in ok)
+    print(f"  raster skipped  : {rs} probe-miss + {ri} no-feasible-pose of {rp} "
+          f"planned points ({(rs+ri)/max(rp,1)*100:.1f}%)")
+    tz = np.array([r.get("tilt_zero_frac", 0.0) for r in ok]) if ok else np.array([0.0])
+    tm_ = np.array([r.get("tilt_mean", 0.0) for r in ok]) if ok else np.array([0.0])
+    tx = np.array([r.get("tilt_max", 0.0) for r in ok]) if ok else np.array([0.0])
+    print(f"  press angle     : {tz.mean()*100:.1f}% at exact normal, mean tilt "
+          f"{tm_.mean():.1f} deg, max {tx.max():.0f} deg (cone limit "
+          f"{max(TILT_TOL_DEG):.0f} deg)")
     cd = np.array([r.get("coupling_drift_mm", 0.0) for r in ok]) if ok else np.array([0.0])
     print(f"  coupling drift  : {cd.mean():.2f} mm mean, {cd.max():.2f} mm worst "
           f"(tool changer; the flange stroke is separate and expected)")
     print("\n  Coverage is of ALL FIVE faces -- the back panel carries soil too, since the")
     print("  indexer reaches it. No fluid or chemistry is simulated: what is verified is")
     print("  that the soil the camera could see is gone.")
+    print("\n  THE TRAJECTORY IS OPEN-LOOP AND SEED-INDEPENDENT. The raster, the planned")
+    print("  poses and the contact are identical for every unit; the seed only moves the")
+    print("  soil. So force, tilt and raster figures above have NO seed variance -- they")
+    print("  are effectively n = 1 and must not be quoted as an n-unit spread. Only the")
+    print("  coverage and missed-spot figures actually vary across units.")
     return {"n": n, "picked": len(ok), "coverage_mean": float(cov.mean()),
             "coverage_worst": float(cov.min()), "missed": int(totm), "soil": int(tot0),
-            "f_max": float(fx.max()), "in_band": float(ib.mean())}
+            "f_max": float(fx.max()), "in_band": float(ib.mean()),
+            "contact_run": float(cf.mean()), "contact_planned": float(cf_planned),
+            "raster_planned": int(rp), "raster_skipped": int(rs),
+            "raster_infeasible": int(ri), "tilt_mean_deg": float(tm_.mean()),
+            "tilt_max_deg": float(tx.max()),
+            "exact_normal_frac": float(tz.mean())}
 
 
 if __name__ == "__main__":

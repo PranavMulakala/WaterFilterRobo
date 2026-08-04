@@ -420,8 +420,16 @@
   <actuator>
     <!-- The rotary indexer is a COMMANDED AXIS. On the real cell this is a stepper or
          servo indexer with its own controller; here it is one more setpoint. Modelled
-         explicitly so the integration cost is visible rather than hidden in the scenery. -->
-    <position name="tt" joint="tt_rot" kp="120" kv="18" ctrlrange="-3.1416 3.1416"
+         explicitly so the integration cost is visible rather than hidden in the scenery.
+
+         CTRLRANGE IS A FULL REVOLUTION EACH WAY, and that is a hardware requirement, not
+         a convenience. It was +-3.1416 (half a turn), an unexamined default: the joint
+         itself is unlimited, so nothing failed loudly -- but MuJoCo CLAMPS ctrl, so
+         v5_clean's `deg2rad(270)` = 4.712 rad silently became 3.1416 and the indexer
+         stopped at 180 deg. The fourth face pass then re-wiped the back panel while one
+         SIDE face was never presented at all, on every seed. A real indexer turns
+         continuously; specify one that does. -->
+    <position name="tt" joint="tt_rot" kp="120" kv="18" ctrlrange="-6.2832 6.2832"
               forcerange="-40 40"/>
   </actuator>
 
