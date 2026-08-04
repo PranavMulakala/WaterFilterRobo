@@ -121,6 +121,11 @@ that DR is perturbing what we think it is. All the damage is mechanical.
 measurable loss at all. At ±5 mm the cell still runs but loses ~9 points of
 end-to-end. At ±10 mm it breaks down.
 
+Inspection accuracy is flat within noise across all four levels (86.7–91.7%; on n=60
+that spread is ~1.2 sigma). That is the expected result — once the part is presented on
+the camera axis, mass and friction barely change what the camera sees — and it is a
+useful sanity check that the DR is perturbing mechanics rather than vision.
+
 **This converts the simulation into a requirement:** a real cell would need its
 fixtures located to better than ±2.5 mm, and would need re-calibration if anything
 moved by more than that. That is a concrete, checkable spec discovered before buying
