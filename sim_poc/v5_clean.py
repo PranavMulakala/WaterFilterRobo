@@ -115,7 +115,7 @@ class CleanConfig:
     # unreachable under contact -- 0.8 deg of joint lag is 14 mm at that extension -- so
     # every top-face point and 60% of front-face points ran the full 2.5 s timeout
     # pressing at full command. Measured cost of that stall: peak 326 N and only 74.8%
-    # of samples in band, on a pad validated to 60 N. Terminating on established contact
+    # of samples in band, beyond where the pad model is validated. Terminating on contact
     # is both the physical completion criterion for a wipe and the thing that bounds the
     # press duration. The COVERAGE criterion is untouched: a patch still only counts when
     # real contact force passes over it.
@@ -918,7 +918,7 @@ def report(rows):
     ib = np.array([r["in_band"] for r in ok]) if ok else np.array([0.0])
     cf = np.array([r["contact_frac"] for r in ok]) if ok else np.array([0.0])
     print(f"  contact force   : median {fm.mean():.1f} N, peak {fx.max():.1f} N "
-          f"(pad validated monotonic to 60 N)")
+          f"(our pad curve is monotonic to 60 N -- a MODEL-validity limit, not a rating)")
     rp = sum(r.get("raster_planned", 0) for r in ok)
     rs = sum(r.get("raster_skipped", 0) for r in ok)
     # Contact is reported over the PLANNED raster, not the executed subset. Skipped

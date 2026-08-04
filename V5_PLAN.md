@@ -252,13 +252,24 @@ working position:
 
 | face presented | index | coverage | at exact-normal |
 |---|---|---|---|
-| front | 0° | **100%** | 83% |
-| right | 90° | **100%** | ~~83%~~ **27%** |
-| **back** | **180°** | **100%** | **83%** |
-| left | 270° | **100%** | ~~83%~~ **27%** |
-| top | — | **100%** | 63% |
+| front | 0° | **100%** | ~~83%~~ **47.9%** |
+| right | 90° | **100%** | ~~83%~~ ~~27%~~ **14.6%** |
+| **back** | **180°** | **100%** | ~~83%~~ **47.9%** |
+| left | 270° | **100%** | ~~83%~~ ~~27%~~ **14.6%** |
+| top | — | **100%** | ~~63%~~ **29.2%** |
 
-> ### ⚠️ The exact-normal column for the SIDE faces was wrong — corrected 2026-08-04
+> ### ⚠️ The exact-normal column was wrong TWICE — both corrected 2026-08-04
+> **Second correction, same day, found by a completeness critic.** The whole strict column
+> was measured with `PAD_STANDOFF = 0.045` — a guess made before the wiping tool existed.
+> The built tool is **105 mm** wrist-to-pad. Unifying that into `v5_reach.py` roughly
+> halves strict coverage again: front and back **47.9%**, sides **14.6%**, top **29.2%**.
+> The gate's PASS verdict is unchanged, because it is judged on the relaxed 30° column,
+> which is still 100% everywhere. **This is precisely why the tilt cone is load-bearing
+> rather than a nicety.** It also means V5-C's fix 5 — "the cone is imported from the gate
+> so gate and consumer cannot drift" — was only half done: the cone was unified, this
+> number was not.
+>
+> The first correction, below, still stands and is the more instructive one:
 > `v5_reach.py --indexed`, run today against the committed scene, prints **right 27.1%,
 > left 27.1%** strict — not 83%. The 83% here assumed indexing makes the four vertical
 > faces equivalent. It does not: the cabinet is 250 mm wide and 180 mm deep, so rotating a
@@ -683,7 +694,10 @@ Development seeds 800–807 read 95.8% — a **1.2-point** gap to held out.
 
 ### What is NOT closed
 
-**In-band force is 88.1%, and the peak is 271 N against a pad validated to 60 N.** The
+**In-band force is 88.1%, and the peak is 271 N — beyond where our own contact model is
+validated.** (60 N is where the pad's measured force/penetration curve stops being
+monotonic; it is a model-validity limit, not a component rating. Do not present it as
+"4.5x the pad's rating".) The
 cause is located, not fixed: the front face and the top face still never reach their
 planned pose (0% and 42% arrival, 14–37 mm steady-state error), so they press longer and
 harder than the other three. Both are the faces where the wrist ends up closest to the
