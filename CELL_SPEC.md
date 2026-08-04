@@ -167,7 +167,7 @@ All coordinates in metres, sim world frame. Convert with §2 before use.
 
 | station | X | Y | Z | notes |
 |---|---|---|---|---|
-| arm mounting flange | 0.000 | 0.000 | 0.120 | 120 mm above bench; **riser not modelled** (§2) |
+| arm mounting flange | 0.000 | 0.000 | 0.120 | 120 mm above bench; **riser IS modelled** — `arm_riser`, ⌀150 mm, measured cost zero (§2) |
 | **rotary indexer** (disc centre, top face) | 0.580 | 0.000 | 0.010 | ⌀350 mm, 10 mm proud of bench |
 | **device** (footprint centre, base) | 0.580 | 0.000 | 0.010 | stands on the indexer |
 | tool post (top face) | 0.300 | −0.340 | 0.020 | ⌀110 mm flat plate |
@@ -225,16 +225,29 @@ but no figure here has been sourced from a supplier. Price it before committing 
 
 Both are the same limitation: a fixed part can only be approached from the side the arm
 lives on. **With the indexer, every vertical face rotates into the front working position
-and is measured at 100% coverage** (83% even at exact-normal press), and camera
+and is measured at 100% coverage** (within a 30° tilt cone — see the table's warning
+below before quoting any exact-normal figure), and camera
 separation becomes arbitrary.
 
 | face presented | index angle | coverage | at exact-normal |
 |---|---|---|---|
-| front | 0° | **100%** | 83% |
-| right | 90° | **100%** | 83% |
-| back | 180° | **100%** | 83% |
-| left | 270° | **100%** | 83% |
-| top | (none) | **100%** | 63% |
+| front | 0° | **100%** | **47.9%** |
+| right | 90° | **100%** | **14.6%** |
+| back | 180° | **100%** | **47.9%** |
+| left | 270° | **100%** | **14.6%** |
+| top | (none) | **100%** | **29.2%** |
+
+> ⚠️ **The exact-normal column was wrong twice and is now measured against the tool that
+> exists.** It read 83% / 83% / 63% for two reasons, both corrected 2026-08-04:
+> (1) it assumed indexing makes the four vertical faces equivalent — it does not, the
+> cabinet is 250 mm wide and 180 mm deep, so a side face rotated to the front sits 35 mm
+> closer to the arm; and (2) the whole column was measured with `PAD_STANDOFF = 0.045`, a
+> guess predating the wiping tool. The built tool is **105 mm** wrist-to-pad.
+>
+> **The relaxed column is unchanged at 100% and the gate still passes on it.** That is the
+> load-bearing fact: this cell only works because a compliant pad conforms over ~30°. A
+> station that presses at exact normal would be operating in the right-hand column. Do not
+> design one that does.
 
 **This is the cheapest fix available.** The alternative to a ~$1–2K indexing table is a
 second arm, a linear rail, or accepting that one face of every device never gets cleaned.
@@ -261,6 +274,23 @@ the motion sequence, and a demo that hides an axis understates its own integrati
 > to press depth (3.0 vs 1.5 mm), which points at grip geometry or free play rather than
 > friction. **A production cell should use a proper tool changer or a positively located
 > tool holder, not a parallel-jaw grip on a shank.** See V5_PLAN, V5-C status.
+>
+> ### ⚠️ THIS SECTION IS OUT OF DATE AND WILL BUILD THE WRONG CELL
+> Both components below are now **modelled and required**, not future work. Building from
+> the text above gets you the parallel-jaw shank grip that was measured NOT to work (creep
+> 60–70 mm across one face's raster, insensitive to both grip force and press depth).
+>
+> | component | what it does | modelled as | numbers |
+> |---|---|---|---|
+> | **tool changer** | LOCATION | `toollock` weld, `xarm_gripper_base_link`↔`padtool` | capture envelope 4 mm / 4°; measured coupling drift **0.03 mm** across a full job |
+> | **active contact flange** | FORCE | `acf` slide joint, axis (0,0,1) | stiffness **800 N/m**, damping 12, stroke **−2 … +30 mm** |
+>
+> You need **both**. The changer alone gives a rigid coupling, and then the arm's ~1.5 mm
+> path error lands straight on contact force. The flange alone cannot locate the tool.
+> Read them out of `sim_poc/ufactory_xarm7/refurb_scene_v5.xml` before sourcing parts —
+> these are catalogue items in any polishing or sanding cell, and **neither has been
+> priced or sourced.** The pad's compliance is also no longer "not yet pressed": V5-C
+> measured median **13.1 N** with a 271 N peak over 3744 raster points.
 
 **The pad is deliberately compliant** (`solref="0.045 1"`, `solimp="0.55 0.88 0.012"`).
 This is the low-cost industrial answer to surface following: a sprung or foam-backed pad
@@ -340,8 +370,9 @@ Read this section before quoting any number from §1–6 to a customer.
 - **The ±2.5 mm tolerance is inherited from the v4 cartridge cell**, not measured on the
   v5 stations (§6).
 - **Device mass** — 8.0 kg is a placeholder; no source document gives one (§3).
-- **The 120 mm riser is not modelled**, so no arm-to-riser clearance has been checked and
-  a real riser will cost some exact-normal side-face poses (§2).
+- ~~**The 120 mm riser is not modelled**~~ — **superseded.** It is modelled (`arm_riser`,
+  ⌀150 mm) and swept: it costs **nothing** at any diameter to 250 mm. §2 has the table.
+  This bullet contradicted §2 for a whole phase; if you find another like it, §2 wins.
 - **The rotary indexer has not been priced** (§4).
 
 ---

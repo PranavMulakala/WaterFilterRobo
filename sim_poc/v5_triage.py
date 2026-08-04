@@ -624,7 +624,10 @@ def calibrate(n, cfg=CFG):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--eval", type=int, metavar="N")
-    ap.add_argument("--seed0", type=int, default=200)
+    # 700, not 200: 200-259 is a SPENT range, and a bare --eval therefore both
+    # re-consumed held-out seeds and overwrote the committed 97.5% baseline with a
+    # different-seed number. The published result is --eval 120 --seed0 700.
+    ap.add_argument("--seed0", type=int, default=700)
     ap.add_argument("--calibrate", type=int, metavar="N")
     ap.add_argument("--views", type=int, metavar="SEED",
                     help="render one unit's views + masks to /tmp for inspection")

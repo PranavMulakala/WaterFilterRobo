@@ -43,7 +43,16 @@ ROT_TOL = np.deg2rad(4)  # rad
 IK_ITERS = 220
 
 # --- task geometry
-PAD_STANDOFF = 0.045     # m, tcp to the face during a cleaning raster (pad sits in between)
+# m, tcp to the face during a cleaning raster (pad sits in between).
+# 105, NOT 45. The 45 mm was a GUESS made before the wiping tool existed, and it sized the
+# whole cell: V5-C then found the built tool is 105 mm wrist-to-pad, and those 60 mm come
+# off the wrist's X -- pushing it toward its own base, the one direction a 7-DoF arm cannot
+# go. V5-C fix 5 imported the tilt cone from this module so "gate and consumer cannot
+# drift", but left THIS number un-unified, so the gate went on planning a 45 mm tool for a
+# 105 mm cell. Correcting it does not change the PASS verdict (every face is still 100%
+# inside the 30 deg cone) but it roughly halves every STRICT figure -- front 83.3 -> 47.9%,
+# sides 27.1 -> 14.6%, top 62.5 -> 29.2%. Those are the honest exact-normal numbers.
+PAD_STANDOFF = 0.105
 ORBIT_AZIMUTHS = 12
 ORBIT_ELEV_DEG = 18.0    # look slightly down at the device
 FRAME_MARGIN = 1.18      # frame the device with 18% slack around it

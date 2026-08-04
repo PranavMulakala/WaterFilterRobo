@@ -163,13 +163,28 @@ def main():
           f"of the 3.5 kg rating")
     bad += not good
 
+    # REGRESSION GUARD for the silent-clamp bug. The indexer's ctrlrange was +-pi, an
+    # unexamined default, and MuJoCo clamps ctrl without complaining -- so a commanded
+    # 270 deg silently became 180 deg, the fourth face pass re-wiped the back panel, and
+    # one SIDE face was never presented on any unit. Nothing failed, nothing logged, and
+    # the only symptom was a coverage percentage. The cell drives 0->90->180->270->360, so
+    # the command range must cover a full revolution. CELL_SPEC section 4 states this as a
+    # hardware requirement; this asserts the model still honours it.
+    tt = m.actuator("tt").id
+    lo, hi = m.actuator_ctrlrange[tt]
+    need = np.deg2rad(360.0)
+    good = (not m.actuator_ctrllimited[tt]) or (lo <= -need + 1e-6 and hi >= need - 1e-6)
+    print(f"  {'PASS' if good else 'FAIL'}  indexer ctrlrange spans a full revolution "
+          f"({np.degrees(lo):.0f}..{np.degrees(hi):.0f} deg; the cycle commands 0..360)")
+    bad += not good
+
     print()
     if bad:
         print(f"CELL_SPEC CHECK: {bad} MISMATCH(ES) -- update CELL_SPEC.md to match the "
               f"model.\nDo NOT relax these assertions; the spec is what the real cell "
               f"gets built from.")
         return 1
-    print(f"CELL_SPEC CHECK: ALL {len(checks) + len(DATASHEET_LIMITS) + 1} VALUES MATCH")
+    print(f"CELL_SPEC CHECK: ALL {len(checks) + len(DATASHEET_LIMITS) + 2} VALUES MATCH")
     return 0
 
 

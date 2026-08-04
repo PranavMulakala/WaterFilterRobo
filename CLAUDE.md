@@ -11,9 +11,10 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE on coverage — 94.6%** held out (900–907); **NOT closed on force**: 88.1% in band, 271 N peak vs a pad validated to 60 N |
+| V5-C cleaning | **DONE on coverage — 94.6%** held out (900–907); **NOT closed on force**: 88.1% in band, 271 N peak — outside the range our contact model is validated over |
 | V5-D verification + sabotage test | not started |
 | V5-E membrane (Stage 10) | not started |
+| V5-F route wiring (triage grade selects the route, end-to-end eval) | not started |
 | V5-G video | not started |
 
 **Immediate next task: V5-D (verification + sabotage test).** V5-C's five fixes are
@@ -31,9 +32,17 @@ tuning — it was four bugs in the motion layer plus two more that fell out of f
 4. **The tool is 105 mm wrist-to-pad; V5-0 assumed 45 mm.** The 30° tilt cone is
    mandatory, not optional — it is now **imported from `v5_reach`** so gate and consumer
    cannot drift. Placement stays at x = 0.58.
+   *Correction, same day: that claim was only half true when first written. The cone was
+   unified; `PAD_STANDOFF` was NOT, so the gate went on planning a 45 mm tool. Now unified
+   at 105 mm. The gate still PASSES (relaxed 100% everywhere) but every STRICT figure
+   roughly halves — front/back 47.9%, sides 14.6%, top 29.2%. Those are the honest
+   exact-normal numbers and they are why the cone is load-bearing.*
 
 **NOT closed, and it is the first thing to look at if V5-C is reopened:** in-band force
-is **88.1%** with a **271 N** peak against a pad validated to 60 N. The front and top
+is **88.1%** with a **271 N** peak. **Say that honestly: 60 N is where OUR pad's
+force/penetration curve stops being monotonic, not a component rating** — beyond it the
+contact model is extrapolating. "271 N against a pad rated for 60 N" manufactures a
+hardware damage claim the simulation cannot support. The front and top
 faces still never reach their planned pose (0% / 42% arrival) so they press hardest.
 Moving the device out cuts the required tilt (10.9° at x = 0.58 → 6.8° at x = 0.70) but
 costs the top face. Measure that trade **under contact**, not kinematically.
@@ -71,7 +80,13 @@ to 900 so a bare `--eval 8` reproduces the published number rather than a spent 
    `sim_poc4.py --eval 60 --seed0 200` (86.7% / 0.0% false-clean / 100% routing).
    All three should reproduce the committed `stats*.json` **byte-identically**.
 4. Confirm the v5 gates: `v5_check_scene.py`, `v5_check_spec.py`,
-   `v5_reach.py --indexed`. All three must pass before touching the scene.
+   `v5_reach.py --indexed`. All three must pass before touching the scene. None of them
+   writes anything (only `v5_reach.py --sweep` writes `reach_v5.json`), so they are safe
+   to run.
+5. **The v5 baselines are protected recorded results too**, and are reproduced by
+   `v5_triage.py --eval 120 --seed0 700` (97.5%) and `v5_clean.py --eval 8` (94.6%,
+   `--seed0` defaults to 900). Running either with a different seed range OVERWRITES the
+   committed stats file with a number that is not the published one.
 
 ## Environment — read this before debugging an install
 - **Requires Python 3.10+.** Apple's system `python3` is 3.9, which has no MuJoCo
@@ -136,8 +151,14 @@ to 900 so a bare `--eval 8` reproduces the published number rather than a spent 
   - **The rotary indexer (`tt`) is a COMMANDED AXIS, not scenery.** It is what takes the
     back face from 0% (unreachable at every fixed placement) to 100%, and it removes the
     camera-separation vs front-coverage trade-off. Verify with `v5_reach.py --indexed`.
-  - Pools are on the **four reachable faces only**; the back carries none, so cleaning
-    coverage means "of the reachable faces", not "of the device". Keep that wording.
+  - Pools are on **all FIVE exposed faces** — front, top, left, right **and the back
+    panel's outer surface** — because the rotary indexer made the back reachable. Cleaning
+    coverage therefore means **"of all five exposed faces"**. *(This reverses an earlier
+    "four reachable faces only, keep that wording" instruction that survived here long
+    after the fifth face went in at c19bac0. `make_scene_v5.py` added it precisely because
+    leaving the back clean "would have quietly flattered any cleaning number V5-C
+    produces" — so the stale wording was flattering the number in exactly the way the
+    scene change was meant to prevent.)*
   - Pool geoms must carry their **material's RGB with alpha 0** — a geom's `rgba`
     overrides its material, so `rgba="0 0 0 0"` reveals as BLACK and destroys the whole
     point of three visually distinct classes.
