@@ -88,8 +88,13 @@ class CleanConfig:
     # 22% of samples in band. Target the pad's CONTACT SURFACE, not its centre. Same
     # mistake as the gripper finger-pad offset, one object further out.
     pad_thick_half: float = 0.010   # m, half-thickness of the pad face geom
-    press: float = 0.0025           # m of commanded over-travel into the face
-    wipe_tol: float = 0.0012        # m, arrival tolerance -- must be << press
+    # With the ACTIVE CONTACT FLANGE the press is no longer a knife-edge: it is the
+    # commanded COMPRESSION of a 800 N/m spring, so it sets force directly (12 mm ->
+    # ~9.6 N) and a few mm of path error costs a few newtons instead of tens. Before
+    # the flange the press had to be smaller than the arrival tolerance to avoid burying
+    # the tool, which is not a condition a real arm can hold.
+    press: float = 0.012            # m of commanded flange compression
+    wipe_tol: float = 0.004         # m, arrival tolerance -- now well inside the stroke
     standoff: float = 0.055         # m, tcp-to-face when clear
     # The generator scatters patches over +-0.41 of each face extent, so a raster that
     # only spans +-0.34 can never reach the outer ring no matter how well it presses.
@@ -147,6 +152,10 @@ class Cell:
         self.tt_q = m.jnt_qposadr[m.joint("tt_rot").id]
         self.site = m.site("link_tcp").id
         self.pad_face = m.geom("pad_face").id
+        self.stem = m.geom("pad_stem").id
+        self.acf_q = m.jnt_qposadr[m.joint("acf").id]
+        self.cab_bodyid = m.body("cabinet").id
+        self.geomgroup = np.array([1, 1, 1, 1, 1, 1], np.uint8)
         self.pad_body = m.body("padtool").id
         name = lambda i: mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, i) or ""
         self.pools = {p: [i for i in range(m.ngeom) if name(i).startswith(p)]
@@ -308,6 +317,27 @@ class Cell:
             self.step_to(tgt, mat, grip, index_deg, frames, tag)
             t += self.dt
 
+    def surface_x(self, y, z):
+        """X of the device surface at (y, z), by casting a ray from in front of it.
+
+        Exact where a plane fit is not: it sees whatever geom is actually presented at
+        this point -- body, proud back panel, top cover ledge -- with no assumption about
+        which face the indexer has brought round.
+        """
+        pnt = np.array([0.20, y, z])
+        vec = np.array([1.0, 0.0, 0.0])
+        geomid = np.zeros(1, np.int32)
+        # bodyexclude = -1: exclude NOTHING. Passing the cabinet here excludes the very
+        # thing we are trying to hit -- the ray then flew past it and returned the
+        # backdrop at x = 0.854 for every point, on every face.
+        dist = mujoco.mj_ray(self.m, self.d, pnt, vec,
+                             self.geomgroup, 1, -1, geomid)
+        if dist < 0 or geomid[0] < 0:
+            return None
+        if self.m.geom_bodyid[geomid[0]] != self.cab_bodyid:
+            return None                        # hit something that is not the device
+        return float(pnt[0] + dist)
+
     # ---------------------------------------------------------------- geometry
     def front_face_plane(self, index_deg):
         """(x of the face now at the FRONT position, half-width in Y, z range).
@@ -360,6 +390,7 @@ class Cell:
         tcp = self.d.site_xpos[self.site]
         Rt = self.d.site_xmat[self.site].reshape(3, 3)
         self.pad_rel = Rt.T @ (self.d.geom_xpos[self.pad_face] - tcp)
+        self.stem_rel = Rt.T @ (self.d.geom_xpos[self.stem] - tcp)
 
         if not latched:
             return {"seed": seed, "truth": truth, "picked": False, "coverage": 0.0,
@@ -421,9 +452,17 @@ class Cell:
                 order = range(cols) if r % 2 == 0 else reversed(range(cols))
                 for c in order:
                     u = -u_lim + 2 * u_lim * c / (cols - 1)
-                    # place the PAD on the face, not the TCP: back off along the
-                    # measured pad offset, expressed in this face's tool frame
-                    pad_pt = np.array([fx - cfg.pad_thick_half + cfg.press,
+                    # PROBE THE SURFACE PER POINT with a ray, instead of assuming one
+                    # plane for the whole face. A single plane from the geom extents was
+                    # inconsistent between mirror-symmetric orientations (0.4536 at index
+                    # 90 vs 0.4800 at 270), because a rotated box's X-extent is not its
+                    # presented face -- so the pad was commanded short of the surface and
+                    # did not touch for 29% of the raster. A ray gives the ACTUAL surface
+                    # at this point, and handles the proud back panel for free.
+                    hit = self.surface_x(cy + u, zc + v)
+                    if hit is None:
+                        continue
+                    pad_pt = np.array([hit - cfg.pad_thick_half + cfg.press,
                                        cy + u, zc + v])
                     tgt = pad_pt - tm @ pad_rel
                     cleaned += self.move(tgt, tm, cfg.grip_open, index_deg=deg,
@@ -475,10 +514,15 @@ class Cell:
 
         # measure how far the tool moved relative to the wrist across the whole job,
         # while it is STILL LATCHED -- measuring after unlatch just reports the holder
+        # COUPLING integrity is measured on the SHANK, not the pad. The pad now rides
+        # on the compliance flange, so its offset from the wrist SHOULD change -- that
+        # movement is the flange doing its job, and reporting it as "tool drift" would
+        # make a working spring look like a slipping grip.
         tcp_e = self.d.site_xpos[self.site]
         Re = self.d.site_xmat[self.site].reshape(3, 3)
         drift_mm = float(np.linalg.norm(
-            Re.T @ (self.d.geom_xpos[self.pad_face] - tcp_e) - self.pad_rel) * 1000)
+            Re.T @ (self.d.geom_xpos[self.stem] - tcp_e) - self.stem_rel) * 1000)
+        acf_mm = float(self.d.qpos[self.acf_q] * 1000)
 
         # --- return the tool to its holder and unlatch
         self.move(want + np.array([0, 0, 0.14]), gm, cfg.grip_open,
@@ -495,7 +539,7 @@ class Cell:
         touching = f[f >= self.cfg.contact_min_n]
         return {"seed": seed, "truth": truth, "picked": True,
                 "couple_mm": perr * 1000, "couple_deg": aerr,
-                "tool_drift_mm": drift_mm,
+                "coupling_drift_mm": drift_mm, "acf_mm": acf_mm,
                 "soil0": n0, "cleaned": n0 - left, "missed": left,
                 "coverage": (n0 - left) / n0 if n0 else 1.0,
                 "f_med": float(np.median(touching)) if len(touching) else 0.0,
@@ -525,6 +569,9 @@ def report(rows):
           f"(pad validated monotonic to 60 N)")
     print(f"  in force band   : {ib.mean()*100:.1f}%   contact during raster: "
           f"{cf.mean()*100:.1f}%")
+    cd = np.array([r.get("coupling_drift_mm", 0.0) for r in ok]) if ok else np.array([0.0])
+    print(f"  coupling drift  : {cd.mean():.2f} mm mean, {cd.max():.2f} mm worst "
+          f"(tool changer; the flange stroke is separate and expected)")
     print("\n  Coverage is of ALL FIVE faces -- the back panel carries soil too, since the")
     print("  indexer reaches it. No fluid or chemistry is simulated: what is verified is")
     print("  that the soil the camera could see is gone.")

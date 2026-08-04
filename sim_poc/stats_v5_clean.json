@@ -1,10 +1,10 @@
 {
   "n": 8,
   "picked": 8,
-  "coverage_mean": 0.44713702844090775,
-  "coverage_worst": 0.35,
-  "missed": 67,
+  "coverage_mean": 0.6466668508694371,
+  "coverage_worst": 0.55,
+  "missed": 44,
   "soil": 120,
-  "f_max": 699.9754243567075,
-  "in_band": 0.5344711992979205
+  "f_max": 143.46204702339213,
+  "in_band": 0.9630600344989365
 }
