@@ -285,7 +285,8 @@ to 900 so a bare `--eval 8` reproduces the published number rather than a spent 
    Only successful episodes are exported, so the set contains no recovery demos.
    `--validate-only` re-checks an existing dataset. Datasets are gitignored (~6 MB/ep).
 2. ~~**Swap in real geometry when the refurb docs arrive.**~~ **DOCS LANDED 2026-08-04.**
-   The 13 work instructions are transcribed in `sim_poc/dp_process.py`; the plan is
+   All 13 source documents (10 stage work instructions + 3 QC flow pages) are
+   transcribed in `sim_poc/dp_process.py`; the plan is
    `V5_PLAN.md`. What they changed:
    - Our cycle approximates **Stage 10, Membrane Assembly** — a real, named station.
    - But their cap is **threaded, spanner-tightened (multi-turn to a torque

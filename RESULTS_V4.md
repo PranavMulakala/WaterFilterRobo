@@ -1,5 +1,12 @@
 # Results — v4 Inspect / Clean / Replace
 
+> **v4 is no longer the current work.** It is complete and every number below still
+> reproduces, but the project moved to **v5** on 2026-08-04 — a unit-scale cell that
+> triages, cleans and reassembles the whole purifier rather than one cartridge. v5
+> results live in **[V5_PLAN.md](V5_PLAN.md)**; current state is at the top of
+> **[CLAUDE.md](CLAUDE.md)**. Read this file for the v4 numbers and for the vision
+> lessons, which still govern.
+
 **All three routes run end to end. Routing compliance 100%, false-clean rate 0.0%,
 end-to-end 86.7% — on 60 held-out trials.** Nothing here is tuned to flatter the
 numbers; the section on what still limits it is at the bottom.
@@ -161,20 +168,25 @@ bought hardware — see PITCH_NOTES.
 
 ## Honesty notes
 
-- **The 90% inspection figure is in-cell**, measured through the real motion path.
-  An earlier version of this file would have reported 90% from a *test rig* that
-  teleported the part into position — and the same classifier scored **53%** in the
-  actual cell, with a **34.8% false-clean rate**, because the presentation height was
-  wrong. See PAIN_JOURNAL. A vision result is only as valid as the fixture that
-  presents the part.
-- In-cell inspection read **100% on seeds 0–19** and **90.0%** on 30 held-out seeds.
-  The 100% was small-sample luck and is not the number.
+- **The headline inspection figure is in-cell**, measured through the real motion path.
+  An earlier version of this file reported 90% from a *test rig* that teleported the
+  part into position — and the same classifier scored **53%** in the actual cell, with a
+  **34.8% false-clean rate**, because the presentation height was wrong. See
+  PAIN_JOURNAL. A vision result is only as valid as the fixture that presents the part.
+- **The number came down as the sample grew, and that is the point.** In-cell inspection
+  read **100% on seeds 0–19**, then **90.0% / 3.7% false-clean** on 30 held-out seeds,
+  then **86.7% / 0.0%** on 60. The 100% was small-sample luck; **86.7% on seeds 200–259
+  is the number**, and `stats_v4.json` records 60 trials. Reproduce with
+  `sim_poc4.py --eval 60 --seed0 200` — a 30-seed run overwrites that baseline with the
+  superseded figure.
 - Deposits are **visual only** — no collision, negligible mass. Real scale would
   change fit and mass. Not modelled.
-- **No v4 demo video yet** — that is Phase B. All three routes now run, so the
-  three-route cut is buildable. `media/refurb_cell_v3.mp4` remains the current demo
-  until it exists.
-- Deposits are **visual only** — no collision, negligible mass.
+- **The v4 demo video shipped** (Phase B): `media/refurb_cell_v4.mp4`, ~81 s, all three
+  routes with the live camera verdict on screen, trial footage at a clearly-labelled
+  1.8×; `media/refurb_cell_v4_full.mp4` is the uncompressed 2:16 cut for true cycle
+  times. *(This bullet said "no v4 demo video yet" for two phases after the video
+  existed — and the duplicate "deposits are visual only" line it sat next to is now
+  folded into the one above.)*
 - Cleaning is **dip + dwell + agitate with no fluid or chemical simulation.** What is
   verified is that the deposits the camera could see are gone, not that any real
   descaling chemistry would work.

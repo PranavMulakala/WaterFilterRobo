@@ -1,5 +1,12 @@
 # Water Filter Robotics Project — Context Brief
-*Last updated: Aug 1, 2026. Purpose: give any new Claude chat (or a new collaborator) full context on this project in one read.*
+*Last updated: Aug 4, 2026. Purpose: give a new collaborator the BUSINESS context in one
+read — the people, the idea, the advice, the economics.*
+
+> **This file is not the technical status.** For where the build actually stands, read
+> **[CLAUDE.md](CLAUDE.md)** (opens with "WHERE THE WORK IS"), then
+> **[V5_PLAN.md](V5_PLAN.md)** for v5 results and **[RESULTS_V4.md](RESULTS_V4.md)** for
+> v4. This file went three days stale once while quoting an 84% figure that had already
+> become 100%, which is why the split is now explicit.
 
 ## The people
 
@@ -9,7 +16,11 @@
 
 ## The idea (current form)
 
-Long-term vision: "Thumbtack/handyman services, but robots do the work." Near-term wedge: **DrinkPrime** — an Indian (Bangalore) water-purifier-subscription company (~1,000 units manufactured/day). Original angle was refurbishment of returned units; current focus is **automating ONE station of their assembly/refurb line** (likely filter-cartridge insertion or housing screw-down) as a POC, using an off-the-shelf robot arm + imitation-learned policies. Teja knows the founder, who said he'd happily look at a demo.
+Long-term vision: "Thumbtack/handyman services, but robots do the work." Near-term wedge: **DrinkPrime** — an Indian (Bangalore) water-purifier-subscription company (~1,000 units manufactured/day; the manufacturing entity named in their documents is Waterwala Labs). Teja knows the founder, who said he'd happily look at a demo.
+
+**The wedge narrowed and then widened again, deliberately.** It began as "automate ONE station of the assembly line" — probably cartridge insertion or housing screw-down. On 2026-08-02 the founder said **refurbishment is their biggest pain point**, so refurb became the target. On 2026-08-04 their **real process documents landed** — 13 files: 10 stage work instructions plus 3 QC flow-chart pages — and the build is now a **three-station refurb cell** modelled on their actual documented process: TRIAGE (grade the incoming unit), CLEAN (Stages 2–3), MEMBRANE ASSEMBLY (Stage 10). See [V5_PLAN.md](V5_PLAN.md).
+
+Approach is still an off-the-shelf arm (xArm7) plus, eventually, imitation-learned policies — but everything shipped so far is a **scripted** controller. Our advisor was explicit that scripting is fine at the demo stage and does not prove the approach survives things moving; see PITCH_NOTES.
 
 Secondary idea (Teja's, under research): **software to help robotics companies launch and manage deployments** ("ERP for robotics" / picks-and-shovels). Current conclusion: real but crowded at the fleet-ops layer (Formant, InOrbit, Viam) and data layer (Foxglove, $40M Series B); the open gap is robot-learning ops (teleop data collection → LeRobot datasets → fine-tune → eval → deploy). Verdict so far: a *second* startup — do the DrinkPrime deployment first, document every workflow pain as product research, revisit with Proprio as design partner.
 
@@ -28,13 +39,35 @@ Secondary idea (Teja's, under research): **software to help robotics companies l
 
 Indian assembly labor ≈ $1.50–2.50/hr. Robot must beat that or win: consistency/quality, 24/7 operation — or train cheap in India, sell in expensive-labor markets.
 
-## Current next steps
+**This is the honest weak point of the whole thesis, and PITCH_NOTES says to raise it
+before the customer does.** One update from the 2026-08-02 call, relayed secondhand
+through Teja rather than heard directly: **the founder's stated constraint is throughput,
+not cost** — he can hire people and is not paying them much, but he does not think it is
+fast enough. Treat that as a lead to verify with him, not as an established fact. Do not
+quote the "10K" labour figure from that call: it is internally contradictory (stated both
+as a total and as per-worker), names no time period, and was flagged as hypothetical by
+the speaker.
 
-1. Teja → DrinkPrime founder call: labor numbers, willingness-to-pay, ship parts to US, process video, pre-order/grant appetite.
-2. Sim POC DONE — see cartridge_cell_v2.mp4 + sim_poc_v2.zip in this folder (84% locked over 25 randomized trials).
-3. Hardware purchase ON HOLD until founder interest confirmed. Budget: ≤$10K split & go; $50K+ rethink.
-4. Pranav ramp: LeRobot tutorials, OpenPi repo, maybe SO-101 kit.
-5. Decide robot home base + formalize co-founder structure/equity.
+## Where this stands commercially (updated Aug 4)
+
+1. **Founder interest is confirmed, verbally.** He has indicated **$20–30K for arms** if
+   the refurb process can be credibly simulated, with an explicit bar of *image
+   inspection plus a cleaning step*. **Still not in writing** — that remains the gate on
+   any hardware purchase. Budget guidance unchanged: ≤$10K split & go; $50K+ rethink.
+2. **Their real process documents landed** (2026-08-04): 13 files in total — 10 stage
+   work instructions and 3 QC flow-chart pages, transcribed as data in `sim_poc/dp_process.py`. The build is now modelled
+   on their documented stages rather than on a generic cartridge swap.
+3. **The top open ask is what defines Easy / Medium / Hard** — and it must be asked
+   open-ended, because **no document in the set defines it**. If their operators grade by
+   *feel* rather than by eye, camera-only inspection is the wrong architecture and we
+   should stop investing in the classifier. Full ask list in V5_PLAN.
+4. Still open from the original list: Pranav's LeRobot / OpenPi ramp; deciding the robot's
+   home base; and formalising co-founder structure and equity.
+
+*(This section previously said "Sim POC DONE … 84% locked over 25 randomized trials" and
+"hardware ON HOLD until founder interest confirmed". Both were superseded within days —
+the 84% became 100% over 200 trials, and the founder confirmed interest. Technical
+numbers do not belong in this file; that is why they now live in CLAUDE.md.)*
 
 ## Key resources
 
