@@ -86,6 +86,11 @@ RISER_DIA = 0.150
 # MuJoCo's default density the solid box came out 21.3 kg -- an artifact of filling it
 # with water. A stated stand-in beats an accidental number.
 CAB_MASS = 8.0                # kg, empty countertop RO purifier -- OPEN ASK
+# Active contact flange: the compliance unit between the tool changer and the pad.
+ACF_K = 800.0                 # N/m spring rate
+ACF_C = 12.0                  # N.s/m damping
+ACF_STROKE = 0.030            # m of travel
+ACF_NOMINAL = 0.012           # m of commanded compression -> ~9.6 N
 # Distributed across ALL FOUR cabinet geoms. Setting it on cab_body alone left the cover,
 # facia and back panel at default density and the total came out 9.48 kg -- caught
 # immediately by v5_check_spec.py, which is the point of that check existing.
@@ -497,11 +502,36 @@ def build(seed=SEED, cab_x=CAB_X):
            Measured with these values: 1.4 / 2.0 / 2.4 / 2.6 / 3.0 / 4.6 mm at
            0 / 5 / 10 / 20 / 40 / 60 N. About 3 mm of give across the working range,
            never close to the 10 mm half-thickness. -->
-      <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
-            material="padmat" mass="0.04" priority="1"
-            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
-      <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
       <site name="pad_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+
+      <!-- ============== ACTIVE CONTACT FLANGE (compliance unit) ==============
+           A sprung axis between the coupled shank and the pad, along the approach
+           direction. This is a real product category -- the compliance unit that sits
+           between a tool changer and a surface-finishing tool -- and this cell needs
+           BOTH: the changer gives LOCATION, the flange gives FORCE.
+
+           WHY. With the tool rigidly coupled, nothing absorbed path error and the arm's
+           ~1.5 mm positioning error landed straight on contact force: median 58 N and a
+           press depth that barely moved it (60.7 N at 2.5 mm, 61.1 N at 0.0 mm). Before
+           the changer, a slipping parallel-jaw grip had been absorbing that error by
+           FAILING -- an accidental and terrible compliance element. Removing it did not
+           create the force problem, it revealed it.
+
+           SIZING. {ACF_K:.0f} N/m over a {ACF_STROKE*1000:.0f} mm stroke, so the whole
+           stroke spans about {ACF_K*ACF_STROKE:.0f} N. Commanding a nominal
+           {ACF_NOMINAL*1000:.0f} mm of compression targets ~{ACF_K*ACF_NOMINAL:.0f} N,
+           and a +/-3 mm path error then moves the force by only
+           +/-{ACF_K*0.003:.1f} N instead of tens. That is the entire point: force becomes
+           a property of the SPRING, not of the arm's accuracy. -->
+      <body name="padhead" pos="0 0 0">
+        <joint name="acf" type="slide" axis="0 0 1" range="-0.002 {ACF_STROKE:.4f}"
+               stiffness="{ACF_K:.0f}" damping="{ACF_C:.0f}" springref="0"
+               armature="0.002"/>
+        <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
+              material="padmat" mass="0.04" priority="1"
+              solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
+        <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+      </body>
     </body>
 
     <!-- Tool post. FLAT on purpose. The first draft gave it a locating ring of radius
@@ -568,10 +598,11 @@ def build(seed=SEED, cab_x=CAB_X):
          without touching three validated cells. Hence a second, complete keyframe.
          `v5_check_scene.py` asserts this one is correct and that index 0 is NOT used.
 
-         qpos layout (21): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         qpos layout (22): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+                         | 1 acf (compliance flange, 0 = fully extended)
          ctrl layout  (9): 7 arm | 1 gripper | 1 tt -->
     <key name="v5home"
-         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0"
+         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0  0"
          ctrl="0 -.247 0 .909 0 1.15644 0 0 0"/>
   </keyframe>
 </mujoco>

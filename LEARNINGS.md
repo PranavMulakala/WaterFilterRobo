@@ -418,3 +418,33 @@ because we compared our counts against the truth, defect by defect.
 **Honest footnote:** we could probably reach ~100% here, because we defined the categories
 with clean gaps between them. That would prove our counter counts, not that the problem is
 solved. The real test is DrinkPrime's own criteria, which we still don't have.
+
+## 2026-08-04 — The robot needed a spring, not better aim
+
+**What we built:** A compliance unit between the robot's wrist and the cleaning pad — and
+before that, a proper tool coupling. Cleaning coverage went 0% → 65% across the day.
+
+**Holding a tool is not the same as gripping a part.** We first had the robot pick the
+wiping pad up in its fingers. It pivoted: a round shank in parallel jaws can rotate, and
+the pad swung most of a right angle the moment the wrist turned sideways. We squared off
+the shank — better, but it still crept 60–70 mm across a single face. The giveaway was
+that squeezing *harder* didn't help, and pressing *lighter* didn't either. **When a fix
+is insensitive to the knob you think controls it, the knob isn't the problem.** Real cells
+don't grip process tools at all; they use a *tool changer* that locks mechanically. With
+one modelled, movement dropped to 0.16 mm.
+
+**And then the forces got worse — which was correct.** A position-controlled arm can only
+be told *where* to go, not *how hard* to push. Ask it for a spot 2 mm inside a wall and it
+will lean on that wall as hard as it takes. Our sloppy grip had been hiding this by
+slipping; with a rigid tool, the arm's ~1.5 mm of aiming error landed straight on the
+contact force — 58 N of scrubbing pressure.
+
+**The fix is a spring, and it's a real product.** Put a sprung axis between the wrist and
+the pad and the force stops depending on aim: the pad simply retracts. 3 mm of aiming
+error now costs 2 N instead of tens. Force went 58 N → 17 N, and stayed in range 96% of
+the time.
+
+**Why it matters:** the cell needs *two* components where we assumed one — a changer for
+**position**, a compliance unit for **force**. Neither is exotic; both are catalogue parts
+used by every polishing and sanding cell. Knowing you must buy them, before you buy
+anything, is the sort of answer this simulation exists to produce.

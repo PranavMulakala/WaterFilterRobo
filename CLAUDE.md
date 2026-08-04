@@ -11,21 +11,26 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **PARTIAL** — tool holding solved (0.26 mm drift), **coverage only 44.7%** |
+| V5-C cleaning | **PARTIAL** — tool changer + compliance flange done; **coverage 64.7%**, force in band 96.3% |
 | V5-D verification + sabotage test | not started |
 | V5-E membrane (Stage 10) | not started |
 | V5-G video | not started |
 
-**Immediate next task: model a compliance flange for V5-C.** Evidence: press depth
-2.5→0.0 mm barely moved contact force (60.7→61.1 N), and with a rigid tool coupling the
-arm's ~1.5 mm path error lands straight on the force. Real surface-finishing cells use a
-changer for LOCATION plus an active contact flange for FORCE. Do not tune further — add
-the component.
+**Immediate next task: close the last of V5-C's coverage gap, then V5-D.** Coverage has
+gone 0 → 11 → 22 → 45 → 56 → **64.7%**, every step from a diagnosed bug rather than
+tuning. Remaining: **36.7% of soil patches are still missed and contact holds for only
+74.4% of the raster** — find WHERE (top face? face edges? the facia band?) before
+changing anything. `--eval 8 --seed0 800` reproduces it.
 
-**Two things NOT to quote until fixed:**
-- `stats_v5_clean.json` peak force reads **exactly 700.0 N on all 8 seeds** — identical
-  across eight different soil layouts is a clamp, not a measurement. Cause unknown.
-- V5-C coverage (44.7%) is not presentable.
+**The cell now needs TWO tool components, and both are modelled:** a tool changer for
+LOCATION (`toollock` weld, 4 mm/4° capture envelope, coupling drift 0.16 mm) and an
+ACTIVE CONTACT FLANGE for FORCE (`acf` slide joint, 800 N/m over 30 mm). Do not remove
+either. A parallel-jaw grip on a shank does NOT work — creep was insensitive to grip
+force and press depth; see PAIN_JOURNAL 2026-08-04.
+
+**NOT to quote:** V5-C coverage (64.7%) is not presentable yet. The old "exactly 700.0 N
+on all 8 seeds" peak-force artefact is GONE since the flange went in (now 143.5 N) — it
+appears to have been the rigid coupling saturating something.
 
 **Seed ledger — held-out sets are consumed by use.** Spent: 200–259, 300–419, 500–619,
 700–819 (triage), 800+ (cleaning). Calibration lives at 9000+. Use a FRESH range for any

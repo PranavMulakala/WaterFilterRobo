@@ -345,11 +345,36 @@
            Measured with these values: 1.4 / 2.0 / 2.4 / 2.6 / 3.0 / 4.6 mm at
            0 / 5 / 10 / 20 / 40 / 60 N. About 3 mm of give across the working range,
            never close to the 10 mm half-thickness. -->
-      <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
-            material="padmat" mass="0.04" priority="1"
-            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
-      <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
       <site name="pad_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+
+      <!-- ============== ACTIVE CONTACT FLANGE (compliance unit) ==============
+           A sprung axis between the coupled shank and the pad, along the approach
+           direction. This is a real product category -- the compliance unit that sits
+           between a tool changer and a surface-finishing tool -- and this cell needs
+           BOTH: the changer gives LOCATION, the flange gives FORCE.
+
+           WHY. With the tool rigidly coupled, nothing absorbed path error and the arm's
+           ~1.5 mm positioning error landed straight on contact force: median 58 N and a
+           press depth that barely moved it (60.7 N at 2.5 mm, 61.1 N at 0.0 mm). Before
+           the changer, a slipping parallel-jaw grip had been absorbing that error by
+           FAILING -- an accidental and terrible compliance element. Removing it did not
+           create the force problem, it revealed it.
+
+           SIZING. 800 N/m over a 30 mm stroke, so the whole
+           stroke spans about 24 N. Commanding a nominal
+           12 mm of compression targets ~10 N,
+           and a +/-3 mm path error then moves the force by only
+           +/-2.4 N instead of tens. That is the entire point: force becomes
+           a property of the SPRING, not of the arm's accuracy. -->
+      <body name="padhead" pos="0 0 0">
+        <joint name="acf" type="slide" axis="0 0 1" range="-0.002 0.0300"
+               stiffness="800" damping="12" springref="0"
+               armature="0.002"/>
+        <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
+              material="padmat" mass="0.04" priority="1"
+              solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
+        <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+      </body>
     </body>
 
     <!-- Tool post. FLAT on purpose. The first draft gave it a locating ring of radius
@@ -416,10 +441,11 @@
          without touching three validated cells. Hence a second, complete keyframe.
          `v5_check_scene.py` asserts this one is correct and that index 0 is NOT used.
 
-         qpos layout (21): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         qpos layout (22): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+                         | 1 acf (compliance flange, 0 = fully extended)
          ctrl layout  (9): 7 arm | 1 gripper | 1 tt -->
     <key name="v5home"
-         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0"
+         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0  0"
          ctrl="0 -.247 0 .909 0 1.15644 0 0 0"/>
   </keyframe>
 </mujoco>
