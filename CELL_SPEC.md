@@ -202,6 +202,14 @@ arrive without invalidating the layout.
 rotation about vertical, top surface 10 mm above the bench. Repeatability ±0.5° is ample.
 A stepper-driven indexing table or a small servo positioner is the standard part class.
 
+> **It must accept a command anywhere in a FULL revolution, and this is not a detail.**
+> The model's actuator was specified ±180°, an unexamined default. The joint itself is
+> unlimited so nothing failed loudly — but a 270° command was silently clamped to 180°,
+> and the cleaning cycle then re-wiped the back panel while one side face was never
+> presented at all, on every unit. A commodity indexer turns continuously; specify one
+> that does, and make the command range explicit on the datasheet rather than assuming
+> it. The cell drives 0° → 90° → 180° → 270° → 360°, all in one direction.
+
 **Payload: not yet known.** No source document gives a device mass; the simulation
 carries the 8.0 kg placeholder above (9.0 kg including the platter). Get the real device
 mass before sizing this.

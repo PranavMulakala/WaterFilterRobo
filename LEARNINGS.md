@@ -448,3 +448,61 @@ the time.
 **position**, a compliance unit for **force**. Neither is exotic; both are catalogue parts
 used by every polishing and sanding cell. Knowing you must buy them, before you buy
 anything, is the sort of answer this simulation exists to produce.
+
+## 2026-08-04 — We were tuning the wipe. The robot was never getting there.
+
+**What we found:** V5-C's cleaning coverage sat at 64.7%, and the obvious reading was
+"press harder, raster tighter." We built instruments instead. Coverage was never the
+problem: the arm fails to reach its commanded position through almost the whole cleaning
+cycle, missing by 100–400 mm, and one of the five faces is never presented to it at all.
+
+**A robot arm can collide with itself.** Reaching a point isn't one problem, it's two:
+*can the hand get there*, and *can the rest of the arm get out of its own way*. Our wrist
+was jammed against the shoulder hard enough that one motor sat pinned at its torque limit
+for the entire move. The arm was straining against itself, and the only visible symptom
+was a coverage percentage.
+
+**Why it happened is a lesson about planning before you have the part.** Back when we
+studied whether the arm could reach the cabinet, we assumed the wiping tool would hold the
+wrist 45 mm off the surface. The tool we then actually built is 105 mm long. Those 60 mm
+push the wrist *toward the robot's own base* — the one direction it cannot go. Same study,
+same solver, one honest number changed: the two side faces go from mostly reachable to
+almost entirely unreachable.
+
+**And a green light was measuring the wrong thing.** Our reachability check passes because
+it allows the pad to meet the surface at up to 30° off square — fair, since the pad is
+soft and conforms. But the cleaning program always approaches dead square and never uses
+that allowance. So the check was reporting on a robot that tilts, and we shipped one that
+doesn't. Nothing connected the two.
+
+**Why it matters:** the fix isn't a better wipe, it's admitting the tool changed the cell.
+Real cells discover this when the tooling arrives and nothing reaches — we found it for
+the price of an afternoon and a measuring script.
+
+## 2026-08-04 — Look before you move: the robot now plans, then drives
+
+**What we built:** the five fixes for the cleaning station. Coverage went **64.7% → 94.6%**
+on units the code had never seen, with every raster point now actually attempted.
+
+**The big one: stop steering, start planning.** The arm had been steering toward each
+target the way you'd nudge a cursor — take a small step in roughly the right direction,
+repeat. That works until the arm folds against itself, and then it is stuck, because
+nothing in "step toward the goal" knows the goal is behind its own shoulder. Now it
+*solves* for a whole arm posture first, checks that posture for collisions and for joints
+jammed at their limits, and only then drives to it. Plan error at every point: zero.
+
+**A planner has to know what the robot is carrying.** Our first version could not see its
+own wiping pad — the pad is attached by a simulated latch rather than being part of the
+arm, so when we asked "where would the arm be in this posture?", the pad stayed behind.
+Which meant nothing checked whether a 60 mm pad would clip the turntable. It does now.
+
+**"Get within 4 mm" is not a thing a loaded arm can promise.** At full stretch, less than
+one degree of droop in a single joint is 14 mm at the hand. So the robot kept waiting for
+an accuracy it could never reach — leaning on the cabinet at full pressure for two and a
+half seconds at every single point. We now stop when the pad is properly seated *and has
+stopped getting closer*, which is what "the wipe is done" actually means.
+
+**Why it matters:** every one of these is the same shape — the machine was measuring
+something adjacent to what mattered. And we kept the 94.6% rather than a 100% we could
+have had by pressing longer and harder, because coverage bought with force is not
+coverage.

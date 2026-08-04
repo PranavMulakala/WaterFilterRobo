@@ -16,11 +16,34 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-E membrane (Stage 10) | not started |
 | V5-G video | not started |
 
-**Immediate next task: close the last of V5-C's coverage gap, then V5-D.** Coverage has
-gone 0 → 11 → 22 → 45 → 56 → **64.7%**, every step from a diagnosed bug rather than
-tuning. Remaining: **36.7% of soil patches are still missed and contact holds for only
-74.4% of the raster** — find WHERE (top face? face edges? the facia band?) before
-changing anything. `--eval 8 --seed0 800` reproduces it.
+**Immediate next task: V5-D (verification + sabotage test).** V5-C's five fixes are
+landed; see V5_PLAN "V5-C DIAGNOSIS" and "V5-C RESULT". Coverage **64.7% → 94.6%** held
+out (seeds 900–907), 0 raster points skipped, tool drift 0.03 mm. None of it came from
+tuning — it was four bugs in the motion layer plus two more that fell out of fixing them:
+
+1. **The indexer never reached 270°** — `deg2rad(270)` vs `ctrlrange` ±π, clamped
+   silently. Now ±360°, and the cycle indexes *forward* to 360° for the top pass.
+2. **The arm self-collided** and missed every waypoint by 100–400 mm. The cleaner now
+   **plans then executes**: smallest feasible tilt, collision- and limit-checked, driven
+   as a joint target. Plan error 0.00 mm at every point.
+3. **34.2% of raster points were silently skipped** — `surface_x` rayed through the arm.
+   Now rays only the cabinet's geoms, and **counts** anything it declines to attempt.
+4. **The tool is 105 mm wrist-to-pad; V5-0 assumed 45 mm.** The 30° tilt cone is
+   mandatory, not optional — it is now **imported from `v5_reach`** so gate and consumer
+   cannot drift. Placement stays at x = 0.58.
+
+**NOT closed, and it is the first thing to look at if V5-C is reopened:** in-band force
+is **88.1%** with a **271 N** peak against a pad validated to 60 N. The front and top
+faces still never reach their planned pose (0% / 42% arrival) so they press hardest.
+Moving the device out cuts the required tilt (10.9° at x = 0.58 → 6.8° at x = 0.70) but
+costs the top face. Measure that trade **under contact**, not kinematically.
+
+**Do not quote a force/tilt/raster figure as an n-unit spread.** The cleaning trajectory
+is open-loop and seed-independent — only coverage and missed spots vary with the seed.
+`report()` prints this on every run.
+
+**`V5_PLAN.md`'s indexed table was wrong for the side faces (83% → actually 27% strict)**
+and is corrected in place.
 
 **The cell now needs TWO tool components, and both are modelled:** a tool changer for
 LOCATION (`toollock` weld, 4 mm/4° capture envelope, coupling drift 0.16 mm) and an
@@ -28,13 +51,10 @@ ACTIVE CONTACT FLANGE for FORCE (`acf` slide joint, 800 N/m over 30 mm). Do not 
 either. A parallel-jaw grip on a shank does NOT work — creep was insensitive to grip
 force and press depth; see PAIN_JOURNAL 2026-08-04.
 
-**NOT to quote:** V5-C coverage (64.7%) is not presentable yet. The old "exactly 700.0 N
-on all 8 seeds" peak-force artefact is GONE since the flange went in (now 143.5 N) — it
-appears to have been the rigid coupling saturating something.
-
 **Seed ledger — held-out sets are consumed by use.** Spent: 200–259, 300–419, 500–619,
-700–819 (triage), 800+ (cleaning). Calibration lives at 9000+. Use a FRESH range for any
-new evaluation and look at it once.
+700–819 (triage), 800–807 (cleaning; re-used 2026-08-04 for DIAGNOSIS only, against the
+already-published number). Calibration lives at 9000+. **The next cleaning evaluation
+needs a fresh range — start at 900.** Use it once and look at it once.
 
 ## First steps every session
 1. Read `V5_PLAN.md` (plan + all v5 results), `CELL_SPEC.md` (the real-cell build doc),

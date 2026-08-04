@@ -253,10 +253,21 @@ working position:
 | face presented | index | coverage | at exact-normal |
 |---|---|---|---|
 | front | 0° | **100%** | 83% |
-| right | 90° | **100%** | 83% |
+| right | 90° | **100%** | ~~83%~~ **27%** |
 | **back** | **180°** | **100%** | **83%** |
-| left | 270° | **100%** | 83% |
+| left | 270° | **100%** | ~~83%~~ **27%** |
 | top | — | **100%** | 63% |
+
+> ### ⚠️ The exact-normal column for the SIDE faces was wrong — corrected 2026-08-04
+> `v5_reach.py --indexed`, run today against the committed scene, prints **right 27.1%,
+> left 27.1%** strict — not 83%. The 83% here assumed indexing makes the four vertical
+> faces equivalent. It does not: the cabinet is 250 mm wide and 180 mm deep, so rotating a
+> side face into the front position puts its surface **35 mm closer to the arm** than the
+> front face ever is. Four identical numbers across four genuinely different geometries
+> was the same smell that caught the 700.0 N force clamp, and it should have been checked
+> then. **The relaxed column is unchanged and still 100% — the gate passes on that, and
+> honestly.** What broke is that `v5_clean.py` presses at exact normal only, so the
+> cleaning station is operating in the 27% column while a green gate reports the 100% one.
 
 **The back face goes from 0% at every fixed placement to 100%.** Camera separation
 becomes arbitrary, so the placement trade-off above disappears entirely — x = 0.58 is now
@@ -534,3 +545,138 @@ What the number *does* support, and what is safe to say in the room:
   73.3% held out. Refitting on 100 seeds read **74.0% on calibration** — the calibration
   score converged *down* to the held-out score. The calibration number was the overfit.
 
+
+---
+
+## V5-C DIAGNOSIS — coverage was never the problem
+
+64.7% coverage / 74.4% raster contact reproduced byte-identically before anything was
+touched (seeds 800–807, `stats_v5_clean.json` unchanged). Then it was instrumented rather
+than tuned. `sim_poc/v5_clean_diag.py` **subclasses** the shipping `Cell` and overrides
+`wipe`, `move`, `surface_x` and `front_face_plane`; it does not reimplement the cycle, so
+every number below comes out of the controller that actually runs.
+
+**Four causes, none of them the wipe.**
+
+| # | cause | evidence | scope |
+|---|---|---|---|
+| 1 | **The indexer never reaches 270°.** `deg2rad(270)` = 4.712 rad vs actuator `ctrlrange` ±3.1416; MuJoCo clamps `ctrl` silently. | commanded 270° → achieved **180.0°**, every seed. Face 4 re-wipes the back panel; one side face is never presented. | ~20% of patches |
+| 2 | **The arm self-collides and stops tracking.** `link1`~`link6` at 130–271 N, joint 4 pinned at its 30 N·m limit. | every SAFE / TO FACE / RETRACT misses by **100–400 mm**; tool-changer moves (wrist *down*) arrive at 1.9–2.6 mm. | whole cycle |
+| 3 | **34.2% of raster points are silently skipped.** `surface_x` rays from x = 0.20 through the space the arm occupies. | ray lands on `xarm_gripper_base_link` ×61, `link7` ×33, `link4` ×26, the pad ×14 → `None` → `continue`. | 154 of 450 points |
+| 4 | **The built tool is 105 mm wrist-to-pad; V5-0 sized the cell at 45 mm.** | controlled sweep, one input changed: sides **17/22 → 4/22**, top **15/25 → 8/25**. | the placement |
+
+**Cause 3 also corrupts the published metric.** Skipped points log no force sample, so
+"contact during raster 74.4%" is 74.4% *of the points that ran*. Over the planned raster
+it is ≈ **49%**. That number should not be quoted until the probe is fixed.
+
+**The arm riser is exonerated.** It was the other thing that changed since V5-0. `--riser`
+is flat at every diameter to 250 mm, and feasibility is identical with its collisions
+disabled (sides 4/22 both ways). Not the cause.
+
+### The placement study, redone with the tool that exists
+
+`sim_poc/v5_clean_place.py`. Exact normal, kinematics only, same solver at every point.
+
+| x | standoff | front | idx 90 | idx 180 | idx 270 | top | mean |
+|---|---|---|---|---|---|---|---|
+| 0.54 | 45 mm | 16/22 | 12/22 | 15/22 | 11/22 | **23/25** | 67.5% |
+| 0.54 | **105** | 4/22 | **0/22** | 6/22 | **0/22** | 15/25 | 21.1% |
+| **0.58** | **105** | 16/22 | **2/22** | 15/22 | **2/22** | 8/25 | **38.2%** |
+| 0.62 | **105** | 16/22 | 15/22 | 15/22 | 15/22 | **0/25** | 55.5% |
+| 0.70 | **105** | 16/22 | 17/22 | 17/22 | 16/22 | **0/25** | 60.0% |
+
+**There is no placement at which the built tool can press exact-normal on all five
+faces.** The verticals want the device pushed out; the top wants it pulled in; the current
+x = 0.58 is the worst of both. This is V5-0's "no single placement serves every face"
+finding again — but the crossover moved once the real tool length went in, and it now
+lands on the wrong side of the working position.
+
+**So the tilt cone is not optional, it is load-bearing.** V5-0 relaxed to a 30° cone for a
+real physical reason (a compliant pad conforms), reported strict alongside relaxed, and
+every face is 100% relaxed. `v5_clean.py`'s `tool_mat_face()` throws that away — it
+returns one fixed exact-normal frame. Restoring it is what makes the station feasible at
+all; no amount of press or raster tuning reaches faces the arm cannot hold square to.
+
+### Fix order
+
+1. Wrap the index command into (−180°, 180°] — one line, no design trade-off.
+2. Probe the surface with the arm parked, or ray only the cabinet's geoms, and **count**
+   skipped points instead of `continue`-ing silently.
+3. Let the wipe use the 30° cone the gate already assumes — pick the tilt per point, as
+   `v5_reach._try_point` does.
+4. Re-run `v5_clean_place.py` after (3) and re-pick x. Then update CELL_SPEC.
+5. Make the consumer assert its column: a station pressing at exact normal must gate on
+   `strict`, not on `coverage`.
+
+**Held-out seeds:** 800–807 were re-used here for *diagnosis only*, against the already
+published number. The next evaluation needs a fresh range (900+).
+
+---
+
+## V5-C RESULT — all five fixes landed, 64.7% → 94.6% held out
+
+Fixes applied in the order set out above. Each was measured on its own; the scene change
+in fix 1 sent every gate round again.
+
+| fix | what changed | measured effect |
+|---|---|---|
+| 1 | indexer `ctrlrange` ±180° → **±360°**, and the cycle indexes **forward to 360°** for the top pass instead of unwinding to 0° mid-move | 270° now achieved (was clamped to 180°); the fifth face is presented |
+| 2 | `surface_x` rays **only the cabinet's own geoms**, one at a time, instead of a scene-wide `mj_ray` from x = 0.20 | probe-miss skips **34.2% → 0%**; skipped points are now **counted**, not silent |
+| 3 | plan-then-execute: per point, the **smallest tilt in the 30° cone** that is reachable, limit-clear and collision-free; drive to that **joint** configuration | no self-collision; plan error **0.00 mm** at every raster point |
+| 4 | placement re-checked through the cleaner's own planner | **x = 0.58 stays** — with the cone every placement is 100%; no CELL_SPEC coordinate moves |
+| 5 | the cone is **imported from `v5_reach`**, not restated | gate and consumer cannot drift apart again |
+
+Two further defects fell out of fix 3 and were fixed with it:
+
+- **The planner was blind to its own tool.** The pad is a free body on a weld, so it does
+  not follow the arm in a planning copy. The first version excluded it from the collision
+  test — which meant nothing checked whether the 60 mm pad would reach below the platter.
+  It now reconstructs the weld transform and carries the tool, with the flange at its
+  free extension (the longest the tool can be). Rule: the **arm** may touch nothing; the
+  **pad** may touch the device and nothing else.
+- **A 4 mm wrist tolerance is unholdable under load.** 0.8° of joint lag is 14 mm at that
+  extension, so every top-face point and 60% of front-face points ran the full 2.5 s
+  timeout pressing at full command — peak **326 N**, only **74.8%** in band. Wipe moves
+  now end on a **stall detector** (in contact, seated ≥ 5 N, and no longer closing on the
+  target). First attempt used "contact for 0.1 s", which fired on the first graze and cost
+  11 points of coverage; the stall test is the one that holds.
+
+### The numbers
+
+Held out on seeds **900–907, never previously run, looked at once**:
+
+| | |
+|---|---|
+| coverage | **94.6%** mean, 85.7% worst |
+| missed spots | **8 of 129** (6.2%) — Stage 3's own QC check |
+| raster skipped | **0** probe-miss + **0** no-feasible-pose of 3744 planned points |
+| contact during raster | **77.5% of PLANNED points** (the honest denominator) |
+| contact force | median **13.1 N**, peak 271 N |
+| in force band | 88.1% |
+| press angle | 42.7% at exact normal, mean tilt 7.4°, max 30° (= the gate's cone) |
+| tool coupling drift | **0.03 mm** (was 0.16) |
+
+Development seeds 800–807 read 95.8% — a **1.2-point** gap to held out.
+
+> **The trajectory is open-loop and seed-independent.** The raster, the planned poses and
+> the contact are identical for every unit; the seed only moves the soil. So force, tilt
+> and raster figures have **no seed variance at all** — they are effectively n = 1 and
+> must not be quoted as an 8-unit spread. Only coverage and missed spots actually vary.
+> `report()` prints this warning with every run.
+
+### What is NOT closed
+
+**In-band force is 88.1%, and the peak is 271 N against a pad validated to 60 N.** The
+cause is located, not fixed: the front face and the top face still never reach their
+planned pose (0% and 42% arrival, 14–37 mm steady-state error), so they press longer and
+harder than the other three. Both are the faces where the wrist ends up closest to the
+arm's own base — the 105 mm tool length again. The placement sweep shows the required
+tilt falling from 10.9° at x = 0.58 to 6.8° at x = 0.70, so **moving the device out is the
+obvious next lever**, at the cost of the top face, which wants it closer. That is a real
+trade and it should be measured under contact, not kinematically.
+
+**A 100%-coverage variant exists and was rejected.** Leaving the old arrival-only
+termination in place gives 100% coverage on both seed ranges — bought by pressing 2.5 s at
+every point, with peak 326 N and 74.8% in band. Coverage paid for in force-seconds a real
+cell would not spend is exactly the kind of number this project distrusts, so the stall
+detector ships and the 94.6% is the honest figure.

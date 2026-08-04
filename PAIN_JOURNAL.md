@@ -609,3 +609,78 @@ what we now understand.
   while the back panel stands 10 mm PROUD of it, so at index 180 the raster drove the pad
   10 mm into the panel. | ~40 min | when a knob does nothing, stop tuning and ask what is
   actually generating the quantity. `mj_contactForce` per partner answered it in one run
+- 2026-08-04 | **V5-C's coverage number was never a coverage problem. Four bugs in the
+  motion layer, and a gate that was green while measuring the wrong quantity.** The task
+  was "close the last of the 36.7% miss rate"; the assumption was press depth, raster
+  pitch or face edges. It was none of them. `v5_clean_diag.py` SUBCLASSES the real cell
+  (overriding `wipe`, `move`, `surface_x`, `front_face_plane`) rather than reimplementing
+  the loop, so every number below comes out of the controller that actually ships.
+  (1) **The rotary indexer never reaches 270 deg.** `d.ctrl[tt] = np.deg2rad(270)` = 4.712
+  rad against an actuator `ctrlrange` of +-3.1416, and MuJoCo clamps ctrl silently. The
+  fourth face pass re-wiped the back panel while one SIDE face was never presented at all
+  -- seed 801 missed 3/3 right and 4/4 left, ~20% of patches, on every seed.
+  (2) **The arm does not reach its commanded poses, anywhere in the cycle.** Every
+  SAFE / TO FACE / RETRACT missed by 100-400 mm; the raster ran from the wrong place.
+  Cause: `link1` against `link6` at 130-271 N with joint 4 pinned at its 30 Nm limit --
+  arm SELF-COLLISION. The tool-changer moves (wrist pointing DOWN) arrive at 1.9-2.6 mm;
+  everything with the wrist pointing HORIZONTALLY folds.
+  (3) **34.2% of raster points were silently skipped.** `surface_x` casts a ray from
+  x = 0.20 toward +X -- straight through the space the arm and pad occupy while wiping.
+  When it lands on `xarm_gripper_base_link` (x61), `link7` (x33), `link4` (x26) or the pad
+  itself, it returns None and the raster `continue`s: no wipe, no force sample, no entry
+  in the contact stats. So the published "contact during raster 74.4%" is 74.4% OF THE
+  POINTS THAT RAN, and the true figure over the planned raster is ~49%.
+  (4) **The wiping tool is 105 mm from wrist to pad face; V5-0 sized the cell assuming
+  45 mm.** `PAD_STANDOFF = 0.045` was a guess made before the tool existed. Those 60 mm
+  come off the wrist's X, pushing it toward its own base -- the one direction a 7-DoF arm
+  cannot go. Controlled sweep, same solver, one input changed: side faces 17/22 -> 4/22,
+  top 15/25 -> 8/25. The arm riser, the other thing that changed since V5-0, costs
+  NOTHING (`--riser` sweep flat at every diameter to 250 mm; feasibility identical with
+  its collisions disabled). | ~3 h | the diagnostic that mattered was splitting "the IK
+  never solved it" from "the arm did not track it" -- one line comparing where `q_des`
+  puts the TCP against where the measured arm is. Before that split, four different bugs
+  all looked like one vague "coverage is low"
+- 2026-08-04 | **A green gate measuring a quantity the controller does not use.**
+  `v5_reach.py --indexed` PASSES, and it is honest: every face is >= 95% reachable inside
+  a **30 degree tilt cone**, which a compliant pad genuinely allows. But `v5_clean.py`'s
+  `tool_mat_face()` returns a FIXED exact-normal frame and never tilts, so the cleaner
+  runs in the STRICT column -- which the same run prints as front 83.3%, **right 27.1%,
+  left 27.1%**, top 62.5%. `V5_PLAN.md`'s indexed table still quotes **83% for all four
+  vertical faces**; that is not reproducible from the current code and scene, and the
+  four-identical-numbers shape is the same smell that caught the 700.0 N clamp. Worse,
+  re-running the placement sweep with the real 105 mm standoff shows **no placement
+  serves every face at exact normal**: x >= 0.62 gives 15-17/22 on all four verticals and
+  **0/25 on the top**, x = 0.54 gives 15/25 top and **0/22 on both sides**. | ~1 h |
+  a gate only protects the thing it measures. This one relaxed by 30 degrees for a
+  documented physical reason and then nothing checked that the consumer used the
+  relaxation. Report strict alongside relaxed -- v5_reach already does -- and make the
+  CONSUMER assert which column it is entitled to
+- 2026-08-04 | **A planner that cannot see its own tool, and a tolerance the arm cannot
+  hold.** Both fell out of replacing v5_clean's blind resolved-rate servo with
+  plan-then-execute. (1) The pad is a free body on a weld equality, so it does NOT follow
+  the arm when joints are moved in a planning copy -- its pose there is stale. The first
+  planner therefore EXCLUDED the tool from its collision test, which left nothing checking
+  whether a 60 mm pad would reach below the platter. Fix: reconstruct the weld transform
+  (one quaternion multiply) and carry the tool, flange at its FREE extension because that
+  is the longest it can be. Rule: the ARM may touch nothing, the PAD may touch the device
+  and nothing else. (2) Wipe moves waited for the TCP within 4 mm. Under contact at that
+  extension, 0.8 deg of joint lag IS 14 mm -- unreachable -- so every top-face point and
+  60% of front-face points ran the full 2.5 s timeout pressing at full command: peak
+  326 N, 74.8% in band, flange driven to 59 mm on a 30 mm stroke. Replaced with a STALL
+  detector (seated >= 5 N and no longer closing). First attempt was "contact for 0.1 s",
+  which fired on the first graze while the wrist was still 20-90 mm out and cost 11 points
+  of coverage. | ~2 h | the giveaway for (2) was that the plan error was 0.00 mm at every
+  single point while the achieved error was 14-59 mm. Plan quality and tracking are
+  different measurements and separating them is worth doing FIRST, every time
+- 2026-08-04 | **Identical numbers across two disjoint seed ranges -- and this time it was
+  NOT a bug.** The held-out run (seeds 900-907) returned force, tilt, contact and
+  raster figures identical to the development run to every decimal, which is exactly the
+  smell that caught the 700.0 N clamp and the 0.854 surface probe. Checked before
+  reporting: the cleaning trajectory is OPEN-LOOP and seed-independent -- the raster,
+  the planned poses and the contact are the same for every unit, and the seed only moves
+  the soil decals, which are non-colliding. So identical is correct, and the real finding
+  is that those figures have NO seed variance: they are n = 1, not n = 8, and quoting
+  them as an 8-unit spread would be the dishonest reading. `report()` now prints that
+  warning on every run. | ~15 min | the smell test is worth running even when it comes
+  back clean -- the answer here was not "false alarm" but "your force statistic has one
+  sample and you were about to call it eight"
