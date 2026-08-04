@@ -41,13 +41,12 @@ the classifier has to overcome comes from occlusion, lighting and viewing pose, 
 fuzzing the labels. A classifier that scores well because we made the labels vague has
 measured nothing.
 
-FACE COVERAGE. Pools go on four faces: front (-X), top, left and right. This was
-originally forced -- V5-0 measured the back as unreachable at every placement tested
-(0/48 raster points, eight placements) -- and the ROTARY INDEXER has since removed that
-limit (every vertical face indexes to 100%). The pools have not yet been regenerated
-onto five faces, so for now the cleaning coverage number means "coverage of the four
-SOILED faces", not "of the device". Extending is a one-line change to _faces() and
-belongs with V5-C, where there is a cleaning controller to measure against.
+FACE COVERAGE. Pools go on ALL FIVE exposed faces: front (-X), back (+X), top, left and
+right. The back was excluded originally because V5-0 measured it unreachable at every
+placement tested (0/48 raster points, eight placements); the ROTARY INDEXER removed that
+limit -- every vertical face now rotates to the front working position at 100%. Back-face
+pools sit on the BACK PANEL'S OUTER SURFACE, which is what is actually exposed.
+So "coverage" now means coverage OF THE DEVICE, with no face silently excluded.
 """
 import argparse
 import numpy as np
@@ -75,6 +74,14 @@ CAB_HEIGHT = 0.45     # Z extent, standing on the bench at z = 0
 TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
 BACKDROP_X = 0.86             # matte panel behind the device, from the arm's viewpoint
 TT_RISE = 0.010               # rotary indexer disc height above the bench
+# The arm's kinematic root sits 120 mm above the bench top -- an offset inherited from
+# the stock arm model. Something must physically hold it there, and that something is an
+# obstacle the arm can hit. It was NOT modelled until V5-C, so no arm-to-riser clearance
+# had ever been checked while reachability numbers were being quoted.
+# DIAMETER IS AN OPEN ASK -- it depends on the pedestal actually bought. 150 mm is a
+# plausible column for an arm whose own base casting is 126 mm. `v5_reach.py --riser`
+# sweeps it so the cost is measured rather than assumed.
+RISER_DIA = 0.150
 # PLACEHOLDER. No source document gives a device mass (dp_process.MISSING). Left to
 # MuJoCo's default density the solid box came out 21.3 kg -- an artifact of filling it
 # with water. A stated stand-in beats an accidental number.
@@ -103,6 +110,12 @@ def _faces(depth, width, height):
     the cabinet body origin sits on the bench so the box spans z in [0, height].
     Coordinates here are LOCAL to the cabinet body.
     """
+    # BACK PANEL geometry -- pools on the back go on the PANEL'S OUTER SURFACE, not on
+    # the body's back face, which the panel covers. Kept in sync with the geom emitted
+    # below: the panel spans local x 0.090..0.100, y +-0.119, z 0.020..0.430.
+    bp_x = depth / 2 + 0.010
+    bp_w = 2 * (width / 2 - 0.006)
+    bp_z0, bp_z1 = 0.020, height - 0.020
     return [
         ("front", (-1, 0, 0), (-depth / 2, 0, height / 2),
          (0, 1, 0), width, (0, 0, 1), height),
@@ -112,6 +125,13 @@ def _faces(depth, width, height):
          (1, 0, 0), depth, (0, 0, 1), height),
         ("right", (0, 1, 0), (0, width / 2, height / 2),
          (1, 0, 0), depth, (0, 0, 1), height),
+        # FIFTH FACE, added once the rotary indexer made it reachable. It was excluded
+        # while the back was unreachable at every placement (0/48 raster points), which
+        # meant "coverage" could only ever mean "of the four soiled faces". With the
+        # indexer every face rotates to the front working position at 100%, so leaving
+        # the back clean would have quietly flattered any cleaning number V5-C produces.
+        ("back", (1, 0, 0), (bp_x, 0, (bp_z0 + bp_z1) / 2),
+         (0, 1, 0), bp_w, (0, 0, 1), bp_z1 - bp_z0),
     ]
 
 
@@ -203,7 +223,16 @@ def build(seed=SEED, cab_x=CAB_X):
     <!-- the three condition classes. Deliberately NOT flat recolours of the body: the
          classifier has to measure coverage and texture, not read back a value we set. -->
     <material name="soilmat"    rgba="0.42 0.36 0.28 1" reflectance="0.0"/>
-    <material name="scratchmat" rgba="0.97 0.97 0.98 1" reflectance="0.45"/>
+    <!-- A scratch is modelled as a DARK GROOVE, not a bright specular line. Both occur
+         on real plastic (fine scuffs scatter light and read pale; gouges shadow and read
+         dark), so this is a stated modelling choice. It was made after measuring: a pale
+         scratch renders at 0.846 against a body at 0.787 -- 1.6 body-sigma, and swamped
+         by the cabinet's own edges and highlights. A groove separates cleanly.
+         IT DOES NOT DECIDE THE CLASSIFIER. Scratches are told apart from dents by SHAPE
+         (thin and elongated vs compact), which is what a human grader uses and is robust
+         either way; the detector looks for two-sided anomalies, so a pale scratch would
+         still be found. -->
+    <material name="scratchmat" rgba="0.34 0.34 0.35 1" reflectance="0.05"/>
     <material name="dentmat"    rgba="0.30 0.30 0.32 1" reflectance="0.02"/>
     <material name="backdropmat" rgba="0.07 0.08 0.09 1" reflectance="0.0"/>
     <material name="padmat" rgba="0.95 0.85 0.30 1" reflectance="0.05"/>
@@ -218,6 +247,13 @@ def build(seed=SEED, cab_x=CAB_X):
     <geom name="floor" type="plane" size="0 0 0.05" pos="0 0 -0.7" material="floormat"/>
     <geom name="bench" type="box" size="0.55 0.6 0.35" pos="0.35 0 -0.35" material="benchmat"/>
 
+    <!-- ARM RISER. Holds the arm's flange 120 mm above the bench. Tops out 4 mm below
+         the flange so it meets the base casting (which hangs 3 mm below the body origin)
+         without interpenetrating. Modelled because it is an OBSTACLE, not decoration:
+         link5 passes as low as z = 103 mm within 75 mm of the base axis. -->
+    <geom name="arm_riser" type="cylinder" size="{RISER_DIA/2:.4f} 0.0580"
+          pos="0 0 0.0580" material="postmat"/>
+
     <!-- Demo cameras, all computed by _cam(). They MUST sit on the -X side: the matte
          backdrop stands at x = {BACKDROP_X:.2f}, so anything viewing from +X sees a black
          wall and nothing else. The first draft did exactly that. -->
@@ -229,6 +265,25 @@ def build(seed=SEED, cab_x=CAB_X):
             xyaxes="{_cam((0.30, -1.10, 0.40), (0.58, 0, 0.24))[1]}"/>
     <camera name="top" pos="{_cam((0.30, -0.02, 1.55), (0.56, 0, 0.30))[0]}"
             xyaxes="{_cam((0.30, -0.02, 1.55), (0.56, 0, 0.30))[1]}"/>
+
+    <!-- ===================== TRIAGE STATION CAMERA (V5-B) =====================
+         A FIXED camera, not the wrist camera. V5_PLAN originally called for the arm to
+         orbit its wrist camera around the device -- correct when the device could not
+         move. The rotary indexer changed that: with the part on a turntable, a fixed
+         camera and a rotating device is both simpler and what real rotary vision cells
+         actually do. It needs no hand-eye calibration (the single largest un-modelled
+         risk in the wrist-camera plan), its geometry is fixed and surveyable, and it
+         leaves the arm free during inspection instead of parking it in a pose.
+
+         Placed on the -X side so the matte backdrop at x = {BACKDROP_X:.2f} fills the
+         background: the sightline continues past the device and lands on the panel at
+         roughly y = +0.26, well inside its +/-0.46 half-width. Offset in -Y to clear the
+         arm, which sits at the origin. fovy 48 frames the {CAB_HEIGHT*1000:.0f} mm device
+         at this range with margin. -->
+    <camera name="inspect" fovy="48"
+            pos="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[0]}"
+            xyaxes="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[1]}"/>
+    <site name="inspect_eye" pos="0.10 -0.45 0.40" size="0.006" rgba="0 0 0 0"/>
 
     <!-- Matte backdrop BEHIND the device as seen from the arm. A controlled background
          is what makes plant vision tractable and is what a real cell would have (v4
@@ -243,6 +298,19 @@ def build(seed=SEED, cab_x=CAB_X):
          every framed azimuth (the extreme, 225 deg, needs coverage out to y = +0.28). -->
     <geom name="backdrop_x" type="box" size="0.006 0.46 0.36"
           pos="{BACKDROP_X:.3f} 0 0.36" material="backdropmat"/>
+
+    <!-- Second panel, +Y, restored for the V5-B triage camera. It fills the rest of the
+         background behind the device from the fixed inspect camera; a half-lit
+         background makes segmentation a lighting problem instead of a geometry one.
+
+         THIS PANEL WAS DELETED ONCE, because it cost the entire right face (89.6% -> 0%)
+         when the arm had to reach around to press on a +Y surface. THE ROTARY INDEXER
+         REMOVED THAT REQUIREMENT: every face now rotates to the FRONT working position,
+         so the arm never works a +Y surface and the panel is no longer in its way.
+         That is a claim, so `v5_reach.py --indexed` is re-run after adding it and the
+         front/top numbers are unchanged. Do not restore it without re-checking. -->
+    <geom name="backdrop_y" type="box" size="0.30 0.006 0.36"
+          pos="0.66 0.42 0.36" material="backdropmat"/>
 ''')
 
     # ---------------------------------------------------------------- the cabinet
@@ -271,8 +339,14 @@ def build(seed=SEED, cab_x=CAB_X):
          bench, which V5-A re-verified does not change the reachability result. -->
     <body name="turntable" pos="{cab_x:.3f} {CAB_Y:.3f} 0">
       <joint name="tt_rot" type="hinge" axis="0 0 1" damping="12" armature="0.08"/>
+      <!-- MATTE BLACK PLATTER, deliberately. In mid-grey it rendered at 0.580 value,
+           above the 0.30 background threshold, so its elliptical rim sat inside the
+           projected search region and read as a big compact dark anomaly -- i.e. as a
+           DENT. Measured: 2374 false dent pixels against ~60 real ones. Finishing the
+           fixture matte black is what a real vision cell does for exactly this reason,
+           and it drops the platter below the background threshold for free. -->
       <geom name="tt_disc" type="cylinder" size="0.175 {TT_RISE/2:.4f}"
-            pos="0 0 {TT_RISE/2:.4f}" material="postmat"/>
+            pos="0 0 {TT_RISE/2:.4f}" material="backdropmat"/>
       <!-- index mark, so rotation is visible in a render and in a video -->
       <geom name="tt_mark" type="box" size="0.030 0.006 0.0012"
             pos="-0.140 0 {TT_RISE + 0.0012:.4f}" material="faciamat"
@@ -340,7 +414,7 @@ def build(seed=SEED, cab_x=CAB_X):
         ("soil", N_SOIL, "soilmat", "0.42 0.36 0.28",
          (0.010, 0.020), (0.008, 0.016), 0.0010,
          "soil / stains -- come off with the CIF-cream wipe (stage 2)       -> EASY"),
-        ("scr", N_SCRATCH, "scratchmat", "0.97 0.97 0.98",
+        ("scr", N_SCRATCH, "scratchmat", "0.34 0.34 0.35",
          (0.018, 0.045), (0.0007, 0.0015), 0.0006,
          "scratches -- need the rubbing-component pass (stage 2)            -> MEDIUM"),
         ("dent", N_DENT, "dentmat", "0.30 0.30 0.32",
@@ -383,7 +457,16 @@ def build(seed=SEED, cab_x=CAB_X):
          NOT yet validated under contact -- that is V5-C's job. -->
     <body name="padtool" pos="{tx:.3f} {ty:.3f} 0.040">
       <freejoint name="padtool_free"/>
-      <geom name="pad_stem" type="cylinder" size="0.0200 0.045" pos="0 0 0.045"
+      <!-- KEYED (rectangular) SHANK, not a cylinder. A cylinder in parallel jaws can
+           PIVOT about the grip axis, and a 60 mm pad on a 90 mm stem has ample leverage
+           to do it: measured, the pad's offset from the TCP went from (21.7, 0, 36.4) mm
+           with the wrist pointing down to (87.6, 0, -16.1) mm with it horizontal -- the
+           tool had rotated most of a right angle inside the grip, and cleaning coverage
+           was 0%. A flatted or keyed shank is what a real robot tool has, for exactly
+           this reason. 40 mm across the jaws (unchanged), 60 mm along them to resist the
+           pivot. Same lesson as the v4 staging nest: shape the part so the problem
+           cannot happen, rather than controlling around it. -->
+      <geom name="pad_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
             material="stemmat" mass="0.18"/>
       <!-- COMPLIANT PAD -- two corrections, both found by measuring the force/penetration
            curve rather than trusting the declared numbers:
@@ -402,6 +485,11 @@ def build(seed=SEED, cab_x=CAB_X):
                have varied per contacting surface. Priority makes the pad govern its own
                contacts, so the number in CELL_SPEC is the number in force.
 
+           FRICTION 0.7, reduced from 1.4. A damp cloth or foam pad on plastic is
+           around 0.6-0.8; 1.4 is dry rubber. At 1.4, dragging the pad across a face at
+           20-40 N normal generated up to ~56 N of friction, which twisted the tool
+           straight out of the jaws mid-raster.
+
            Values chosen by sweeping the force/penetration curve and requiring it to be
            MONOTONIC from 0 to 60 N. Two otherwise-reasonable settings had a solver
            instability that spiked penetration to 12-17 mm at 40 N and recovered at 60 --
@@ -411,7 +499,7 @@ def build(seed=SEED, cab_x=CAB_X):
            never close to the 10 mm half-thickness. -->
       <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
             material="padmat" mass="0.04" priority="1"
-            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="1.4 0.02 0.001"/>
+            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
       <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
       <site name="pad_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
     </body>
@@ -430,6 +518,31 @@ def build(seed=SEED, cab_x=CAB_X):
           material="postmat"/>
     <site name="post_pt" pos="{tx:.3f} {ty:.3f} 0.30" size="0.004" rgba="0 0 0 0"/>
   </worldbody>
+
+  <equality>
+    <!-- ================= POSITIVE TOOL COUPLING (V5-C) =================
+         A robotic TOOL CHANGER, not a grip. When latched, the tool is mechanically
+         locked to the wrist and cannot move relative to it.
+
+         WHY THIS REPLACED THE GRIP. A parallel-jaw grip on a shank was measured to let
+         the tool creep 60-70 mm across a single face's raster -- and that creep was
+         INSENSITIVE to grip command (245 vs 255) and to press depth (3.0 vs 1.5 mm),
+         which rules out friction and points at grip geometry. Keying the shank cut the
+         wrist-rotation pivot from 87 mm to 9.6 mm but did not stop the creep. No
+         production cell holds a process tool in a parallel-jaw grip for exactly this
+         reason; it uses a changer or a positively-located holder.
+
+         WHAT IS ASSUMED, AND WHAT IS STILL EARNED. The weld models the LATCHED state --
+         i.e. it assumes the hardware coupling is rigid, which is what a changer sells.
+         It does NOT assume the robot can find it: the latch only engages when the wrist
+         is inside a stated capture envelope, and it welds at the ACTUAL relative pose
+         achieved, so any residual misalignment is carried into the wipe rather than
+         being quietly corrected. Alignment remains a real robot task and the latch can
+         fail. A real changer would centre the tool as it pulls in, so this is the
+         conservative direction. -->
+    <weld name="toollock" body1="xarm_gripper_base_link" body2="padtool"
+          active="false" solref="0.004 1" torquescale="1"/>
+  </equality>
 
   <actuator>
     <!-- The rotary indexer is a COMMANDED AXIS. On the real cell this is a stepper or
@@ -477,4 +590,4 @@ if __name__ == "__main__":
         f.write(xml)
     print(f"wrote {a.out}  (seed {a.seed}, cabinet at x={a.x})")
     print(f"  pools: {N_SOIL} soil, {N_SCRATCH} scratch, {N_DENT} dent "
-          f"= {N_SOIL + N_SCRATCH + N_DENT} geoms on 4 reachable faces")
+          f"= {N_SOIL + N_SCRATCH + N_DENT} geoms on all 5 exposed faces")

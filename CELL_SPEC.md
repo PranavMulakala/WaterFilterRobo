@@ -64,19 +64,30 @@ world z = 0            bench top surface
 world z = 0.120        arm kinematic root (`link_base`) — the mounting flange
 ```
 
-> ⚠️ **There is NO riser in the simulation.** The 120 mm offset is inherited from the
-> stock arm model (`xarm7.xml`, unchanged from MuJoCo Menagerie); it is not a modelled
-> fixture. Nothing occupies 0 < z < 0.117 near the arm axis, so **no arm-to-riser
-> clearance has ever been checked, and no riser diameter or footprint is specified.**
+**The riser is now modelled** (`arm_riser`, a ⌀150 mm column from the bench top to 4 mm
+below the flange) and its cost has been **measured, not assumed**:
+
+| riser ⌀ | front | right | back | left | top |
+|---|---|---|---|---|---|
+| none | 100% | 100% | 100% | 100% | 100% |
+| 120 mm | 100% | 100% | 100% | 100% | 100% |
+| **150 mm** | **100%** | **100%** | **100%** | **100%** | **100%** |
+| 200 mm | 100% | 100% | 100% | 100% | 100% |
+| 250 mm | 100% | 100% | 100% | 100% | 100% |
+
+**A riser of any plausible diameter costs nothing.** Reproduce with
+`v5_reach.py --riser`. So the pedestal footprint is *not* a design constraint, and you
+can size it for stiffness rather than for clearance.
+
+> ⚠️ **This reverses an earlier warning in this document**, which said a 150 mm riser
+> would cut exact-normal side-face coverage from 83% to 27%. That measurement was taken
+> against the FIXED-device design, where the arm had to reach around to press on a +Y
+> surface — folding back toward its own base, exactly where a riser sits. **The rotary
+> indexer removed that motion**: every face is now worked at the front position, with the
+> arm extended away from its base. The riser is nowhere near it. Third thing the indexer
+> paid for, after the unreachable back face and the camera-separation trade-off.
 >
-> This is not academic. Injecting a virtual riser column into the reachability study
-> vetoes poses: at 150 mm diameter, 6 of 380 accepted poses are lost and side-face
-> **exact-normal** coverage falls from 83% to 27%; at 250 mm diameter, 32 of 406 are lost
-> and it falls to 67%. (30°-cone coverage stays 100% in both cases.) `link5` passes as
-> low as **z = 103 mm within 75 mm of the base axis** — right where a riser would be.
->
-> **Before quoting any reachability number as riser-inclusive, add a riser geom of the
-> real diameter and re-run `v5_reach.py --indexed`.**
+> The 150 mm default is still a **placeholder** — size it to the pedestal actually bought.
 
 When you build the real cell you must either reproduce a 120 mm rise, or subtract 120 mm
 from every Z coordinate below.
@@ -107,10 +118,46 @@ by that amount.
 Mounted on `xarm_gripper_base_link` at local **(0.060, 0, 0.030) m**, optical axis
 `zaxis = (0.39, 0, −0.92)`, **fovy 75°**, rendered at 640×480 for inspection.
 
-> ⚠️ **Hand-eye calibration is required on the real cell and is not modelled here.** The
-> simulation knows the camera-to-TCP transform exactly. A real one does not — you have to
-> measure it. v4 already demonstrated what happens when a presentation transform is
-> assumed instead of measured: the classifier scored 90% on a rig and **53% in the cell**.
+> ⚠️ **Hand-eye calibration is required if you use the wrist camera, and is not modelled
+> here.** The simulation knows the camera-to-TCP transform exactly; a real one does not.
+> v4 showed what that costs: a classifier scored 90% on a rig and **53% in the cell**
+> because the presentation transform was assumed instead of measured.
+>
+> **The V5-B triage station does NOT use the wrist camera** — see below. That removes
+> hand-eye calibration from the inspection path entirely, which was the single largest
+> un-modelled risk in the original plan.
+
+### Inspection station camera (V5-B)
+
+A **fixed** camera, not the wrist camera. With the device on a rotary indexer, a fixed
+camera plus a rotating part is simpler, is what real rotary vision cells do, needs only a
+one-off extrinsic survey instead of hand-eye calibration, and leaves the arm free during
+inspection.
+
+| | |
+|---|---|
+| position | **(0.100, −0.450, 0.400) m** |
+| aim point | the device centre, (0.580, 0, 0.235) m |
+| field of view | **fovy 48°** |
+| resolution used | 1280 × 720 |
+
+It sits on the −X side so the backdrop fills the frame behind the device, and is offset
+in −Y to clear the arm.
+
+### Arm park pose
+
+The arm must be **clear of the inspection camera's frame** while a unit is graded.
+Measured: at joint angles **(90°, −14.1°, 0°, 52.1°, 0°, 66.3°, 0°)** the arm occupies
+**0.000%** of the inspect view, against **4.28%** at the home pose. Verified
+collision-free, including against the +Y backdrop.
+
+### Safe reset
+
+Use the scene keyframe **`v5home`**, not the `home` inherited from the arm model. `home`
+declares only the 13 arm+gripper values and MuJoCo zero-fills the rest, which puts the
+pad tool at the world origin, 20 mm inside the bench. On the real cell the equivalent is:
+**a "home" macro that does not command every axis will leave the ones it omits wherever
+they were.**
 
 ---
 
@@ -125,7 +172,9 @@ All coordinates in metres, sim world frame. Convert with §2 before use.
 | **device** (footprint centre, base) | 0.580 | 0.000 | 0.010 | stands on the indexer |
 | tool post (top face) | 0.300 | −0.340 | 0.020 | ⌀110 mm flat plate |
 | pad tool (stem axis, at rest) | 0.300 | −0.340 | 0.040 | body origin |
-| inspection backdrop (panel face) | 0.854 | 0.000 | 0…0.720 | matte, 920 × 720 mm |
+| inspection backdrop, +X (panel face) | 0.854 | 0.000 | 0…0.720 | matte black, 920 × 720 mm |
+| inspection backdrop, +Y (panel face) | 0.660 | **0.414** | 0…0.720 | matte black, 600 × 720 mm |
+| **inspection camera** | 0.100 | −0.450 | 0.400 | fixed, fovy 48°, aims at (0.58, 0, 0.235) |
 | bench top | — | — | 0.000 | 1100 × 1200 mm working area |
 
 ### Device (placeholder dimensions)
@@ -190,12 +239,20 @@ the motion sequence, and a demo that hides an axis understates its own integrati
 
 ## 5. Tooling
 
-**Wiping pad tool.** 40 mm ⌀ × 90 mm cylindrical stem (grasped), 60 × 60 × 20 mm
-compliant pad face. Total 0.220 kg.
+**Wiping pad tool.** **Keyed rectangular shank, 60 × 40 × 90 mm** (grasped across the
+40 mm dimension), 60 × 60 × 20 mm compliant pad face. Total 0.220 kg.
 
-The stem diameter is deliberately close to the 43 mm cartridge body that the entire grasp
-sequence in v2/v3/v4 was validated against, so the existing grasp constants transfer
-instead of needing a new grasp.
+> ⚠️ **The shank must be keyed, not round.** With a 40 mm cylindrical shank the tool
+> pivoted inside the jaws as soon as the wrist rotated from vertical to horizontal — the
+> pad's offset from the TCP moved from (21.7, 0, 36.4) mm to (87.6, 0, −16.1) mm, roughly
+> a right angle of rotation, and cleaning coverage was 0%. A flatted, keyed or
+> D-profile shank is standard on robot tooling for exactly this reason.
+>
+> **This is not yet sufficient.** Even keyed, the tool still creeps ≈60–70 mm in the jaws
+> over one face's raster — and that creep is insensitive to grip command (245 vs 255) and
+> to press depth (3.0 vs 1.5 mm), which points at grip geometry or free play rather than
+> friction. **A production cell should use a proper tool changer or a positively located
+> tool holder, not a parallel-jaw grip on a shank.** See V5_PLAN, V5-C status.
 
 **The pad is deliberately compliant** (`solref="0.045 1"`, `solimp="0.55 0.88 0.012"`).
 This is the low-cost industrial answer to surface following: a sprung or foam-backed pad
@@ -292,12 +349,24 @@ Read this section before quoting any number from §1–6 to a customer.
    trusting the §4 numbers (§2).
 3. Install the **rotary indexer** at (580, 0) mm, top face 10 mm above the bench.
 4. Fit the **tool post** at (300, −340) mm, top face 20 mm above the bench.
-5. Fit the **matte backdrop** at X = 854 mm, spanning ±460 mm in Y and 0–720 mm in Z.
-   **Nothing else may be placed on the +Y side of the device** — a 6 mm panel there cost
-   an entire face of coverage in simulation before it was found and removed.
-6. Set the robot **TCP offset to 172 mm** along the gripper base +Z, then **measure the
+5. Fit **both matte-black backdrops**: the +X panel at X = 854 mm spanning ±460 mm in Y,
+   and the +Y panel at Y = 414 mm spanning X = 360…960 mm. Both 0–720 mm in Z.
+   > ⚠️ **This instruction is the reverse of an earlier version of this document.** The
+   > +Y panel was originally banned, because with a FIXED device the arm had to reach
+   > around to press on a +Y surface and a 6 mm panel there cost an entire face of
+   > coverage (89.6% → 0%). The rotary indexer removed that requirement — every face now
+   > rotates to the front working position — so the panel is safe and the triage camera
+   > needs it. Re-verified with `v5_reach.py --indexed` after adding it: all faces still
+   > 100%. **If the indexer is ever dropped from the design, this panel must go too.**
+6. **Finish the indexer platter matte black** (or fit a matte black cover plate). This is
+   a vision requirement, not cosmetic: in mid-grey the platter rendered above the
+   background threshold, so its rim sat inside the search region and read as a large
+   compact dark defect — i.e. as a dent. Measured 2374 false dent pixels against ~60 real
+   ones before the finish was changed.
+7. Set the robot **TCP offset to 172 mm** along the gripper base +Z, then **measure the
    actual finger-pad offset** and record it.
-7. Perform **hand-eye calibration** for the wrist camera and record the transform.
-8. Verify every fixture is within **±2.5 mm** of the coordinates in §3.
-9. Re-fit the inspection thresholds **in-cell**, through the real motion path — never on
-   a bench rig. v4 lost 37 points of accuracy to exactly that mistake.
+8. Survey the **inspection camera** extrinsics (§2). Hand-eye calibration is only needed
+   if you also use the wrist camera; the triage station does not.
+9. Verify every fixture is within **±2.5 mm** of the coordinates in §3.
+10. Re-fit the inspection thresholds **in-cell**, through the real motion path — never on
+    a bench rig. v4 lost 37 points of accuracy to exactly that mistake.

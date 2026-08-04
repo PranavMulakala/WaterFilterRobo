@@ -47,6 +47,9 @@ def main():
     base = m.body("link_base").id
     tcp = m.site("link_tcp").id
     cam = m.camera("wrist").id
+    icam = m.camera("inspect").id
+    by_p, by_s = geom("backdrop_y")
+    disc = m.geom("tt_disc").id
 
     checks = [
         # --- section 2, frames
@@ -79,13 +82,24 @@ def main():
         ("backdrop face toward the arm, X", bd_p[0] - bd_s[0], 0.854),
         ("backdrop width", 2 * bd_s[1], 0.920),
         ("backdrop height", 2 * bd_s[2], 0.720),
-        ("backdrop bottom Z", bd_p[2] - bd_s[2], 0.000),
+        ("backdrop +X bottom Z", bd_p[2] - bd_s[2], 0.000),
+        # V5-B additions. Every one of these was in the scene but NOT in CELL_SPEC until
+        # an audit of "what is in the model vs what the spec lists" caught them -- a
+        # check that verifies listed values cannot notice a MISSING entry.
+        ("inspection camera X", d.cam_xpos[icam][0], 0.100),
+        ("inspection camera Y", d.cam_xpos[icam][1], -0.450),
+        ("inspection camera Z", d.cam_xpos[icam][2], 0.400),
+        ("inspection camera fovy (deg)", m.cam_fovy[icam], 48.0),
+        ("backdrop +Y face toward device", by_p[1] - by_s[1], 0.414),
+        ("backdrop +Y width (X extent)", 2 * by_s[0], 0.600),
         ("bench working area X", 2 * bn_s[0], 1.100),
         ("bench working area Y", 2 * bn_s[1], 1.200),
         # --- section 5, tooling
         ("pad tool total mass (kg)", m.body_subtreemass[pad], 0.220),
-        ("pad stem diameter", 2 * ps_s[0], 0.040),
-        ("pad stem length", 2 * ps_s[1], 0.090),
+        # keyed rectangular shank: 60 mm along the jaws, 40 mm across them, 90 mm long
+        ("pad shank across jaws", 2 * ps_s[1], 0.040),
+        ("pad shank along jaws (anti-rotation)", 2 * ps_s[0], 0.060),
+        ("pad shank length", 2 * ps_s[2], 0.090),
         ("pad face width", 2 * pf_s[0], 0.060),
         ("pad face thickness", 2 * pf_s[2], 0.020),
     ]
@@ -105,6 +119,42 @@ def main():
         print(f"  {'PASS' if good else 'FAIL'}  J{i}: model {lo:+.0f}..{hi:+.0f}  "
               f"datasheet {rl:+d}..{rh:+d}")
         bad += not good
+
+    # the indexer platter must be MATTE BLACK -- a vision requirement, not cosmetic
+    disc_rgb = m.mat_rgba[m.geom_matid[disc]][:3]
+    dark = bool(disc_rgb.max() < 0.15)
+    print(f"\n  {'PASS' if dark else 'FAIL'}  indexer platter is matte black "
+          f"(rgb {np.round(disc_rgb, 3)}) -- else its rim reads as a dent")
+    bad += not dark
+
+    # the arm must park clear of the inspection camera's frame
+    jn = [m.joint(f"joint{i}").id for i in range(1, 8)]
+    qadr = np.array([m.jnt_qposadr[j] for j in jn])
+    base = m.body("link_base").id
+    arm_b = set()
+    for b in range(m.nbody):
+        pb = b
+        while pb != 0:
+            if pb == base:
+                arm_b.add(b)
+                break
+            pb = m.body_parentid[pb]
+    arm_g = [g for g in range(m.ngeom) if m.geom_bodyid[g] in arm_b]
+    mujoco.mj_resetDataKeyframe(m, d, m.key("v5home").id)
+    d.qpos[qadr] = [np.pi / 2, -0.247, 0.0, 0.909, 0.0, 1.15644, 0.0]
+    mujoco.mj_forward(m, d)
+    rr = mujoco.Renderer(m, 480, 640)
+    rr.update_scene(d, camera="inspect")
+    rr.enable_segmentation_rendering()
+    seg = rr.render()[:, :, 0]
+    rr.disable_segmentation_rendering()
+    frac = float(np.isin(seg, arm_g).mean())
+    ok_park = frac < 0.001
+    print(f"  {'PASS' if ok_park else 'FAIL'}  arm PARK pose is clear of the inspection "
+          f"camera ({frac*100:.3f}% of frame)")
+    bad += not ok_park
+    mujoco.mj_resetData(m, d)
+    mujoco.mj_forward(m, d)
 
     # payload headroom -- CELL_SPEC claims 6% utilisation against the 3.5 kg rating
     util = m.body_subtreemass[pad] / 3.5

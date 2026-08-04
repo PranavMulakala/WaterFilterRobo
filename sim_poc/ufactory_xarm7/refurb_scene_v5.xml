@@ -24,7 +24,16 @@
     <!-- the three condition classes. Deliberately NOT flat recolours of the body: the
          classifier has to measure coverage and texture, not read back a value we set. -->
     <material name="soilmat"    rgba="0.42 0.36 0.28 1" reflectance="0.0"/>
-    <material name="scratchmat" rgba="0.97 0.97 0.98 1" reflectance="0.45"/>
+    <!-- A scratch is modelled as a DARK GROOVE, not a bright specular line. Both occur
+         on real plastic (fine scuffs scatter light and read pale; gouges shadow and read
+         dark), so this is a stated modelling choice. It was made after measuring: a pale
+         scratch renders at 0.846 against a body at 0.787 -- 1.6 body-sigma, and swamped
+         by the cabinet's own edges and highlights. A groove separates cleanly.
+         IT DOES NOT DECIDE THE CLASSIFIER. Scratches are told apart from dents by SHAPE
+         (thin and elongated vs compact), which is what a human grader uses and is robust
+         either way; the detector looks for two-sided anomalies, so a pale scratch would
+         still be found. -->
+    <material name="scratchmat" rgba="0.34 0.34 0.35 1" reflectance="0.05"/>
     <material name="dentmat"    rgba="0.30 0.30 0.32 1" reflectance="0.02"/>
     <material name="backdropmat" rgba="0.07 0.08 0.09 1" reflectance="0.0"/>
     <material name="padmat" rgba="0.95 0.85 0.30 1" reflectance="0.05"/>
@@ -39,6 +48,13 @@
     <geom name="floor" type="plane" size="0 0 0.05" pos="0 0 -0.7" material="floormat"/>
     <geom name="bench" type="box" size="0.55 0.6 0.35" pos="0.35 0 -0.35" material="benchmat"/>
 
+    <!-- ARM RISER. Holds the arm's flange 120 mm above the bench. Tops out 4 mm below
+         the flange so it meets the base casting (which hangs 3 mm below the body origin)
+         without interpenetrating. Modelled because it is an OBSTACLE, not decoration:
+         link5 passes as low as z = 103 mm within 75 mm of the base axis. -->
+    <geom name="arm_riser" type="cylinder" size="0.0750 0.0580"
+          pos="0 0 0.0580" material="postmat"/>
+
     <!-- Demo cameras, all computed by _cam(). They MUST sit on the -X side: the matte
          backdrop stands at x = 0.86, so anything viewing from +X sees a black
          wall and nothing else. The first draft did exactly that. -->
@@ -50,6 +66,25 @@
             xyaxes="0.9691 -0.2467 0.0000 0.0344 0.1353 0.9902"/>
     <camera name="top" pos="0.3000 -0.0200 1.5500"
             xyaxes="0.0767 -0.9971 0.0000 0.9760 0.0751 0.2042"/>
+
+    <!-- ===================== TRIAGE STATION CAMERA (V5-B) =====================
+         A FIXED camera, not the wrist camera. V5_PLAN originally called for the arm to
+         orbit its wrist camera around the device -- correct when the device could not
+         move. The rotary indexer changed that: with the part on a turntable, a fixed
+         camera and a rotating device is both simpler and what real rotary vision cells
+         actually do. It needs no hand-eye calibration (the single largest un-modelled
+         risk in the wrist-camera plan), its geometry is fixed and surveyable, and it
+         leaves the arm free during inspection instead of parking it in a pose.
+
+         Placed on the -X side so the matte backdrop at x = 0.86 fills the
+         background: the sightline continues past the device and lands on the panel at
+         roughly y = +0.26, well inside its +/-0.46 half-width. Offset in -Y to clear the
+         arm, which sits at the origin. fovy 48 frames the 450 mm device
+         at this range with margin. -->
+    <camera name="inspect" fovy="48"
+            pos="0.1000 -0.4500 0.4000"
+            xyaxes="0.6839 -0.7295 0.0000 0.1775 0.1664 0.9700"/>
+    <site name="inspect_eye" pos="0.10 -0.45 0.40" size="0.006" rgba="0 0 0 0"/>
 
     <!-- Matte backdrop BEHIND the device as seen from the arm. A controlled background
          is what makes plant vision tractable and is what a real cell would have (v4
@@ -64,6 +99,19 @@
          every framed azimuth (the extreme, 225 deg, needs coverage out to y = +0.28). -->
     <geom name="backdrop_x" type="box" size="0.006 0.46 0.36"
           pos="0.860 0 0.36" material="backdropmat"/>
+
+    <!-- Second panel, +Y, restored for the V5-B triage camera. It fills the rest of the
+         background behind the device from the fixed inspect camera; a half-lit
+         background makes segmentation a lighting problem instead of a geometry one.
+
+         THIS PANEL WAS DELETED ONCE, because it cost the entire right face (89.6% -> 0%)
+         when the arm had to reach around to press on a +Y surface. THE ROTARY INDEXER
+         REMOVED THAT REQUIREMENT: every face now rotates to the FRONT working position,
+         so the arm never works a +Y surface and the panel is no longer in its way.
+         That is a claim, so `v5_reach.py --indexed` is re-run after adding it and the
+         front/top numbers are unchanged. Do not restore it without re-checking. -->
+    <geom name="backdrop_y" type="box" size="0.30 0.006 0.36"
+          pos="0.66 0.42 0.36" material="backdropmat"/>
 
 
     <!-- ======================= ROTARY INDEXER (TURNTABLE) =======================
@@ -89,8 +137,14 @@
          bench, which V5-A re-verified does not change the reachability result. -->
     <body name="turntable" pos="0.580 0.000 0">
       <joint name="tt_rot" type="hinge" axis="0 0 1" damping="12" armature="0.08"/>
+      <!-- MATTE BLACK PLATTER, deliberately. In mid-grey it rendered at 0.580 value,
+           above the 0.30 background threshold, so its elliptical rim sat inside the
+           projected search region and read as a big compact dark anomaly -- i.e. as a
+           DENT. Measured: 2374 false dent pixels against ~60 real ones. Finishing the
+           fixture matte black is what a real vision cell does for exactly this reason,
+           and it drops the platter below the background threshold for free. -->
       <geom name="tt_disc" type="cylinder" size="0.175 0.0050"
-            pos="0 0 0.0050" material="postmat"/>
+            pos="0 0 0.0050" material="backdropmat"/>
       <!-- index mark, so rotation is visible in a render and in a video -->
       <geom name="tt_mark" type="box" size="0.030 0.006 0.0012"
             pos="-0.140 0 0.0112" material="faciamat"
@@ -144,98 +198,98 @@
 
 
       <!-- soil / stains -- come off with the CIF-cream wipe (stage 2)       -> EASY -->
-      <geom name="soil00" type="box" size="0.00933 0.00596 0.00100" pos="-0.09060 -0.08367 0.27401" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil01" type="box" size="0.00905 0.00573 0.00100" pos="-0.09060 0.08976 0.40632" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil02" type="box" size="0.00582 0.00783 0.00100" pos="-0.06907 0.12560 0.16462" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil03" type="box" size="0.00997 0.00540 0.00100" pos="-0.09060 0.06666 0.13256" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil04" type="box" size="0.00671 0.00549 0.00100" pos="-0.09060 -0.09480 0.39152" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil05" type="box" size="0.00993 0.00619 0.00100" pos="-0.06889 0.12560 0.31015" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil06" type="box" size="0.00871 0.00793 0.00100" pos="-0.04423 -0.12560 0.16470" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil07" type="box" size="0.00613 0.00658 0.00100" pos="-0.03521 0.12560 0.31662" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil08" type="box" size="0.00646 0.00484 0.00100" pos="-0.06649 0.12560 0.09348" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil09" type="box" size="0.00518 0.00726 0.00100" pos="0.05147 0.12560 0.27489" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil10" type="box" size="0.00728 0.00683 0.00100" pos="0.04785 0.12560 0.38720" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil11" type="box" size="0.00685 0.00707 0.00100" pos="-0.05200 0.01978 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
-      <geom name="soil12" type="box" size="0.00776 0.00553 0.00100" pos="0.04356 -0.12560 0.30523" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil13" type="box" size="0.00970 0.00581 0.00100" pos="-0.01092 0.12560 0.26372" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil14" type="box" size="0.00594 0.00618 0.00100" pos="0.05229 -0.12560 0.33217" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil15" type="box" size="0.00546 0.00486 0.00100" pos="-0.00473 0.12560 0.36035" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil16" type="box" size="0.00666 0.00748 0.00100" pos="-0.09060 -0.00653 0.26320" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil17" type="box" size="0.00980 0.00671 0.00100" pos="0.06808 0.12560 0.05141" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil18" type="box" size="0.00878 0.00760 0.00100" pos="0.03940 0.12560 0.29797" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil19" type="box" size="0.00622 0.00697 0.00100" pos="0.01694 -0.12560 0.33399" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil20" type="box" size="0.00822 0.00549 0.00100" pos="0.02395 0.12560 0.32842" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil21" type="box" size="0.00574 0.00716 0.00100" pos="0.04698 -0.12560 0.11340" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil22" type="box" size="0.00754 0.00751 0.00100" pos="-0.05057 -0.12560 0.37069" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil23" type="box" size="0.00996 0.00509 0.00100" pos="-0.01654 0.12560 0.36743" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil24" type="box" size="0.00913 0.00786 0.00100" pos="-0.09060 -0.10050 0.37968" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil25" type="box" size="0.00650 0.00547 0.00100" pos="-0.02603 0.12560 0.38517" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil26" type="box" size="0.00679 0.00536 0.00100" pos="-0.09060 -0.09850 0.38291" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil27" type="box" size="0.00769 0.00609 0.00100" pos="-0.03137 -0.12560 0.09544" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil28" type="box" size="0.00788 0.00401 0.00100" pos="-0.05030 -0.12560 0.23722" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil29" type="box" size="0.00595 0.00478 0.00100" pos="-0.09060 0.09025 0.31791" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil30" type="box" size="0.00993 0.00550 0.00100" pos="-0.09060 0.00632 0.23476" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil31" type="box" size="0.00877 0.00413 0.00100" pos="-0.09060 -0.06174 0.21269" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil32" type="box" size="0.00927 0.00609 0.00100" pos="0.01140 -0.12560 0.36245" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil33" type="box" size="0.00812 0.00566 0.00100" pos="-0.01017 -0.12560 0.36050" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil34" type="box" size="0.00626 0.00610 0.00100" pos="-0.09060 -0.03981 0.29639" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
-      <geom name="soil35" type="box" size="0.00898 0.00673 0.00100" pos="0.04782 -0.12560 0.16698" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil36" type="box" size="0.00769 0.00416 0.00100" pos="-0.04412 0.05733 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
-      <geom name="soil37" type="box" size="0.00592 0.00589 0.00100" pos="0.02504 0.12560 0.27936" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
-      <geom name="soil38" type="box" size="0.00822 0.00402 0.00100" pos="0.06464 -0.12560 0.30453" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
-      <geom name="soil39" type="box" size="0.00890 0.00713 0.00100" pos="-0.05526 -0.12560 0.04822" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil00" type="box" size="0.00787 0.00775 0.00100" pos="-0.09060 -0.08367 0.27401" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil01" type="box" size="0.00858 0.00603 0.00100" pos="-0.09060 0.08976 0.40632" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil02" type="box" size="0.00563 0.00408 0.00100" pos="0.10060 -0.09133 0.16999" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil03" type="box" size="0.00933 0.00596 0.00100" pos="-0.09060 0.06666 0.13256" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil04" type="box" size="0.00905 0.00573 0.00100" pos="-0.09060 -0.09480 0.39152" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil05" type="box" size="0.00582 0.00783 0.00100" pos="0.10060 -0.09109 0.30258" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil06" type="box" size="0.00997 0.00540 0.00100" pos="-0.04423 0.12560 0.16470" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil07" type="box" size="0.00671 0.00549 0.00100" pos="0.10060 -0.04655 0.30848" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil08" type="box" size="0.00993 0.00619 0.00100" pos="0.10060 -0.08792 0.10517" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil09" type="box" size="0.00871 0.00793 0.00100" pos="0.10060 0.06805 0.27046" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil10" type="box" size="0.00613 0.00658 0.00100" pos="0.10060 0.06327 0.37278" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil11" type="box" size="0.00646 0.00484 0.00100" pos="-0.05200 -0.12560 0.26060" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil12" type="box" size="0.00518 0.00726 0.00100" pos="0.04356 0.12560 0.30523" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil13" type="box" size="0.00728 0.00683 0.00100" pos="0.10060 -0.01443 0.26028" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil14" type="box" size="0.00685 0.00707 0.00100" pos="0.05229 -0.12560 0.33217" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil15" type="box" size="0.00776 0.00553 0.00100" pos="0.10060 -0.00625 0.34832" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil16" type="box" size="0.00970 0.00581 0.00100" pos="-0.09060 -0.00653 0.26320" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil17" type="box" size="0.00594 0.00618 0.00100" pos="0.10060 0.09002 0.06684" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil18" type="box" size="0.00546 0.00486 0.00100" pos="0.10060 0.05209 0.29149" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil19" type="box" size="0.00666 0.00748 0.00100" pos="0.01694 -0.12560 0.33399" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil20" type="box" size="0.00980 0.00671 0.00100" pos="0.10060 0.03167 0.31922" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil21" type="box" size="0.00878 0.00760 0.00100" pos="0.04698 0.12560 0.11340" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil22" type="box" size="0.00622 0.00697 0.00100" pos="-0.05057 0.12560 0.37069" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil23" type="box" size="0.00822 0.00549 0.00100" pos="0.10060 -0.02187 0.35477" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil24" type="box" size="0.00574 0.00716 0.00100" pos="-0.09060 -0.10050 0.37968" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil25" type="box" size="0.00754 0.00751 0.00100" pos="0.10060 -0.03441 0.37093" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
+      <geom name="soil26" type="box" size="0.00996 0.00509 0.00100" pos="-0.07092 0.08773 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
+      <geom name="soil27" type="box" size="0.00913 0.00786 0.00100" pos="-0.03137 0.12560 0.09544" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil28" type="box" size="0.00650 0.00547 0.00100" pos="-0.05030 -0.12560 0.23722" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil29" type="box" size="0.00679 0.00536 0.00100" pos="-0.06061 -0.09093 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
+      <geom name="soil30" type="box" size="0.00769 0.00609 0.00100" pos="0.06498 0.05162 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
+      <geom name="soil31" type="box" size="0.00788 0.00401 0.00100" pos="0.00455 0.00542 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
+      <geom name="soil32" type="box" size="0.00595 0.00478 0.00100" pos="-0.09060 -0.06174 0.21269" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil33" type="box" size="0.00993 0.00550 0.00100" pos="0.01140 0.12560 0.36245" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil34" type="box" size="0.00877 0.00413 0.00100" pos="-0.05828 -0.09309 0.45060" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- top -->
+      <geom name="soil35" type="box" size="0.00927 0.00609 0.00100" pos="-0.01017 0.12560 0.36050" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- right -->
+      <geom name="soil36" type="box" size="0.00812 0.00566 0.00100" pos="-0.09060 -0.03981 0.29639" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- front -->
+      <geom name="soil37" type="box" size="0.00626 0.00610 0.00100" pos="0.04782 -0.12560 0.16698" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil38" type="box" size="0.00898 0.00673 0.00100" pos="-0.04412 -0.12560 0.32820" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- left -->
+      <geom name="soil39" type="box" size="0.00769 0.00416 0.00100" pos="0.10060 0.03311 0.27453" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="soilmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.42 0.36 0.28 0"/>   <!-- back -->
 
       <!-- scratches -- need the rubbing-component pass (stage 2)            -> MEDIUM -->
-      <geom name="scr00" type="box" size="0.02126 0.00049 0.00060" pos="-0.04740 0.00830 0.45036" xyaxes="-0.82443 0.56596 0.00000 -0.56596 -0.82443 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- top -->
-      <geom name="scr01" type="box" size="0.01821 0.00067 0.00060" pos="-0.09036 0.09870 0.17148" xyaxes="0.00000 -0.61808 0.78612 0.00000 0.78612 0.61808" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr02" type="box" size="0.01543 0.00049 0.00060" pos="-0.09036 0.02444 0.21016" xyaxes="0.00000 -0.78063 0.62499 0.00000 0.62499 0.78063" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr03" type="box" size="0.01694 0.00071 0.00060" pos="0.06098 -0.12536 0.27055" xyaxes="-0.99994 0.00000 0.01113 -0.01113 -0.00000 -0.99994" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr04" type="box" size="0.01488 0.00036 0.00060" pos="-0.09036 0.07862 0.39388" xyaxes="0.00000 -0.33717 0.94144 0.00000 0.94144 0.33717" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr05" type="box" size="0.01785 0.00049 0.00060" pos="0.02970 -0.12536 0.31143" xyaxes="0.88381 0.00000 0.46784 -0.46784 0.00000 0.88381" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr06" type="box" size="0.01387 0.00073 0.00060" pos="-0.01283 0.12536 0.26263" xyaxes="-0.99560 0.00000 0.09369 0.09369 -0.00000 0.99560" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- right -->
-      <geom name="scr07" type="box" size="0.00995 0.00037 0.00060" pos="-0.06714 0.05305 0.45036" xyaxes="0.96354 0.26756 0.00000 -0.26756 0.96354 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- top -->
-      <geom name="scr08" type="box" size="0.01074 0.00069 0.00060" pos="0.03492 0.12536 0.29238" xyaxes="-0.84244 0.00000 0.53880 0.53880 -0.00000 0.84244" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- right -->
-      <geom name="scr09" type="box" size="0.02225 0.00042 0.00060" pos="-0.09036 -0.05208 0.30726" xyaxes="0.00000 0.85327 0.52147 0.00000 0.52147 -0.85327" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr10" type="box" size="0.01423 0.00052 0.00060" pos="-0.03949 0.09471 0.45036" xyaxes="0.69558 0.71845 0.00000 -0.71845 0.69558 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- top -->
-      <geom name="scr11" type="box" size="0.01492 0.00038 0.00060" pos="0.07065 0.12536 0.05649" xyaxes="0.54567 0.00000 0.83800 0.83800 0.00000 -0.54567" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- right -->
-      <geom name="scr12" type="box" size="0.01905 0.00069 0.00060" pos="0.03699 -0.12536 0.25083" xyaxes="-0.05905 0.00000 0.99826 -0.99826 -0.00000 -0.05905" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr13" type="box" size="0.01104 0.00064 0.00060" pos="-0.09036 -0.09846 0.24885" xyaxes="0.00000 -0.44690 0.89458 0.00000 0.89458 0.44690" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr14" type="box" size="0.01059 0.00049 0.00060" pos="-0.07255 -0.12536 0.13586" xyaxes="0.95635 0.00000 0.29222 -0.29222 0.00000 0.95635" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr15" type="box" size="0.01211 0.00073 0.00060" pos="-0.02511 -0.12536 0.37785" xyaxes="-0.41733 0.00000 0.90875 -0.90875 -0.00000 -0.41733" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr16" type="box" size="0.01114 0.00042 0.00060" pos="-0.00714 0.08161 0.45036" xyaxes="0.07263 0.99736 0.00000 -0.99736 0.07263 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- top -->
-      <geom name="scr17" type="box" size="0.01001 0.00037 0.00060" pos="0.05834 -0.12536 0.16321" xyaxes="-0.89951 0.00000 0.43690 -0.43690 -0.00000 -0.89951" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr18" type="box" size="0.01787 0.00074 0.00060" pos="0.05860 -0.12536 0.12519" xyaxes="-0.96273 0.00000 0.27046 -0.27046 -0.00000 -0.96273" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr19" type="box" size="0.01106 0.00055 0.00060" pos="-0.09036 0.00605 0.39579" xyaxes="0.00000 0.30892 0.95109 0.00000 0.95109 -0.30892" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr20" type="box" size="0.02110 0.00042 0.00060" pos="0.06281 -0.12536 0.20101" xyaxes="-0.74973 0.00000 0.66174 -0.66174 -0.00000 -0.74973" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr21" type="box" size="0.01013 0.00065 0.00060" pos="-0.09036 -0.00230 0.38511" xyaxes="0.00000 -0.59159 0.80624 0.00000 0.80624 0.59159" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr22" type="box" size="0.02009 0.00045 0.00060" pos="-0.05663 -0.12536 0.35215" xyaxes="0.98529 0.00000 0.17087 -0.17087 0.00000 0.98529" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- left -->
-      <geom name="scr23" type="box" size="0.02182 0.00043 0.00060" pos="-0.09036 0.01825 0.11950" xyaxes="0.00000 0.90398 0.42757 0.00000 0.42757 -0.90398" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr24" type="box" size="0.01026 0.00050 0.00060" pos="-0.09036 -0.02598 0.33939" xyaxes="0.00000 -0.28916 0.95728 0.00000 0.95728 0.28916" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
-      <geom name="scr25" type="box" size="0.01569 0.00048 0.00060" pos="0.03310 0.12536 0.40149" xyaxes="-0.44846 0.00000 0.89381 0.89381 -0.00000 0.44846" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- right -->
-      <geom name="scr26" type="box" size="0.01445 0.00071 0.00060" pos="-0.04242 0.12536 0.22237" xyaxes="0.36442 0.00000 0.93124 0.93124 0.00000 -0.36442" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- right -->
-      <geom name="scr27" type="box" size="0.02116 0.00059 0.00060" pos="-0.09036 0.07475 0.40540" xyaxes="0.00000 0.86661 0.49899 0.00000 0.49899 -0.86661" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.97 0.97 0.98 0"/>   <!-- front -->
+      <geom name="scr00" type="box" size="0.02111 0.00044 0.00060" pos="-0.09036 -0.00571 0.27811" xyaxes="0.00000 0.02238 0.99975 0.00000 0.99975 -0.02238" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr01" type="box" size="0.01245 0.00042 0.00060" pos="-0.09036 0.05756 0.32959" xyaxes="0.00000 0.99805 0.06249 0.00000 0.06249 -0.99805" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr02" type="box" size="0.01284 0.00070 0.00060" pos="-0.04740 -0.12536 0.23994" xyaxes="-0.99939 0.00000 0.03490 -0.03490 -0.00000 -0.99939" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr03" type="box" size="0.02126 0.00049 0.00060" pos="-0.09036 0.09870 0.17148" xyaxes="0.00000 -0.82443 0.56596 0.00000 0.56596 0.82443" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr04" type="box" size="0.01821 0.00067 0.00060" pos="-0.09036 0.02444 0.21016" xyaxes="0.00000 -0.61808 0.78612 0.00000 0.78612 0.61808" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr05" type="box" size="0.01543 0.00049 0.00060" pos="0.06098 0.12536 0.27055" xyaxes="-0.78063 0.00000 0.62499 0.62499 -0.00000 0.78063" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr06" type="box" size="0.01694 0.00071 0.00060" pos="0.05661 0.09382 0.45036" xyaxes="-0.99994 0.01113 0.00000 -0.01113 -0.99994 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- top -->
+      <geom name="scr07" type="box" size="0.01488 0.00036 0.00060" pos="0.02970 -0.12536 0.31143" xyaxes="-0.33717 0.00000 0.94144 -0.94144 -0.00000 -0.33717" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr08" type="box" size="0.01785 0.00049 0.00060" pos="0.10036 -0.01696 0.25929" xyaxes="0.00000 0.88381 0.46784 0.00000 -0.46784 0.88381" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- back -->
+      <geom name="scr09" type="box" size="0.01387 0.00073 0.00060" pos="-0.06714 -0.12536 0.32048" xyaxes="-0.99560 0.00000 0.09369 -0.09369 -0.00000 -0.99560" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr10" type="box" size="0.00995 0.00037 0.00060" pos="0.10036 0.04617 0.28639" xyaxes="0.00000 0.96354 0.26756 0.00000 -0.26756 0.96354" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- back -->
+      <geom name="scr11" type="box" size="0.01074 0.00069 0.00060" pos="-0.03750 0.04570 0.45036" xyaxes="-0.84244 0.53880 0.00000 -0.53880 -0.84244 0.00000" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- top -->
+      <geom name="scr12" type="box" size="0.02225 0.00042 0.00060" pos="-0.03949 -0.12536 0.39549" xyaxes="0.85327 0.00000 0.52147 -0.52147 0.00000 0.85327" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr13" type="box" size="0.01423 0.00052 0.00060" pos="0.10036 0.09342 0.07147" xyaxes="0.00000 0.69558 0.71845 0.00000 -0.71845 0.69558" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- back -->
+      <geom name="scr14" type="box" size="0.01492 0.00038 0.00060" pos="0.03699 0.12536 0.25083" xyaxes="0.54567 0.00000 0.83800 0.83800 0.00000 -0.54567" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr15" type="box" size="0.01905 0.00069 0.00060" pos="-0.09036 -0.09846 0.24885" xyaxes="0.00000 -0.05905 0.99826 0.00000 0.99826 0.05905" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr16" type="box" size="0.01104 0.00064 0.00060" pos="-0.07255 0.12536 0.13586" xyaxes="-0.44690 0.00000 0.89458 0.89458 -0.00000 0.44690" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr17" type="box" size="0.01059 0.00049 0.00060" pos="-0.02511 0.12536 0.37785" xyaxes="0.95635 0.00000 0.29222 0.29222 0.00000 -0.95635" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr18" type="box" size="0.01211 0.00073 0.00060" pos="-0.00714 -0.12536 0.37190" xyaxes="-0.41733 0.00000 0.90875 -0.90875 -0.00000 -0.41733" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr19" type="box" size="0.01114 0.00042 0.00060" pos="0.05834 0.12536 0.16321" xyaxes="0.07263 0.00000 0.99736 0.99736 0.00000 -0.07263" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr20" type="box" size="0.01001 0.00037 0.00060" pos="0.05860 0.12536 0.12519" xyaxes="-0.89951 0.00000 0.43690 0.43690 -0.00000 0.89951" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr21" type="box" size="0.01787 0.00074 0.00060" pos="-0.09036 0.00605 0.39579" xyaxes="0.00000 -0.96273 0.27046 0.00000 0.27046 0.96273" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr22" type="box" size="0.01106 0.00055 0.00060" pos="0.06281 0.12536 0.20101" xyaxes="0.30892 0.00000 0.95109 0.95109 0.00000 -0.30892" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- right -->
+      <geom name="scr23" type="box" size="0.02110 0.00042 0.00060" pos="-0.09036 -0.00230 0.38511" xyaxes="0.00000 -0.74973 0.66174 0.00000 0.66174 0.74973" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr24" type="box" size="0.01013 0.00065 0.00060" pos="-0.05663 -0.12536 0.35215" xyaxes="-0.59159 0.00000 0.80624 -0.80624 -0.00000 -0.59159" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- left -->
+      <geom name="scr25" type="box" size="0.02009 0.00045 0.00060" pos="-0.09036 0.01825 0.11950" xyaxes="0.00000 0.98529 0.17087 0.00000 0.17087 -0.98529" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr26" type="box" size="0.02182 0.00043 0.00060" pos="-0.09036 -0.02598 0.33939" xyaxes="0.00000 0.90398 0.42757 0.00000 0.42757 -0.90398" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- front -->
+      <geom name="scr27" type="box" size="0.01026 0.00050 0.00060" pos="0.10036 0.04377 0.38580" xyaxes="0.00000 -0.28916 0.95728 0.00000 -0.95728 -0.28916" material="scratchmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.34 0.34 0.35 0"/>   <!-- back -->
 
       <!-- dents -- no cleaning step in any of the 10 stages addresses these -> HARD -->
-      <geom name="dent00" type="box" size="0.00637 0.00352 0.00220" pos="-0.09132 0.04318 0.27197" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
-      <geom name="dent01" type="box" size="0.00448 0.00306 0.00220" pos="-0.09132 -0.06644 0.16391" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
-      <geom name="dent02" type="box" size="0.00496 0.00603 0.00220" pos="-0.00864 -0.12632 0.06803" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
-      <geom name="dent03" type="box" size="0.00631 0.00423 0.00220" pos="-0.06917 0.12632 0.16438" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent04" type="box" size="0.00533 0.00544 0.00220" pos="-0.01814 0.12632 0.15174" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent05" type="box" size="0.00461 0.00603 0.00220" pos="0.04185 0.12632 0.34304" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent06" type="box" size="0.00502 0.00571 0.00220" pos="0.01492 0.12632 0.14159" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent07" type="box" size="0.00360 0.00560 0.00220" pos="0.00856 -0.12632 0.10088" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
-      <geom name="dent08" type="box" size="0.00364 0.00369 0.00220" pos="-0.00723 0.12632 0.32245" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent09" type="box" size="0.00312 0.00394 0.00220" pos="-0.02408 0.12632 0.37908" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent10" type="box" size="0.00330 0.00463 0.00220" pos="-0.00287 0.12632 0.11358" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent11" type="box" size="0.00567 0.00355 0.00220" pos="-0.06796 0.12632 0.33683" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent12" type="box" size="0.00609 0.00491 0.00220" pos="0.02548 -0.12632 0.15865" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
-      <geom name="dent13" type="box" size="0.00305 0.00405 0.00220" pos="-0.09132 -0.05303 0.28989" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
-      <geom name="dent14" type="box" size="0.00473 0.00328 0.00220" pos="-0.09132 -0.07809 0.21119" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
-      <geom name="dent15" type="box" size="0.00598 0.00647 0.00220" pos="0.02050 -0.12632 0.26621" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
-      <geom name="dent16" type="box" size="0.00509 0.00535 0.00220" pos="-0.04470 0.07997 0.45132" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- top -->
-      <geom name="dent17" type="box" size="0.00641 0.00368 0.00220" pos="0.04306 0.12632 0.12580" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
-      <geom name="dent18" type="box" size="0.00538 0.00449 0.00220" pos="-0.03323 0.03148 0.45132" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- top -->
-      <geom name="dent19" type="box" size="0.00505 0.00632 0.00220" pos="0.04225 0.12632 0.29095" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
+      <geom name="dent00" type="box" size="0.00303 0.00621 0.00220" pos="-0.02675 -0.12632 0.27962" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
+      <geom name="dent01" type="box" size="0.00303 0.00460 0.00220" pos="0.05909 -0.12632 0.18119" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
+      <geom name="dent02" type="box" size="0.00369 0.00612 0.00220" pos="0.10132 0.02079 0.11281" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent03" type="box" size="0.00594 0.00577 0.00220" pos="0.03109 0.02609 0.45132" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- top -->
+      <geom name="dent04" type="box" size="0.00381 0.00443 0.00220" pos="-0.09132 -0.06644 0.16391" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
+      <geom name="dent05" type="box" size="0.00396 0.00529 0.00220" pos="-0.00864 0.12632 0.06803" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
+      <geom name="dent06" type="box" size="0.00627 0.00575 0.00220" pos="0.10132 -0.09145 0.16977" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent07" type="box" size="0.00538 0.00637 0.00220" pos="-0.05521 -0.08559 0.45132" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- top -->
+      <geom name="dent08" type="box" size="0.00352 0.00448 0.00220" pos="-0.01814 0.12632 0.15174" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
+      <geom name="dent09" type="box" size="0.00306 0.00496 0.00220" pos="0.10132 0.05534 0.33255" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent10" type="box" size="0.00603 0.00631 0.00220" pos="0.10132 0.01973 0.14901" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent11" type="box" size="0.00423 0.00533 0.00220" pos="0.00856 -0.12632 0.10088" xyaxes="1.00000 0.00000 0.00000 -0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- left -->
+      <geom name="dent12" type="box" size="0.00544 0.00461 0.00220" pos="0.10132 -0.00956 0.31379" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent13" type="box" size="0.00603 0.00502 0.00220" pos="0.10132 -0.03184 0.36538" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent14" type="box" size="0.00571 0.00360 0.00220" pos="0.10132 -0.00380 0.12348" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- back -->
+      <geom name="dent15" type="box" size="0.00560 0.00364 0.00220" pos="-0.06796 0.12632 0.33683" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
+      <geom name="dent16" type="box" size="0.00369 0.00312 0.00220" pos="0.02548 0.12632 0.15865" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
+      <geom name="dent17" type="box" size="0.00394 0.00330 0.00220" pos="-0.03818 0.03605 0.45132" xyaxes="1.00000 0.00000 0.00000 0.00000 1.00000 0.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- top -->
+      <geom name="dent18" type="box" size="0.00463 0.00567 0.00220" pos="-0.09132 -0.07809 0.21119" xyaxes="0.00000 1.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- front -->
+      <geom name="dent19" type="box" size="0.00355 0.00609 0.00220" pos="0.02050 0.12632 0.26621" xyaxes="1.00000 0.00000 0.00000 0.00000 0.00000 -1.00000" material="dentmat" mass="0.00001" contype="0" conaffinity="0" rgba="0.30 0.30 0.32 0"/>   <!-- right -->
     </body>
     </body>
 
@@ -251,7 +305,16 @@
          NOT yet validated under contact -- that is V5-C's job. -->
     <body name="padtool" pos="0.300 -0.340 0.040">
       <freejoint name="padtool_free"/>
-      <geom name="pad_stem" type="cylinder" size="0.0200 0.045" pos="0 0 0.045"
+      <!-- KEYED (rectangular) SHANK, not a cylinder. A cylinder in parallel jaws can
+           PIVOT about the grip axis, and a 60 mm pad on a 90 mm stem has ample leverage
+           to do it: measured, the pad's offset from the TCP went from (21.7, 0, 36.4) mm
+           with the wrist pointing down to (87.6, 0, -16.1) mm with it horizontal -- the
+           tool had rotated most of a right angle inside the grip, and cleaning coverage
+           was 0%. A flatted or keyed shank is what a real robot tool has, for exactly
+           this reason. 40 mm across the jaws (unchanged), 60 mm along them to resist the
+           pivot. Same lesson as the v4 staging nest: shape the part so the problem
+           cannot happen, rather than controlling around it. -->
+      <geom name="pad_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
             material="stemmat" mass="0.18"/>
       <!-- COMPLIANT PAD -- two corrections, both found by measuring the force/penetration
            curve rather than trusting the declared numbers:
@@ -270,6 +333,11 @@
                have varied per contacting surface. Priority makes the pad govern its own
                contacts, so the number in CELL_SPEC is the number in force.
 
+           FRICTION 0.7, reduced from 1.4. A damp cloth or foam pad on plastic is
+           around 0.6-0.8; 1.4 is dry rubber. At 1.4, dragging the pad across a face at
+           20-40 N normal generated up to ~56 N of friction, which twisted the tool
+           straight out of the jaws mid-raster.
+
            Values chosen by sweeping the force/penetration curve and requiring it to be
            MONOTONIC from 0 to 60 N. Two otherwise-reasonable settings had a solver
            instability that spiked penetration to 12-17 mm at 40 N and recovered at 60 --
@@ -279,7 +347,7 @@
            never close to the 10 mm half-thickness. -->
       <geom name="pad_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
             material="padmat" mass="0.04" priority="1"
-            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="1.4 0.02 0.001"/>
+            solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
       <site name="pad_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
       <site name="pad_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
     </body>
@@ -298,6 +366,31 @@
           material="postmat"/>
     <site name="post_pt" pos="0.300 -0.340 0.30" size="0.004" rgba="0 0 0 0"/>
   </worldbody>
+
+  <equality>
+    <!-- ================= POSITIVE TOOL COUPLING (V5-C) =================
+         A robotic TOOL CHANGER, not a grip. When latched, the tool is mechanically
+         locked to the wrist and cannot move relative to it.
+
+         WHY THIS REPLACED THE GRIP. A parallel-jaw grip on a shank was measured to let
+         the tool creep 60-70 mm across a single face's raster -- and that creep was
+         INSENSITIVE to grip command (245 vs 255) and to press depth (3.0 vs 1.5 mm),
+         which rules out friction and points at grip geometry. Keying the shank cut the
+         wrist-rotation pivot from 87 mm to 9.6 mm but did not stop the creep. No
+         production cell holds a process tool in a parallel-jaw grip for exactly this
+         reason; it uses a changer or a positively-located holder.
+
+         WHAT IS ASSUMED, AND WHAT IS STILL EARNED. The weld models the LATCHED state --
+         i.e. it assumes the hardware coupling is rigid, which is what a changer sells.
+         It does NOT assume the robot can find it: the latch only engages when the wrist
+         is inside a stated capture envelope, and it welds at the ACTUAL relative pose
+         achieved, so any residual misalignment is carried into the wipe rather than
+         being quietly corrected. Alignment remains a real robot task and the latch can
+         fail. A real changer would centre the tool as it pulls in, so this is the
+         conservative direction. -->
+    <weld name="toollock" body1="xarm_gripper_base_link" body2="padtool"
+          active="false" solref="0.004 1" torquescale="1"/>
+  </equality>
 
   <actuator>
     <!-- The rotary indexer is a COMMANDED AXIS. On the real cell this is a stepper or

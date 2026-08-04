@@ -362,3 +362,59 @@ nothing.
 you fixed** — documentation doesn't run. Everything caught here is now an automated check
 that fails loudly. And the honest count for the day is thirteen bugs, every one of them in
 our own measuring equipment rather than in the robot.
+
+## 2026-08-04 — A result we didn't want, and why we kept it
+
+**What we built:** The triage station — a camera that grades an incoming device
+Easy / Medium / Hard. It half works, and the half that fails is worth more than a good
+score would have been.
+
+**The number: 55% correct.** Every badly-damaged unit was caught, 38 out of 38. Nothing
+needing real work was ever waved through as fine. But the classifier **never once said
+"Easy"** — it sends every cosmetically-fine device off for repair it doesn't need.
+
+**Why we're not going to tune that away.** We checked *why* it fails, and it isn't the
+setting we chose — it's the measurement. The "amount of scratching" we compute overlaps
+between the easy units and the medium ones, so **no setting exists that separates them.**
+A knob can't fix a ruler that can't tell the two apart. Fixing it means measuring
+something different — counting individual scratches rather than totalling up scratched
+pixels.
+
+**The trap we walked into first.** We fitted the settings on 45 practice devices and got
+89%. On devices it had never seen: 73%. The instinct is to think the 73% is unlucky. So
+we re-fitted on 100 practice devices — and the practice score fell to **74%**. The 89%
+was the lie; it was two settings tuned to 45 examples. **When your practice score and
+your real score disagree, get more practice data and watch which number moves. The one
+that moves was never real.**
+
+**Why it matters:** We are failing on the one boundary DrinkPrime never defined — we
+invented where "just needs a clean" ends and "needs scratch repair" begins. Failing there
+is a reminder that we're being graded against our own guess. That's the strongest argument
+yet for asking them how their people actually make this call.
+
+## 2026-08-04 — Count the things, and don't measure them with a square
+
+**What we built:** The triage grader again, properly. It went from 55% to **90%** correct
+on 120 devices it had never seen — and the whole gain came from two ideas, not from tuning.
+
+**Count what the label counts.** The grade is defined by *how many* scratches and dents a
+device has. The first version measured the *fraction of the picture* that looked scratched
+— a different quantity that happened to correlate. It correlated badly: lightly-scratched
+and heavily-scratched devices produced overlapping fractions, so **no cut-off could ever
+have separated them.** Switching to counting individual defects fixed a problem that no
+amount of adjustment could.
+
+**A diagonal line has a square box around it.** To tell a scratch from a dent we asked "is
+this mark long and thin, or blobby?" — by measuring the box drawn around it. But a 40-pixel
+scratch lying at 45° has a 30×30 box: perfectly square, so we called it a dent. Our
+scratches sit at random angles, so **most of them fooled it.** Measuring the shape itself
+rather than its box took the count error from ±3 defects per device to ±0.4.
+
+**Why it matters:** Both bugs are the same mistake in different clothes — measuring
+something *adjacent* to what you care about. And note the failure was silent: a
+misclassified scratch is still a detected mark, so nothing looked broken. It only showed up
+because we compared our counts against the truth, defect by defect.
+
+**Honest footnote:** we could probably reach ~100% here, because we defined the categories
+with clean gaps between them. That would prove our counter counts, not that the problem is
+solved. The real test is DrinkPrime's own criteria, which we still don't have.

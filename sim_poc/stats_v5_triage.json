@@ -1,0 +1,25 @@
+{
+  "n": 120,
+  "accuracy": 0.975,
+  "false_easy_rate": 0.024691358024691357,
+  "missed_hard_rate": 0.0,
+  "confusion": {
+    "easy": {
+      "easy": 38,
+      "medium": 1,
+      "hard": 0
+    },
+    "medium": {
+      "easy": 2,
+      "medium": 45,
+      "hard": 0
+    },
+    "hard": {
+      "easy": 0,
+      "medium": 0,
+      "hard": 34
+    }
+  },
+  "t_dent": 3.0,
+  "t_scratch": 6.0
+}

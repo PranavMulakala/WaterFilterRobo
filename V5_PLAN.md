@@ -451,3 +451,86 @@ gated on CAD and cabinet dimensions, not on effort.
    which stage bottlenecks the line; and **whether a teardown/disassembly instruction
    exists** — the set has none, and the motion `sim_poc3`/`sim_poc4` model has no
    documented counterpart in it.
+
+---
+
+## V5-B RESULT — triage, 90.0% on 120 fresh units
+
+`sim_poc/v5_triage.py`. Fixed station camera + rotary indexer showing all four faces;
+arm parked clear of frame (measured 0.000% arm pixels, vs 4.28% at the home pose).
+
+**Design change from the plan, made deliberately.** V5_PLAN specified the arm orbiting
+its wrist camera — correct when the device could not move. The indexer changed that. A
+fixed camera with a rotating device is simpler, is what real rotary vision cells do,
+needs **no hand-eye calibration** (the largest un-modelled risk in the wrist-camera
+plan), and leaves the arm free during inspection.
+
+### The number
+
+**120 units, seeds 500–619, never previously rendered, single evaluation:**
+
+| | |
+|---|---|
+| accuracy | **90.0%** |
+| **false-easy rate** | **0.0%** |
+| **missed-hard rate** | **0.0%** |
+| over-treatment | 16.7% |
+
+| truth ╲ pred | easy | medium | hard | acc |
+|---|---|---|---|---|
+| easy | 40 | 8 | 0 | 83.3% |
+| medium | 0 | 28 | 4 | 87.5% |
+| hard | 0 | 0 | 40 | **100%** |
+
+Calibration (seeds 9000–9099, disjoint) read 93.0% — a **3-point** calibration-to-held-out
+gap, against 15.6 points for the version before it. That gap closing is the evidence it
+is not overfit.
+
+**The decision rule is now legible to a customer:** *more than 3 dents → HARD; else more
+than 5 scratches → MEDIUM; else EASY.* Those are counts of actual defects, directly
+comparable to the ground-truth bands.
+
+### It only works because of one fix, and the fix is the lesson
+
+The first version measured **pixel fractions** and scored **55.0%** on 120 held-out units
+while **never once saying "easy"** — the easy and medium scratch-fraction distributions
+overlapped, so no threshold existed and no tuning could have helped.
+
+Counting defect *instances* instead required telling a scratch from a dent by shape. The
+first shape test used the **bounding-box aspect ratio** — and a 40 px scratch at 45° has a
+~30×30 bounding box, i.e. aspect 1.0, i.e. "perfectly compact". Scratches are placed at
+uniformly random angles, so **most of them defeated the test entirely** and were counted
+as dents. Replacing it with the principal-axis ratio from second moments (rotation
+invariant) took the per-unit count error from +3.2 dents / −3.2 scratches to
+**+0.3 / −0.4**, and the accuracy from 55% to 90%.
+
+### Can this reach ~100%? Yes, and that is the problem with wanting it to
+
+The three classes are separated **by construction**: easy has 0–2 scratches, medium has
+9–22, and nothing lives in between. A counter accurate to ±3 scratches therefore scores
+~100% *by definition*. Pushing the remaining 10 points is a matter of tightening the
+count, and it is achievable.
+
+**What it would prove is that our counter counts — not that triage is solved.** The gaps
+in those bands are ours. So is the easy/medium boundary itself: no DrinkPrime document
+defines where "needs a wipe" ends and "needs scratch removal" begins
+(`dp_process.MISSING`). A 100% here would be a measurement of our own label design.
+
+What the number *does* support, and what is safe to say in the room:
+- the **safety-critical half is solid** — 40/40 HARD units caught, missed-hard 0.0%, and
+  a missed HARD is the one error with no recovery, since dents have no remedy in any of
+  the ten stages;
+- **false-easy is 0.0%** — nothing needing real work has ever gone down the cosmetic path;
+- the architecture (fixed camera, indexed device, explainable threshold on counted
+  defects) is the right shape for the founder's image-processing bar.
+
+### Process notes
+
+- **Seeds 200–259 and 300–419 were consumed** during development — 200–259 was evaluated
+  twice across a threshold change, and 300–419 was used for the 55.0% pixel-fraction
+  result. The 90.0% above is on 500–619, which had never been rendered, looked at once,
+  and not tuned against.
+- Earlier, fitting two thresholds to 45 calibration seeds read 88.9% on calibration and
+  73.3% held out. Refitting on 100 seeds read **74.0% on calibration** — the calibration
+  score converged *down* to the held-out score. The calibration number was the overfit.
+
