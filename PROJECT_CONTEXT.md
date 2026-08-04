@@ -22,7 +22,7 @@ Long-term vision: "Thumbtack/handyman services, but robots do the work." Near-te
 
 Approach is still an off-the-shelf arm (xArm7) plus, eventually, imitation-learned policies — but everything shipped so far is a **scripted** controller. Our advisor was explicit that scripting is fine at the demo stage and does not prove the approach survives things moving; see PITCH_NOTES.
 
-Secondary idea (Teja's, under research): **software to help robotics companies launch and manage deployments** ("ERP for robotics" / picks-and-shovels). **Conclusion as of Jul 31, i.e. BEFORE the 2026-08-02 advisor call, which partly inverts it** — Anirudh's verdict was that the idea is good but unfocused and that companies already do the pieces, so "the open gap is robot-learning ops" below is our reading, not his: real but crowded at the fleet-ops layer (Formant, InOrbit, Viam) and data layer (Foxglove, $40M Series B); the open gap is robot-learning ops (teleop data collection → LeRobot datasets → fine-tune → eval → deploy). Verdict so far: a *second* startup — do the DrinkPrime deployment first, document every workflow pain as product research, revisit with Proprio as design partner.
+Secondary idea (Teja's, under research): **software to help robotics companies launch and manage deployments** ("ERP for robotics" / picks-and-shovels). **Conclusion as of Jul 31, i.e. BEFORE the 2026-08-02 advisor call, which partly inverts it** — Anirudh's verdict was that the idea is good but unfocused and that companies already do the pieces, so "the open gap is robot-learning ops" below is our reading, not his: real but crowded at the fleet-ops layer (Formant, InOrbit, Viam) and data layer (Foxglove — **[unsourced]** $40M Series B, from Jul-31 desk research); the open gap is robot-learning ops (teleop data collection → LeRobot datasets → fine-tune → eval → deploy). Verdict so far: a *second* startup — do the DrinkPrime deployment first, document every workflow pain as product research, revisit with Proprio as design partner.
 
 ## Key advice received (Anirudh call, Jul 31)
 
@@ -63,10 +63,14 @@ the speaker.
    > v4's cartridge dip is the closer match. Whether V5-C satisfies the funding bar is an
    > open question, not a settled one, and it should be put to the founder directly. Budget guidance unchanged: ≤$10K split & go; $50K+ rethink.
 2. **Their real process documents landed** (2026-08-04): 13 files in total — 10 stage
-   work instructions and 3 QC flow-chart pages, transcribed as data in `sim_poc/dp_process.py`. The build is now modelled
-   on their documented stages rather than on a generic cartridge swap.
+   work instructions and 3 QC flow-chart pages, transcribed as data in
+   `sim_poc/dp_process.py`. **TRIAGE and CLEAN are modelled on their documented stages;
+   MEMBRANE ASSEMBLY still uses the generic cartridge swap as a stand-in**, and the wiring
+   that lets a triage grade select the route is not built.
 3. **The top open ask is what defines Easy / Medium / Hard** — and it must be asked
-   open-ended, because **no document in the set defines it**. If their operators grade by
+   open-ended, because **no document in the set defines it**. So this is not a document we
+   are merely waiting on: the class *names* are DrinkPrime's and **the boundaries the
+   shipping triage classifier already grades against are ours**. If their operators grade by
    *feel* rather than by eye, camera-only inspection is the wrong architecture and we
    should stop investing in the classifier. Full ask list in V5_PLAN.
 4. Still open from the original list: Pranav's LeRobot / OpenPi ramp; deciding the robot's
