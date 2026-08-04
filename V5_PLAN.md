@@ -120,7 +120,8 @@ measurable, is a genuine robotics lesson, and is the first thing I expect to eat
 - Discretise the target face into patches; a patch counts as cleaned when the pad
   passes within tolerance **and** normal force is inside the band.
 - Verification re-inspects on a fresh render — and **must be sabotage-tested**. v4's
-  first sabotage test caught only 2 of 5, because verification used one view where the
+  first sabotage test **wrongly PASSED 2 of 5** (caught 3 of 5), because verification
+  classified on one view where the
   main inspection used two. Assume this station has the same class of bug until a run
   with the cleaning deliberately disabled fails every part.
 - Keep the tank dip, but move it into Station 3 and relabel it what it actually is: the
@@ -378,7 +379,12 @@ occlusion, lighting and pose, not from fuzzing labels.
 
 - all 88 patches lie **on** their face, normal outward, inside the face rectangle
 - body and top cover are **flush**, so the visible surface and the raster plane agree
-- pools sit on the **four reachable faces only**; the back face carries none
+- pools sit on **all five exposed faces**, the back panel included — `v5_check_scene.py`
+  asserts exactly this ("all five exposed faces carry pools"), having previously asserted
+  the reverse. *(This line said "four reachable faces only; the back face carries none"
+  long after the fifth face went in, and it sat under a "verified by the build check"
+  heading while the build check asserted the opposite. It is the one line left in the
+  repo that could have re-narrowed the cleaning claim back to four faces.)*
 - the pad tool **rests stably** on its post (2.4 mm settle, all contact on `post_base`)
 - no initial interpenetration anywhere (`ncon = 0` at spawn)
 - the reachability gate **re-run against the real scene**, not the probe: identical
