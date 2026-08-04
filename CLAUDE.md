@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **PARTIAL** — tool changer + compliance flange done; **coverage 64.7%**, force in band 96.3% |
+| V5-C cleaning | **DONE on coverage — 94.6%** held out (900–907); **NOT closed on force**: 88.1% in band, 271 N peak vs a pad validated to 60 N |
 | V5-D verification + sabotage test | not started |
 | V5-E membrane (Stage 10) | not started |
 | V5-G video | not started |
@@ -54,7 +54,9 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 **Seed ledger — held-out sets are consumed by use.** Spent: 200–259, 300–419, 500–619,
 700–819 (triage), 800–807 (cleaning; re-used 2026-08-04 for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
-needs a fresh range — start at 900.** Use it once and look at it once.
+needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
+so start at 1000.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
+to 900 so a bare `--eval 8` reproduces the published number rather than a spent range.
 
 ## First steps every session
 1. Read `V5_PLAN.md` (plan + all v5 results), `CELL_SPEC.md` (the real-cell build doc),
@@ -162,7 +164,7 @@ needs a fresh range — start at 900.** Use it once and look at it once.
 
 ## Hard rules
 - After ANY controller or scene change, run `../venv/bin/python sim_poc2.py --eval 25`,
-  `sim_poc3.py --eval 25` **and** `sim_poc4.py --eval 30 --seed0 200` from `sim_poc/`, and report both success rates
+  `sim_poc3.py --eval 25` **and** `sim_poc4.py --eval 60 --seed0 200` from `sim_poc/`, and report both success rates
   against the recorded baselines (v2: 100% locked; v3: 100% full swap). **Never
   claim a fix without an eval.** v3 imports v2, so a v2 change moves v3 too.
 - **Report the margin, not just the rate.** A pass/fail rate hid a systemic defect

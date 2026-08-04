@@ -371,6 +371,13 @@ occlusion, lighting and pose, not from fuzzing labels.
 - the reachability gate **re-run against the real scene**, not the probe: identical
   numbers on every face
 
+> **⚠️ SUPERSEDED — the limit below was closed in commit c19bac0.** `_faces()` now emits a
+> **fifth face**: the back panel's outer surface (local x 0.090–0.100, y ±0.119,
+> z 0.020–0.430), because the rotary indexer made it reachable. Coverage now means
+> **"of all five exposed faces"**, and V5-C's 94.6% is measured that way. The paragraph is
+> kept because the *reasoning* — that the wording must travel with the number — still
+> stands; only the face count changed.
+
 **One honest limit:** the pools sit on four faces (front, top, left, right), not the
 back. That was originally *forced* — the back was unreachable — and with the rotary
 indexer it no longer is, but the pools have not been regenerated onto five faces yet. So
@@ -466,6 +473,16 @@ gated on CAD and cabinet dimensions, not on effort.
 ---
 
 ## V5-B RESULT — triage, 90.0% on 120 fresh units
+
+> **⚠️ SUPERSEDED — the shipping triage result is 97.5%, not the 90.0% below.**
+> `sim_poc/stats_v5_triage.json` and CLAUDE.md both record **97.5% on 120 fresh units
+> (seeds 700–819), false-easy 2.5%, missed-hard 0.0%** — reproduce with
+> `v5_triage.py --eval 120 --seed0 700`. Note false-easy **rose** 0.0% → 2.5% as accuracy
+> improved, which is the direction that matters and must be reported. Everything below is
+> the earlier 500–619 run; its *reasoning* (why counting instances beat pixel fractions,
+> and why the principal-axis ratio beat the bounding box) is still the live explanation,
+> but **its numbers and confusion matrix are stale — do not quote them.** There is no
+> RESULTS_V5.md, so this banner is the only thing correcting them.
 
 `sim_poc/v5_triage.py`. Fixed station camera + rotary indexer showing all four faces;
 arm parked clear of frame (measured 0.000% arm pixels, vs 4.28% at the home pose).
