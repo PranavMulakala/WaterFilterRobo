@@ -1,11 +1,17 @@
 # Results — v4 Inspect / Clean / Replace
 
-> **v4 is no longer the current work.** It is complete and every number below still
-> reproduces, but the project moved to **v5** on 2026-08-04 — a unit-scale cell that
+> **v4 is no longer the current work.** The project moved to **v5** on 2026-08-04 — a unit-scale cell that
 > triages, cleans and reassembles the whole purifier rather than one cartridge. v5
 > results live in **[V5_PLAN.md](V5_PLAN.md)**; current state is at the top of
 > **[CLAUDE.md](CLAUDE.md)**. Read this file for the v4 numbers and for the vision
 > lessons, which still govern.
+>
+> **What has actually been re-verified:** the DR-off 60-seed baseline (86.7% / 0.0% /
+> 100%) reproduces `stats_v4.json` byte-identically, confirmed 2026-08-04. The
+> domain-randomization rows, the 92.8% two-view calibration figure and the 8 mm / 8° nest
+> capture envelope have **no committed artifact** — `stats_v4.json` holds only the DR-off
+> run — so they are reproducible in principle (`sim_poc4.py --dr`) but have not been
+> re-run. Do not read "v4 still reproduces" as covering all of them.
 
 **All three routes run end to end. Routing compliance 100%, false-clean rate 0.0%,
 end-to-end 86.7% — on 60 held-out trials.** Nothing here is tuned to flatter the
@@ -40,9 +46,11 @@ Per-route completion: clean **100%** (11/11, 41.6 s), light **100%** (22/22, 53.
 heavy **100%** (27/27, 40.7 s).
 
 **Every remaining error is on the safe side.** Nothing that needs work is passed as
-clean: the false-clean rate is 0.0%. The residual error is 7 lightly-scaled parts
-graded as heavy — they get replaced instead of cleaned. That wastes a cartridge; it
-does not return a bad one to a customer. Re-fitting the thresholds on in-cell rather
+clean: the false-clean rate is 0.0%. The 8 errors are **7 lightly-scaled parts graded
+heavy** (replaced instead of cleaned — wastes a cartridge, does not return a bad one to a
+customer) and **1 clean part graded light** (washed unnecessarily). 52 of 60 correct is
+the 86.7%. *(This paragraph said "7" for both, which did not reconcile with the file's own
+86.7% or with its clean-91.7% line, i.e. 11 of 12.)* Re-fitting the thresholds on in-cell rather
 than rig presentations is what drove false-clean from 2.1% to 0.0%.
 
 The classifier is deliberately simple and explainable — HSV threshold + region

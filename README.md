@@ -3,13 +3,16 @@
 **Can a robot arm refurbish a water purifier?** This repo answers that in simulation,
 before we spend anything on hardware.
 
-**The current build (v5) works on the whole purifier**, modelled on DrinkPrime's own 13
-work instructions, which landed on 2026-08-04. A used unit is placed on a rotary indexer
+**The current build (v5) works on the whole purifier**, modelled on DrinkPrime's own
+process documents — 13 files in total, 10 stage work instructions plus 3 QC flow-chart
+pages — which landed on 2026-08-04. A used unit is placed on a rotary indexer
 and the arm works around it in three stations:
 
 - **TRIAGE** — a fixed camera grades the unit Easy / Medium / Hard from its pixels.
-  **97.5%** on 120 fresh units, and **0.0% missed-hard** — nothing needing deep work has
-  ever been sent down the fast path.
+  **97.5%** on 120 fresh units. **Missed-hard is 0.0%** — no unit needing HARD-class work
+  was ever graded below hard, and dents have no remedy in any of their ten stages, so
+  that is the error with no recovery. **False-easy is 2.5%**: two MEDIUM units *were*
+  graded easy and would have skipped the scratch-removal pass.
 - **CLEAN** — the arm picks a wiping pad off a tool changer and rasters all five exposed
   faces. **94.6%** of soil removed on held-out units.
 - **MEMBRANE ASSEMBLY** — not built yet; the earlier cartridge cycle is the stand-in.
@@ -38,8 +41,10 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 **[media/refurb_cell_v3.mp4](media/refurb_cell_v3.mp4)** — the earlier swap-only cycle.
 **[media/cartridge_cell_v2.mp4](media/cartridge_cell_v2.mp4)** — insertion alone.
 
-> **There is no v5 video yet.** That is phase V5-G and it is not started — no renderer
-> exists for any v5 station. The v4 cut above is still the thing to send people.
+> **There is no v5 video yet.** That is phase V5-G and it is not started: neither v5
+> station has a `--render` flag or writes footage. (`v5_triage.py --views` does render
+> annotated still frames for inspection, so the machinery exists — it is the video path
+> that does not.) The v4 cut above is still the thing to send people.
 
 ---
 
@@ -55,7 +60,7 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | **Insertion cycle (v2)** | **100%** (200/200 trials) |
 | Insertion was previously | 88% on its own test seeds, 72% on unseen ones |
 | Seating accuracy | 1.7 mm (insert) / 2.0 mm (swap) |
-| Cycle time | ~23 s insert, ~33 s full swap, ~20 s per cleaned unit |
+| Cycle time (simulated, **not** a takt time) | ~23 s insert, ~33 s full swap, **~294 s** to clean one unit |
 | Physics engine | MuJoCo 3.11.0, pinned |
 | Robot | UFACTORY xArm7 (a real, purchasable ~$11K arm) |
 | Status | **Pre-hardware.** Simulation only. No robot has been bought. |
@@ -178,8 +183,10 @@ Honest framing: **this de-risks the approach, not the deployment.**
 
 1. **V5-D — prove the cleaning check can fail.** Re-inspect after cleaning, then run it
    with the cleaning deliberately disabled and confirm every unit is caught. v4's first
-   attempt at this caught only 2 of 5, because verification used one camera view where
-   the main inspection used two. Assume the same class of bug until it fails every part.
+   attempt at this **wrongly PASSED 2 of the 5 sabotaged parts** — it caught only 3 of 5
+   — because verification classified on one camera view where the main inspection used
+   two. With both views it went to 5/5 caught. Assume the same class of bug until a run
+   with cleaning disabled fails every part.
 2. **V5-E membrane assembly**, **V5-F route wiring**, **V5-G video** — in that order.
 3. **Close the V5-C force band.** Coverage is done; force is not.
 
