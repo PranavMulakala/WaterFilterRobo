@@ -10,21 +10,33 @@
 >
 > **What has actually been re-verified:** the DR-off 60-seed baseline (86.7% / 0.0% /
 > 100%) reproduces `stats_v4.json` byte-identically, confirmed 2026-08-04. The
-> domain-randomization rows, the 92.8% two-view calibration figure and the 8 mm / 8° nest
-> capture envelope have **no committed artifact** — `stats_v4.json` holds only the DR-off
-> run. Nor is one command enough to re-run them: `sim_poc4.py --dr SCALE` reproduces the
-> **DR rows only**. The 92.8% two-view figure needs `inspect_views` edited in the frozen
-> `RefurbConfig` (no CLI flag exists), and the 8 mm / 8° nest envelope and the 5/5
-> sabotage result have **no reproduction path in committed code at all** — the sabotage
-> was a temporary edit, and `grep -ri sabotag` over the repo's Python returns only a v5
-> file saying the feature is not built yet. Do not read "v4 still reproduces" as covering
-> any of these.
+> domain-randomization rows, the **retracted** 92.8% two-view figure, the 8 mm / 8° nest
+> capture envelope and the 5/5 sabotage result have **no committed artifact** —
+> `stats_v4.json` holds only the DR-off run. Nor is one command enough to re-run them, and the obvious one is a trap:
+> **`sim_poc4.py --dr 1.0` on its own does nothing** — it prints the config line and
+> exits, because the dispatch only acts on `--eval` or `--inspect-eval` — and adding
+> `--eval` without `--stats` writes straight over `stats_v4.json`, the committed baseline
+> (`--stats` defaults to `None`). The runnable, non-destructive form is
+> `sim_poc4.py --eval 60 --seed0 200 --dr 1.0 --stats /tmp/dr_1.0.json`, and it
+> reproduces the **DR rows only**.
+>
+> **The 92.8% / 86.7% two-view pair is RETRACTED, not merely un-re-run.** Editing
+> `inspect_views` in the frozen `RefurbConfig` (the only way to vary it — no CLI flag
+> exists) does not produce it at any sample size: the rig reads 70.0% / 78.3% at n=60 and
+> 78.0% / 87.6% at n=250. See the retraction box further down.
+>
+> The 8 mm / 8° nest envelope, the "~3° delivered" figure and the 5/5 sabotage result have
+> **no reproduction path in committed code at all** — the sabotage was a temporary edit,
+> and `grep -ri sabotag` over the repo's Python returns only a v5 file saying the feature
+> is not built yet. Do not read "v4 still reproduces" as covering any of these.
 
 **All three routes run end to end. Routing compliance 100%, false-clean rate 0.0%,
 end-to-end 86.7% — on 60 held-out trials.** Nothing here is tuned to flatter the
 numbers; the section on what still limits it is at the bottom.
 
-Measured on MuJoCo 3.11.0 / numpy 2.5.1 / Python 3.12.13 (pinned).
+Measured on MuJoCo 3.11.0 and numpy 2.5.1 — both pinned in `requirements.txt` — on
+Python 3.12.13. **The Python version is not pinned**: `setup.sh` takes the newest 3.10+
+interpreter it finds, trying 3.13 first.
 
 ---
 
@@ -48,9 +60,20 @@ Thresholds are frozen, fit on calibration seeds 9000+ using **in-cell** presenta
 | End-to-end (right action **and** unit finished correctly) | **86.7%** |
 | Cleaning verified by re-inspection | 100% of 22 |
 
-Per-severity: clean **91.7%**, light **75.0%**, heavy **100%**.
-Per-route completion: clean **100%** (11/11, 41.6 s), light **100%** (22/22, 53.5 s),
-heavy **100%** (27/27, 40.7 s).
+Per-severity, **keyed on TRUTH**: clean **91.7%** (11/12), light **75.0%** (21/28),
+heavy **100%** (20/20).
+Per-route completion, **keyed on the PREDICTED grade**: clean **100%** (11/11, 41.6 s),
+light **100%** (22/22, 53.5 s), heavy **100%** (27/27, 40.7 s).
+
+*(The two "heavy 100%" figures are different populations — 20/20 classified correctly, and
+27/27 routed units completing — which is why both denominators are now shown.)*
+
+> **The grades clean / light / heavy are entirely OURS, names and cut points alike**
+> (`sim_poc4.py`: `cond_counts = (("clean",0,3),("light",4,16),("heavy",17,34))`, under a
+> header marking it a swap-in point for real soiling grades). No DrinkPrime document
+> defines any soiling grade. This is a *weaker* case than v5's Easy/Medium/Hard, where at
+> least the names are theirs — and the repo's rule is to say so every time a class number
+> is reported.
 
 **Every remaining error is on the safe side.** Nothing that needs work is passed as
 clean: the false-clean rate is 0.0%. The 8 errors are **7 lightly-scaled parts graded
@@ -65,13 +88,25 @@ statistics (deposit coverage over the cartridge body, plus intensity texture), w
 `score = coverage + 0.70 × texture` and two frozen thresholds. It has to be defensible
 to a customer, not impressive to a reviewer.
 
-**Two views, not one — and this is already banked, not still on the table.** On the
-calibration set, single-view scored 86.7% and rotating the part 180° for a second view
-scored 92.8%. Occlusion — half the deposits facing away from the camera — was the dominant
+**Two views, not one — and this is already banked, not still on the table.** Occlusion — half the deposits facing away from the camera — was the dominant
 error source, and the fix costs nothing mechanically because the wrist can simply spin. So
 `inspect_views = 2` is the shipped default, and **the 86.7% headline above is already the
-two-view result** on held-out seeds 200–259. The two numbers are not comparable: 92.8% is
-calibration, 86.7% is held out.
+two-view result** on held-out seeds 200–259.
+
+> ⚠️ **The "86.7% single-view vs 92.8% two-view" pair this paragraph used to quote does
+> not reproduce, and has been removed.** Re-measured on the rig it came from
+> (`inspect_eval`, calibration seeds 9000+, current thresholds): **n=60 → 70.0% one view,
+> 78.3% two; n=125 → 72.8% / 82.4%; n=250 → 78.0% / 87.6%.** No sample size produces the
+> old pair. The gain from a second view is real and roughly 8–10 points — that conclusion
+> stands — but the specific figures did not.
+>
+> Two further things that sentence got wrong. `cfg.inspect_views` is referenced **only**
+> inside `inspect_eval`, which its own docstring calls *"Classifier-only evaluation: no
+> arm, no manipulation"* — the **teleport rig**, the exact fixture this file's honesty
+> note below says read 90% on the bench and 53% in the cell. And the in-cell path
+> hard-codes both views (`PRESENT A` / `FLIP` / `PRESENT B`), so **single-view accuracy
+> cannot be measured in-cell at all.** The old 86.7% was almost certainly the in-cell
+> held-out headline borrowed into a rig comparison.
 
 ### Routing decision
 
@@ -99,7 +134,11 @@ Both reinstall routes were **0%** before Phase A. Two changes fixed them.
 and re-gripped by its **body** — the firm grip the whole insertion sequence was
 validated against. The cap grip only has to get the part roughly over a hole; the
 chamfer does the rest. Measured capture envelope: seats reliably up to **8 mm lateral
-offset and 8° tilt**, and the arm delivers ~3°.
+offset and 8° tilt**. *(This used to add "and the arm delivers ~3°". That number has
+no measurement behind it: `stats_v4.json`'s per-trial rows carry no tilt field and
+nothing logs part tilt at nest release. The only ~2° figure in the code is the
+teleport rig's presentation jitter. The 3-vs-8 margin was the whole safety-margin
+claim, so instrument nest release before restating it.)*
 
 Two bugs had to be found first. The nest was sized to the 21.5 mm cartridge **body**
 and interfered with the 34 mm bayonet **lugs** by exactly 7.0 mm. And the chamfer ring
@@ -169,9 +208,15 @@ the gripper contact the surface is more forgiving than aiming at a measured heig
 
 ## What still limits it
 
-End-to-end is **capped by vision, not mechanics** — routing compliance is 100%, so
-every trial that fails does so because the classifier graded the part wrong, not
-because the arm failed. The weakest cell is light-vs-heavy (75%).
+**With the cell located to better than ±2.5 mm**, end-to-end is capped by vision, not
+mechanics — routing compliance is 100%, so every trial that fails does so because the
+classifier graded the part wrong, not because the arm failed. The weakest cell is
+light-vs-heavy, 75.0% (21 of 28).
+
+**Outside that envelope the ordering reverses**, per this file's own DR table: at ±5 mm
+routing falls to 90.0% and end-to-end (78.3%) drops *below* inspection accuracy (86.7%),
+i.e. mechanics becomes binding. The unqualified version of this sentence contradicted the
+table 30 lines above it.
 
 ### For the record — the blocker this replaced
 
@@ -183,9 +228,11 @@ the part ~5 s to a bin, where precision did not matter. Asking the same grip to
 survive presentation, a tank dip and a re-insertion dropped the part every time: the
 hang offset wandered between 42 mm and 83 mm and the part left the jaws around 20 s in.
 
-**This is a real finding about the task, not just about our code.** If a robot cannot
-hold this cartridge by its cap through a wet process, a real cell will need a fixture
-too. That is a design input for DrinkPrime, discovered in simulation before anyone
+**The drop is measured and reproducible in simulation.** That it implies a real cell
+needs a fixture is a **hypothesis until a real gripper holds a real cartridge** — our
+advisor's [verbal] point is that sim-side drops and lost friction are *sometimes*
+simulator artifacts, up to outright geometry bugs, and that cuts both ways here (see the
+standing caveat in CLAUDE.md's gotcha list). He did *not* question the measurement. That is a design input for DrinkPrime, discovered in simulation before anyone
 bought hardware — see PITCH_NOTES.
 
 ---
