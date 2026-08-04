@@ -262,10 +262,52 @@ what someone should want before funding a robotics team.
   people who like do decommissioning, they don't have too much money." A useful reminder
   to check that whoever owns the pain also owns a budget.
 
-## 9. Status
+## 9. Deliberate scope boundary — deformable materials
+
+**This is a decision, not a gap.** Say it out loud in the room; volunteering it is worth
+more than being asked.
+
+The real work instructions arrived 2026-08-04 (13 Waterwala Labs documents, R0
+11-04-2024 — process model checked in at `sim_poc/dp_process.py`). Reading them, the
+steps we will **not** attempt in phase one are all the same kind of thing:
+
+| Step | Where | Why it's out |
+|---|---|---|
+| Teflon tape, 20–30 turns on a thread | Stages 9, 10 | Winding a thin flexible film onto a thread |
+| Sticker removal (heat gun) + re-apply with squeegee | Stages 2, 5 | Peel, align, no air bubbles |
+| Wiring-harness routing + cable ties | Stage 4 | Flexible, self-colliding, no fixed shape |
+| Tubing: measure, cut, route, fit | Stage 4 | Same, plus a cutting tool |
+| Filament taping (back panel, float sensor) | Stages 6, 7 | Flexible film again |
+
+The common factor is **deformable-object manipulation** — the part changes shape as you
+handle it, so there is no fixed geometry to plan against. It is a genuine open research
+area, not an engineering shortfall on our side, and it is precisely where Anirudh put
+the frontier (§8: Isaac is what you move to for complex assets, "he named cables").
+
+**How to frame it:** *"We can tell you exactly which of your ten stages a robot can do
+today, which need tooling, which belong on a test bench instead of an arm, and which
+stay human. The flexible-material steps — taping, stickers, harnesses, tubing — stay
+human in phase one. We'd rather tell you that now than discover it after you've bought
+arms."*
+
+That framing does double duty: it is honest, and the ability to make the call at all is
+the thing that should make a customer trust the rest of the numbers.
+
+**A second call worth volunteering:** the flow-rate and pressure tests (Stages 1, 6, 9,
+10) should go on an **instrumented bench — sensors and valves — not on an arm.** Cheaper
+and more reliable. Saying we would not automate something shows judgement, and costs us
+nothing since we were never going to be paid for it.
+
+## 10. Status
 
 | Item | State |
 |---|---|
+| Real plant work instructions | **Landed 2026-08-04** — all 13 in `docs/drinkprime/`, transcribed to `sim_poc/dp_process.py` after reading the rendered pages |
+| Easy/Medium/Hard criteria | **Open — THE top ask, and it is open-ended.** No document in the set defines them. Annexure 1 governs cabinet/sticker checking, *not* the triage |
+| QC Annexures 1–13 | **Open.** All 13 referenced, none supplied. A "forward the rest of the folder" ask |
+| 45 PSI vs 80 PSI final leak test | **Open — safety question.** Stage 6 says 45 (per BIS), QC page 3 says 80, same operation |
+| Membrane bowl + cap + **O-ring** STL/STEP | **Open — outranks the cartridge now.** Stage 10 is the station we already approximate; quote item codes 100059 / 100031 / 100099 |
+| Teardown / disassembly instruction | **Open.** The corpus has none — the extraction motion our sim is built on has no documented counterpart |
 | Generic swap-cycle sim | **Done** — 125/125 **[demo]** |
 | Demo video for the founder | **Ready, but verify the file first** — see note below |
 | Funding bar | **Named [verbal]** — complete refurb sim w/ image inspection + cleaning. Still needs to be IN WRITING (Ask 1) |

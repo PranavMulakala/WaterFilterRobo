@@ -40,6 +40,57 @@ Instructions for Claude Code / any AI agent working in this repo.
   starts seated **and twist-locked** (locked lug axis 25–50°, randomized per seed;
   the slot gap spans ~72–108°, so anything outside ~[64,116]° is captive), an open
   bin at (0.46, 0.0), and dull "spent" materials.
+- `docs/drinkprime/` — **the 13 source PDFs.** See its README before reading them.
+  **The three QC pages are pure vector line art: text extraction returns labels with NO
+  EDGES.** Render them (PyMuPDF is in the venv; there is no `pdftoppm` on this machine)
+  and look at them. Text-extracting them mis-bound 8 of 13 annexures once already.
+- `sim_poc/dp_process.py` — **DrinkPrime's REAL process, as data.** Data only — no
+  MuJoCo, no side effects. Holds `STAGES` (10 stages w/ materials, tools, activities,
+  the plant's own section-tagged checks, scrap streams, and OUR feasibility tier),
+  `QC_NODES` (+ the corrected annexure map), `PRESSURES`, `CONTRADICTIONS`,
+  `SCRAP_STREAMS`, `V5_ROUTES`, `MISSING`. Run it for a dump. **The plant's text and our
+  judgement live in separate fields on purpose — do not blur them, do not add a step
+  that isn't in a source document, and DO NOT FIX THE SOURCE TYPOS** (`ANEXURE`,
+  `CABINENT`, `APPERANCE`, `PRESSUE`, `SOLINOID`, `MEMBARANE`, `Rubbing component`) —
+  they identify the source and they matter for string matching.
+- `V5_PLAN.md` — the three-stage funded demo (TRIAGE / CLEAN / MEMBRANE), the plan of
+  record, the V5-0 reachability result, and the one-week cut list.
+- `sim_poc/v5_reach.py` + `ufactory_xarm7/cabinet_probe_v5.xml` — **V5-0 reachability
+  study (DONE, PASSES at x=0.58).** Kinematics only, no dynamics.
+  `--nominal` | `--sweep` | `--scene` (validate the REAL scene, not just the probe).
+  Writes `reach_v5.json`. Reports strict (exact-normal) alongside relaxed (30° tilt cone)
+  coverage — keep it that way, the gap is large (top face 100% relaxed, 63% strict).
+  **Axis convention: depth→X, width→Y, height→Z.** Getting this wrong measured faces
+  35 mm inside the box and invalidated five of six numbers; don't reintroduce `w/d/h`.
+- `CELL_SPEC.md` — **the document you build and program the REAL cell from.** Frames,
+  the sim→xArm-SDK coordinate conversion, station coordinates, tolerances, tooling, the
+  rotary-indexer spec, a build checklist, and an explicit "what the simulation does NOT
+  tell you". Every number is read out of the model, not typed from memory. Regenerate the
+  numbers if the scene changes.
+- `sim_poc/make_scene_v5.py` → `ufactory_xarm7/refurb_scene_v5.xml` — **V5-A unit-scale
+  scene (DONE).** A GENERATOR (fixed seed), not hand-written geoms. Device on a **rotary
+  indexer** at x=0.58, three condition pools — soil(40)/scratch(28)/dent(20) →
+  EASY/MEDIUM/HARD, each grounded in a quoted stage — plus tool post, compliant wiping
+  pad, matte backdrop, computed cameras. **Edit the generator, never the XML.**
+  - **The rotary indexer (`tt`) is a COMMANDED AXIS, not scenery.** It is what takes the
+    back face from 0% (unreachable at every fixed placement) to 100%, and it removes the
+    camera-separation vs front-coverage trade-off. Verify with `v5_reach.py --indexed`.
+  - Pools are on the **four reachable faces only**; the back carries none, so cleaning
+    coverage means "of the reachable faces", not "of the device". Keep that wording.
+  - Pool geoms must carry their **material's RGB with alpha 0** — a geom's `rgba`
+    overrides its material, so `rgba="0 0 0 0"` reveals as BLACK and destroys the whole
+    point of three visually distinct classes.
+  - **Never add a geom to this scene without re-running `v5_reach.py --scene`.** A 6 mm
+    backdrop panel that looked like scenery cost an entire face (89.6% → 0%).
+- `sim_poc/v5_check_scene.py` — **run after regenerating the scene.** ~25 structural
+  assertions (patches on-face and outward-facing, flush cover, indexer carries the device
+  and its pools, pad rests on its post, no spawn interpenetration). The scene LOADED FINE
+  through all five V5-A bugs; loading is not validation.
+- `sim_poc/v5_check_spec.py` — **run after ANY scene change.** Asserts all 39 numbers in
+  `CELL_SPEC.md` against the live model, plus the joint limits against the UFACTORY
+  datasheet. CELL_SPEC's entire value is that its numbers were read from the model rather
+  than typed; that decays silently the moment the scene moves. **If this fails, update
+  CELL_SPEC.md — never relax the assertion.**
 - `sim_poc.py` — simpler v1 (plain pick-and-place), kept for reference.
 - `ufactory_xarm7/cartridge_scene_v2.xml` — the scene: socket collar (band
   58–100 mm), 45° chamfer funnel with lug gaps (spans z 98.5–126.1 mm), pedestal
@@ -66,6 +117,10 @@ Instructions for Claude Code / any AI agent working in this repo.
   `upright > 0.95`, `rel_twist > 30`) or special-case seed numbers to make a number
   go up. That is a failure, not a result.
 - Do not break the CLI interface or the `stats.json` schema.
+- **Running ANY eval overwrites `stats*.json`, including `--eval 2`.** Those files are
+  the recorded baselines the whole project is measured against. Never smoke-test the CLI
+  with a small `--eval N` without re-running the full baselines afterwards, and check
+  `git diff -- sim_poc/stats*.json` before finishing.
 - Append every gotcha, surprise, or manual workaround to `PAIN_JOURNAL.md` — it is
   deliberate product research for a possible robotics-devtools product.
 - **Every session that lands a significant change appends a `LEARNINGS.md` entry.
@@ -124,8 +179,8 @@ Instructions for Claude Code / any AI agent working in this repo.
 ## Backlog (priority order)
 0a. **Refurb v4 — inspect / clean / replace. PHASE A DONE; all three routes run.**
    `sim_poc4.py` + `cartridge_scene_v4.xml`. Inspection (real CV on rendered pixels)
-   **works: 90.0% in-cell on held-out seeds, 3.7% false-clean, no heavy part ever
-   graded clean.** Routing decision works. REPLACE route 100%. **Routing compliance 100%**
+   **works: 86.7% in-cell on 60 held-out seeds (200–259), 0.0% false-clean, no heavy
+   part ever graded clean.** (An earlier 90.0% / 3.7% was the smaller 30-seed run.) Routing decision works. REPLACE route 100%. **Routing compliance 100%**
    on 60 held-out trials, all three routes 100%, end-to-end 86.7% (capped by vision,
    not mechanics), **false-clean rate 0.0%**. Fixed by a chamfered staging nest: the
    part is set down and re-gripped by its BODY, and the wet work happens after that
@@ -147,18 +202,40 @@ Instructions for Claude Code / any AI agent working in this repo.
    **NOT round-tripped through the real lerobot library** — that remains unverified.
    Only successful episodes are exported, so the set contains no recovery demos.
    `--validate-only` re-checks an existing dataset. Datasets are gitignored (~6 MB/ep).
-2. **Swap in real geometry when DrinkPrime's refurb video + device arrive.** The
-   founder is shipping a process video, tech documents and possibly a physical unit.
-   Those define the REAL refurb steps (descaling, filter media, gaskets, seals — we
-   do not yet know), which determine whether the swap cycle is the right demo or
-   merely the first scene of it. Do not over-invest in generic refurb content until
-   they land. Replace the cartridge/socket geometry and re-run the eval.
-   **The CAD file is a separate and much faster ask than the device** — request the
-   cartridge **STL or STEP file** now. Per Anirudh (2026-08-02), a manufacturer almost
-   certainly already has one, it can be asked for immediately because it does not need
-   the physical object, and reverse-engineering geometry from a real part is far harder
-   than importing a file. This item is still blocked, but on an ask nobody has made yet,
-   not on a shipment. See `meetings/anirudh_call_2_transcript.md`.
+2. ~~**Swap in real geometry when the refurb docs arrive.**~~ **DOCS LANDED 2026-08-04.**
+   The 13 work instructions are transcribed in `sim_poc/dp_process.py`; the plan is
+   `V5_PLAN.md`. What they changed:
+   - Our cycle approximates **Stage 10, Membrane Assembly** — a real, named station.
+   - But their cap is **threaded, spanner-tightened (multi-turn to a torque
+     criterion)**, not our 55° indexed bayonet. Same task class, different motion. Do
+     not repeat the "nearly one-to-one" claim without that qualifier.
+   - Their dip is a **bubble test on an assembly pressurised to 80–90 PSI** with the
+     permeate end-plugged and the reject valve closed — not a wash. So the camera check
+     is *their* acceptance criterion.
+   - **NO document in the set defines Easy/Medium/Hard.** (Corrected 2026-08-04: an
+     earlier note here said Annexure 1 defines them — it does not, it governs
+     CABINENT / STICKERS CHECKING. The triage fan-out has no annexure at all.) Any
+     triage class boundary is OURS wearing their vocabulary. Label it that way every
+     single time it is reported, and ask the founder open-endedly.
+   - **HARD is not a dead end** — their chart forks it into RECTIFIABLE (rejoins the
+     line) and NON RECTIFIABLE (scrap approval, cost > 80–90%).
+   - **45 PSI vs 80 PSI contradiction** on the assembled-device leak test (stages 4/6 vs
+     QC page 3). Recorded in `CONTRADICTIONS`, not reconciled. Ask before building any
+     leak-test station.
+   - **There is no teardown/disassembly work instruction in the corpus.** The extraction
+     motion v3/v4 are built on has no documented counterpart. Worth knowing before
+     claiming the sim mirrors their process.
+   - Deformables (Teflon, stickers, harness, tubing) are a **deliberate de-scope**,
+     recorded in PITCH_NOTES §9 as a decision, not a gap.
+   Still blocked on: **what defines Easy/Medium/Hard** — the top ask, and it must be
+   asked OPEN-ENDED because no document in the set defines it (Annexure 1 is the
+   cabinet/sticker cosmetic spec, useful for CLEAN verification, not the triage);
+   **QC Annexures 1–13**; **membrane bowl + cap + O-ring STL/STEP** (now outranks the
+   cartridge); **cabinet outer dimensions AND mass**; and **whether the final leak test
+   is 45 or 80 PSI**. Per Anirudh (2026-08-02) a
+   manufacturer almost certainly already has the CAD and it can be asked for without the
+   physical device. All 13 source PDFs are checked in at `docs/drinkprime/` — read its
+   README before opening them. See `meetings/anirudh_call_2_transcript.md`.
 3. Config dataclass to replace magic numbers (geometry, speeds, tolerances).
 4. Domain randomization: mass ±20%, friction ±30%, table height ±5 mm; re-eval.
 5. Second scene: screw-down station with torque-limited driver.
