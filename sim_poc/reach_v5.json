@@ -1,0 +1,847 @@
+{
+  "pos_tol_m": 0.004,
+  "rot_tol_deg": 4.0,
+  "pad_standoff_m": 0.045,
+  "tilt_cone_deg": [
+    0.0,
+    10.0,
+    20.0,
+    30.0
+  ],
+  "frame_margin": 1.18,
+  "note": "kinematics only; no contact or dynamics. Camera standoff is derived per-config from fovy and device size -- see fit_standoff().",
+  "configs": [
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.3,
+      "x": 0.5,
+      "standoff_m": 0.365,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.267,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.35,
+      "x": 0.5,
+      "standoff_m": 0.404,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.733,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.067,
+        "top": 1.0,
+        "left": 0.6,
+        "right": 0.6,
+        "back": 0.0
+      },
+      "front_top": 0.867
+    },
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.4,
+      "x": 0.5,
+      "standoff_m": 0.442,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.733,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.067,
+        "top": 1.0,
+        "left": 0.6,
+        "right": 0.6,
+        "back": 0.0
+      },
+      "front_top": 0.867
+    },
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.5,
+      "standoff_m": 0.481,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.0,
+        "top": 1.0,
+        "left": 0.6,
+        "right": 0.6,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.5,
+      "x": 0.5,
+      "standoff_m": 0.519,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 0.867,
+        "left": 0.6,
+        "right": 0.6,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.2,
+      "d": 0.18,
+      "h": 0.55,
+      "x": 0.5,
+      "standoff_m": 0.557,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.333,
+        "top": 0.6,
+        "left": 0.6,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.3,
+      "x": 0.5,
+      "standoff_m": 0.385,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.0,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.35,
+      "x": 0.5,
+      "standoff_m": 0.423,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.733,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.867
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.4,
+      "x": 0.5,
+      "standoff_m": 0.462,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.733,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.067,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.867
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.5,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.267,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.533,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.5,
+      "x": 0.5,
+      "standoff_m": 0.538,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 0.933,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.267,
+        "top": 0.867,
+        "left": 0.533,
+        "right": 0.533,
+        "back": 0.0
+      },
+      "front_top": 0.967
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.55,
+      "x": 0.5,
+      "standoff_m": 0.577,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.267,
+        "top": 0.6,
+        "left": 0.533,
+        "right": 0.533,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.3,
+      "x": 0.5,
+      "standoff_m": 0.406,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.35,
+      "x": 0.5,
+      "standoff_m": 0.444,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.8,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.0,
+        "top": 1.0,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 0.9
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.4,
+      "x": 0.5,
+      "standoff_m": 0.482,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.8,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.333,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.9
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.5,
+      "standoff_m": 0.521,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.933,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.2,
+        "top": 1.0,
+        "left": 0.4,
+        "right": 0.467,
+        "back": 0.0
+      },
+      "front_top": 0.967
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.5,
+      "x": 0.5,
+      "standoff_m": 0.559,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 0.933,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 0.867,
+        "left": 0.4,
+        "right": 0.4,
+        "back": 0.0
+      },
+      "front_top": 0.967
+    },
+    {
+      "w": 0.3,
+      "d": 0.18,
+      "h": 0.55,
+      "x": 0.5,
+      "standoff_m": 0.598,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.333,
+        "top": 0.6,
+        "left": 0.4,
+        "right": 0.4,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.3,
+      "x": 0.5,
+      "standoff_m": 0.427,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.067,
+        "top": 1.0,
+        "left": 0.2,
+        "right": 0.2,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.35,
+      "x": 0.5,
+      "standoff_m": 0.466,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 0.867,
+        "right": 0.867,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.2,
+        "top": 1.0,
+        "left": 0.2,
+        "right": 0.267,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.4,
+      "x": 0.5,
+      "standoff_m": 0.504,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 0.867,
+        "right": 0.867,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.5,
+      "standoff_m": 0.543,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 0.933,
+        "top": 1.0,
+        "left": 0.867,
+        "right": 0.867,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 0.967
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.5,
+      "x": 0.5,
+      "standoff_m": 0.581,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 0.933,
+        "top": 1.0,
+        "left": 0.867,
+        "right": 0.867,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.2,
+        "top": 0.867,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 0.967
+    },
+    {
+      "w": 0.35,
+      "d": 0.18,
+      "h": 0.55,
+      "x": 0.5,
+      "standoff_m": 0.62,
+      "orbit_in_view": 0.125,
+      "orbit_reach": 0.125,
+      "view_sep_deg": 0.0,
+      "n_framed_views": 1,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.067,
+        "top": 0.6,
+        "left": 0.267,
+        "right": 0.267,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.34,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.533,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.0,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "front_top": 0.766
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.38,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.6,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.0,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "front_top": 0.8
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.42,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 135.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.46,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.667,
+        "top": 1.0,
+        "left": 1.0,
+        "right": 1.0,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 1.0,
+        "left": 0.667,
+        "right": 0.667,
+        "back": 0.0
+      },
+      "front_top": 0.834
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.5,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 0.867,
+        "top": 1.0,
+        "left": 0.933,
+        "right": 0.933,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.267,
+        "top": 1.0,
+        "left": 0.467,
+        "right": 0.533,
+        "back": 0.0
+      },
+      "front_top": 0.933
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.54,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 0.867,
+        "right": 0.867,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.133,
+        "top": 0.867,
+        "left": 0.333,
+        "right": 0.333,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.58,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.375,
+      "orbit_reach": 0.375,
+      "view_sep_deg": 90.0,
+      "n_framed_views": 3,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 0.8,
+        "right": 0.8,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.667,
+        "top": 0.6,
+        "left": 0.2,
+        "right": 0.2,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    },
+    {
+      "w": 0.25,
+      "d": 0.18,
+      "h": 0.45,
+      "x": 0.62,
+      "standoff_m": 0.5,
+      "orbit_in_view": 0.25,
+      "orbit_reach": 0.25,
+      "view_sep_deg": 45.0,
+      "n_framed_views": 2,
+      "faces": {
+        "front": 1.0,
+        "top": 1.0,
+        "left": 0.733,
+        "right": 0.733,
+        "back": 0.0
+      },
+      "faces_strict": {
+        "front": 0.667,
+        "top": 0.4,
+        "left": 0.067,
+        "right": 0.067,
+        "back": 0.0
+      },
+      "front_top": 1.0
+    }
+  ]
+}

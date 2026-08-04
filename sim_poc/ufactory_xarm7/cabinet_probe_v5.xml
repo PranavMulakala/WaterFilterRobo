@@ -1,0 +1,60 @@
+<mujoco model="v5 reachability probe (unit-scale cabinet)">
+  <!-- V5-0. A deliberately minimal scene: the arm, the bench, and ONE box standing in
+       for a DrinkPrime cabinet. No stations, no cartridge, no dynamics.
+
+       Its only job is to answer, before anything else in v5 gets built, whether the
+       xArm7 from this base position can (a) orbit its wrist camera around a unit-sized
+       device and (b) raster a pad across the device's faces. We do not have DrinkPrime's
+       cabinet dimensions yet, so the cabinet geom is resized at RUNTIME by v5_reach.py
+       and swept -- the output is an envelope (what sizes work) rather than a yes/no for
+       one guessed size.
+
+       Cabinet convention: body origin sits on the bench top (z = 0); the geom is offset
+       up by its own half-height so the box stands ON the bench. v5_reach.py maintains
+       that relationship when it resizes -- see _set_cabinet(). Front face is -X, i.e.
+       facing the arm base at the origin. -->
+
+  <include file="xarm7.xml"/>
+
+  <statistic center="0.4 0 0.3" extent="1.2"/>
+
+  <visual>
+    <headlight diffuse="0.65 0.65 0.65" ambient="0.38 0.38 0.4" specular="0.25 0.25 0.25"/>
+    <global azimuth="150" elevation="-25" offheight="720" offwidth="1280"/>
+    <quality shadowsize="4096"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.82 0.87 0.93" rgb2="0.5 0.6 0.72"
+             width="256" height="256"/>
+    <texture name="floortex" type="2d" builtin="checker" rgb1="0.30 0.32 0.36"
+             rgb2="0.36 0.38 0.42" width="256" height="256"/>
+    <material name="floormat" texture="floortex" texrepeat="6 6" reflectance="0.05"/>
+    <material name="benchmat" rgba="0.65 0.67 0.71 1" reflectance="0.1"/>
+    <material name="cabmat" rgba="0.90 0.91 0.93 1" reflectance="0.12"/>
+    <material name="faciamat" rgba="0.16 0.5 0.82 1" reflectance="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0.5 -0.5 1.6" dir="-0.3 0.3 -1" diffuse="0.7 0.7 0.7"/>
+    <light pos="0.3 0.6 1.4" dir="0 -0.4 -1" diffuse="0.45 0.45 0.45"/>
+
+    <geom name="floor" type="plane" size="0 0 0.05" pos="0 0 -0.7" material="floormat"/>
+    <geom name="bench" type="box" size="0.55 0.6 0.35" pos="0.35 0 -0.35" material="benchmat"/>
+
+    <camera name="main" pos="1.45 -0.95 0.85" xyaxes="0.6 0.8 0 -0.32 0.24 0.92"/>
+    <camera name="top" pos="0.45 0 1.7" xyaxes="0 -1 0 1 0 0"/>
+
+    <!-- The cabinet. size/pos are OVERWRITTEN at runtime; these are only defaults
+         (250 x 180 x 450 mm, a plausible countertop RO purifier). Real dimensions are
+         an open ask -- see docs/drinkprime/README.md. -->
+    <body name="cabinet" pos="0.50 0 0">
+      <geom name="cab" type="box" size="0.125 0.09 0.225" pos="0 0 0.225" material="cabmat"/>
+      <!-- front facia strip, purely so renders read as a device and the front face is
+           visually identifiable; excluded from collision -->
+      <geom name="cab_facia" type="box" size="0.125 0.004 0.03" pos="0 -0.094 0.06"
+            material="faciamat" contype="0" conaffinity="0"/>
+      <site name="cab_center" pos="0 0 0.225" size="0.006" rgba="0 0 0 0"/>
+    </body>
+  </worldbody>
+</mujoco>
