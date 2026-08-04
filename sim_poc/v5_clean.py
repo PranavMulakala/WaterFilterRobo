@@ -1,9 +1,12 @@
 """V5-C -- Stage-2/3 cleaning: wipe the device's faces with a compliant pad.
 
     ../venv/bin/python v5_clean.py --run 3          one unit, verbose
-    ../venv/bin/python v5_clean.py --eval 20 --seed0 800
-    ../venv/bin/python v5_clean.py --sabotage 10    prove the verification can FAIL
-    ../venv/bin/python v5_clean.py --render 3       write a video
+    ../venv/bin/python v5_clean.py --eval 8          held-out; --seed0 defaults to 900
+
+NOT IMPLEMENTED YET, despite what an older version of this docstring claimed: there is no
+`--sabotage` (that is V5-D) and no `--render` (that is V5-G). The argument parser has only
+--run / --eval / --seed0. The `frames` dict is threaded through every motion method, so a
+renderer is wiring rather than construction -- sim_poc4.py has a working template.
 
 WHAT THIS IS. DrinkPrime Stage 2 (Cabinet Cleaning) and Stage 3 (Back Panel & Top Cover
 Cleaning). Their own acceptance criterion is COVERAGE, in their words:
@@ -958,7 +961,10 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", type=int)
     ap.add_argument("--eval", type=int)
-    ap.add_argument("--seed0", type=int, default=800)
+    # 900, not 800: a bare --eval should reproduce the PUBLISHED number, not a seed range
+    # the ledger records as spent on development. 800-807 were used to diagnose against
+    # the old 64.7%, so defaulting there quietly reproduced a development figure.
+    ap.add_argument("--seed0", type=int, default=900)
     a = ap.parse_args()
     if a.run is not None:
         c = Cell()
