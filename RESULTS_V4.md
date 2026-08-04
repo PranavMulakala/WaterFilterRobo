@@ -1,7 +1,9 @@
 # Results — v4 Inspect / Clean / Replace
 
-> **v4 is no longer the current work.** The project moved to **v5** on 2026-08-04 — a unit-scale cell that
-> triages, cleans and reassembles the whole purifier rather than one cartridge. v5
+> **v4 is no longer the current work.** The project moved to **v5** on 2026-08-04 — a
+> unit-scale cell working on the whole purifier rather than one cartridge. Two of its
+> three stations are built (TRIAGE, CLEAN); **membrane assembly is not started**, so v5
+> does not yet reassemble anything. v5
 > results live in **[V5_PLAN.md](V5_PLAN.md)**; current state is at the top of
 > **[CLAUDE.md](CLAUDE.md)**. Read this file for the v4 numbers and for the vision
 > lessons, which still govern.
@@ -10,8 +12,13 @@
 > 100%) reproduces `stats_v4.json` byte-identically, confirmed 2026-08-04. The
 > domain-randomization rows, the 92.8% two-view calibration figure and the 8 mm / 8° nest
 > capture envelope have **no committed artifact** — `stats_v4.json` holds only the DR-off
-> run — so they are reproducible in principle (`sim_poc4.py --dr`) but have not been
-> re-run. Do not read "v4 still reproduces" as covering all of them.
+> run. Nor is one command enough to re-run them: `sim_poc4.py --dr SCALE` reproduces the
+> **DR rows only**. The 92.8% two-view figure needs `inspect_views` edited in the frozen
+> `RefurbConfig` (no CLI flag exists), and the 8 mm / 8° nest envelope and the 5/5
+> sabotage result have **no reproduction path in committed code at all** — the sabotage
+> was a temporary edit, and `grep -ri sabotag` over the repo's Python returns only a v5
+> file saying the feature is not built yet. Do not read "v4 still reproduces" as covering
+> any of these.
 
 **All three routes run end to end. Routing compliance 100%, false-clean rate 0.0%,
 end-to-end 86.7% — on 60 held-out trials.** Nothing here is tuned to flatter the
@@ -58,10 +65,13 @@ statistics (deposit coverage over the cartridge body, plus intensity texture), w
 `score = coverage + 0.70 × texture` and two frozen thresholds. It has to be defensible
 to a customer, not impressive to a reviewer.
 
-**Two views, not one.** Single-view inspection scored 86.7%; rotating the part 180°
-and taking a second view scored 92.8% on the same calibration set. Occlusion — half
-the deposits facing away from the camera — was the dominant error source, and the fix
-costs nothing mechanically because the wrist can simply spin.
+**Two views, not one — and this is already banked, not still on the table.** On the
+calibration set, single-view scored 86.7% and rotating the part 180° for a second view
+scored 92.8%. Occlusion — half the deposits facing away from the camera — was the dominant
+error source, and the fix costs nothing mechanically because the wrist can simply spin. So
+`inspect_views = 2` is the shipped default, and **the 86.7% headline above is already the
+two-view result** on held-out seeds 200–259. The two numbers are not comparable: 92.8% is
+calibration, 86.7% is held out.
 
 ### Routing decision
 
@@ -107,7 +117,10 @@ re-inspecting on a fresh render. To prove that check is real, the cleaning was
 **deliberately sabotaged** so deposits were left in place — the re-check must then
 fail the part. It initially passed 2 of 5 sabotaged parts, because it classified on a
 single view while the main inspection used two. With both views: **5/5 honest
-cleanings verified, 5/5 sabotaged cleanings caught.**
+cleanings verified, 5/5 sabotaged cleanings caught** — 5 sabotaged + 5 honest trials,
+2026-08-02, from a **temporary edit to the cleaning branch**. There is no sabotage harness
+in committed code and no artifact in `stats_v4.json`, so this number cannot currently be
+re-run. Building that harness properly is V5-D.
 
 ## Robustness — how much error the cell tolerates (Phase C)
 
@@ -128,9 +141,12 @@ across configs).
 | **±5 mm / ±20% / ±30%** | 86.7% | 0.0% | **90.0%** | 78.3% | 6 |
 | **±10 mm / ±40% / ±60%** | 91.7% | 2.1% | **55.0%** | 48.3% | 27 |
 
-**Inspection is completely unaffected** (86.7% at every level up to 2×) — mass,
-friction and table height cannot influence a camera, which is a useful sanity check
-that DR is perturbing what we think it is. All the damage is mechanical.
+**Almost all the damage is mechanical, but "inspection is completely unaffected" is too
+strong** — an earlier version of this paragraph said exactly that, and the table above
+contradicts it: at ±10 mm inspection reads 91.7% and **false-clean leaves 0.0% for 2.1%**.
+The headline safety metric does *not* hold across the whole DR range, and a sentence
+claiming vision is untouched buries the one place it is not. See the "flat within noise"
+paragraph below, which is the version that survived review.
 
 **The usable envelope is about ±2.5 mm of cell-position error**, where there is no
 measurable loss at all. At ±5 mm the cell still runs but loses ~9 points of
