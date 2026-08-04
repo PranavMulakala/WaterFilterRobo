@@ -2,15 +2,49 @@
 
 Instructions for Claude Code / any AI agent working in this repo.
 
+## WHERE THE WORK IS — read this first (updated 2026-08-04)
+
+**Current phase: v5, the three-stage funded demo. Plan of record: `V5_PLAN.md`.**
+
+| phase | state |
+|---|---|
+| V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
+| V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
+| V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
+| V5-C cleaning | **PARTIAL** — tool holding solved (0.26 mm drift), **coverage only 44.7%** |
+| V5-D verification + sabotage test | not started |
+| V5-E membrane (Stage 10) | not started |
+| V5-G video | not started |
+
+**Immediate next task: model a compliance flange for V5-C.** Evidence: press depth
+2.5→0.0 mm barely moved contact force (60.7→61.1 N), and with a rigid tool coupling the
+arm's ~1.5 mm path error lands straight on the force. Real surface-finishing cells use a
+changer for LOCATION plus an active contact flange for FORCE. Do not tune further — add
+the component.
+
+**Two things NOT to quote until fixed:**
+- `stats_v5_clean.json` peak force reads **exactly 700.0 N on all 8 seeds** — identical
+  across eight different soil layouts is a clamp, not a measurement. Cause unknown.
+- V5-C coverage (44.7%) is not presentable.
+
+**Seed ledger — held-out sets are consumed by use.** Spent: 200–259, 300–419, 500–619,
+700–819 (triage), 800+ (cleaning). Calibration lives at 9000+. Use a FRESH range for any
+new evaluation and look at it once.
+
 ## First steps every session
-1. Read `PROJECT_CONTEXT.md` for the business background, `HOW_IT_WORKS.md` for the
-   task, `RESULTS_V4.md` for the current numbers, and `LEARNINGS.md` for the concepts
-   the humans on this project have already been taught (do not re-explain them there).
+1. Read `V5_PLAN.md` (plan + all v5 results), `CELL_SPEC.md` (the real-cell build doc),
+   `PROJECT_CONTEXT.md` (business background), `RESULTS_V4.md` (v4 numbers), and
+   `LEARNINGS.md` (concepts the humans already have — do not re-explain them).
+   `docs/drinkprime/README.md` covers the 13 source documents.
 2. Set up if needed: `cd ~/WaterFilterRobo && ./setup.sh` (do NOT use a bare
    `python3 -m venv` — see below). The venv lives at the repo root, so commands from
    `sim_poc/` use `../venv/bin/python`.
-3. Confirm the baseline before changing anything (from `sim_poc/`):
-   `../venv/bin/python sim_poc2.py --eval 25` and `../venv/bin/python sim_poc3.py --eval 25`
+3. Confirm the baselines before changing anything (from `sim_poc/`):
+   `sim_poc2.py --eval 25` (100%), `sim_poc3.py --eval 25` (100%),
+   `sim_poc4.py --eval 60 --seed0 200` (86.7% / 0.0% false-clean / 100% routing).
+   All three should reproduce the committed `stats*.json` **byte-identically**.
+4. Confirm the v5 gates: `v5_check_scene.py`, `v5_check_spec.py`,
+   `v5_reach.py --indexed`. All three must pass before touching the scene.
 
 ## Environment — read this before debugging an install
 - **Requires Python 3.10+.** Apple's system `python3` is 3.9, which has no MuJoCo
