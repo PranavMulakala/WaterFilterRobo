@@ -338,3 +338,177 @@ what we now understand.
   full 0.3 s dwell on transient touches and "complete" without the condition
   ever holding continuously. | ~10 min | dwell timers should reset when the
   condition goes false, unless cumulative is explicitly intended
+
+- 2026-08-04 | Read the real work instructions (13 Waterwala Labs PDFs) and found the
+  summary of them had dropped a step. The condensed analysis described Stage 10 as
+  "membrane → bowl → cap tighten → dip → verify". The source (3.6 → 3.7) plugs the
+  permeate outlet with an END PLUG, closes the reject outlet with a BALL VALVE, and
+  pressurises the assembly to 80–90 PSI air BEFORE dipping it. The dip is a bubble
+  test on a pressurised part, not a wash. Building the station from the summary would
+  have produced a demo missing the very step that makes its pass/fail meaningful — and
+  the customer would have spotted it, in their own document, in the first meeting.
+  | ~25 min | when a summary and a primary source both exist, the primary source is
+  not optional. A derived doc is a search index, not an input
+- 2026-08-04 | Our twist-lock is NOT their cap. The analysis called our cycle "nearly
+  one-to-one" with Stage 10; the work instruction says the membrane cap is threaded and
+  "tightened with the help of spanner tool", i.e. multi-turn rotation to a torque
+  criterion. Ours is a 55° indexed bayonet. Same task CLASS (align → insert → rotate to
+  secure), different motion. Caught before it went in a pitch. | ~0 min | "our demo is
+  basically their process" is exactly the claim to re-derive from the source before
+  saying it out loud — it is the most flattering possible conclusion, which is why it
+  needs the most checking
+- 2026-08-04 | The labels exist; the definitions don't. Stage 1 and the QC flow both
+  route every returned unit to Easy / Medium / Hard, and both defer the actual criteria
+  to QC Annexure 1, which is not in the document set (Annexures 1–13 are all absent).
+  So we can grade the two visual features they name — chassis dents/scratches,
+  crimping — but any class boundary would be ours wearing their vocabulary. Recorded in
+  `dp_process.py` as a hard warning in the dump rather than a comment someone can skim
+  past. | ~15 min | when adopting a customer's vocabulary, check whether you got the
+  words or the definitions. Inheriting the words alone silently converts our guess into
+  their spec
+
+- 2026-08-04 | **Text-extracting a vector flow chart silently invented a specification.**
+  The three QC pages are 100% vector line art (228/291/65 drawing objects, zero raster).
+  `get_text()` returns every node label and NOT ONE EDGE. The "REFER QC ANEXURE n" ovals
+  attach to their governing box by a drawn leader line — so with the lines gone, each
+  oval bound to whatever label happened to be nearest in reading order. **8 of the 13
+  annexure bindings came out wrong**, including the one this project's headline ask was
+  built on: we told ourselves Annexure 1 defines Easy/Medium/Hard, and it actually
+  governs CABINENT / STICKERS CHECKING three nodes downstream. The triage has no
+  annexure at all. We were one meeting away from asking the founder for a document that
+  would not have answered the question. Fix: render the pages and read them as images.
+  | ~90 min incl. re-transcription | an extraction is only as good as the modality it
+  used. Text extraction on a diagram does not fail loudly — it returns confident,
+  well-formed, wrong structure. Ask "what did this format DROP?" before trusting it
+- 2026-08-04 | The renderer wasn't installed and nothing said so until the read failed.
+  `Read` on a PDF needs `pdftoppm` (poppler), absent on this Mac. Thirteen subagents hit
+  it simultaneously; all thirteen recovered on their own via PyMuPDF, which was already
+  in the venv. Cost was ~0 because the fallback existed, but the failure mode is worth
+  recording: the capability gap was invisible until the moment of use, and the tool that
+  did work was already installed as a transitive dependency nobody had noticed.
+  | ~10 min | environment probes belong in setup.sh, not in the middle of a task. Add a
+  "what can this box actually do" check
+- 2026-08-04 | **The first reachability study failed the gate for three reasons, and all
+  three were bugs in the STUDY.** Front-face coverage came back 10%. Before touching the
+  cell: (a) the camera standoff was hardcoded at 0.545 m when the optics need 0.293 m to
+  frame a 450 mm box at fovy 75 — that pushed the far side of the orbit to x = 1.05
+  against a measured max planar reach of 0.93 m, so "unreachable" was the true answer to a
+  question nobody should have asked; (b) it demanded a full 360° orbit when the
+  classifier only needs two separated views; (c) it demanded an exact-normal press when
+  a compliant wiping pad conforms over ~30°. Corrected, front face went 10% → 83% → 100%
+  at the right placement. The report now prints strict AND relaxed side by side so the
+  relaxation cannot hide. | ~40 min | when a gate fails, suspect the gate first. A test
+  that over-constrains reports a real number about an unreal task — and "we relaxed the
+  spec until it passed" is indistinguishable from honest work unless both numbers ship
+- 2026-08-04 | Whited-out content in a customer document. QC page 1 has two white-filled
+  rectangles (content-stream xrefs 21, 22, DeviceRGB) appended AFTER the AutoCAD export,
+  painting over an ellipse reading "QC WILL MONITOR" attached to VISUAL INSPECTION.
+  Blanking the two streams and re-rendering recovers it. Almost certainly someone tidying
+  a note in a PDF editor — the text was never removed from the text layer, which is not
+  what concealment looks like, and the content is unremarkable. Recorded because a claim
+  about a customer's document has to be checkable, and because rendering alone would have
+  missed it in the other direction: the text layer and the visible page DISAGREE.
+  | ~15 min | when text extraction and the render disagree, that is signal, not noise.
+  Neither one is the document
+
+- 2026-08-04 | **The reachability study measured a box that wasn't there.** `_set_cabinet`
+  wrote `geom_size = [width/2, depth/2, height/2]` (width along X) while `raster_test`
+  placed the front face at `cx +/- depth/2` (depth along X). With a 250 x 180 mm cabinet
+  that put every front/back raster target **35 mm INSIDE the solid box** and every
+  left/right target 35 mm outside it. Five of six face-coverage numbers were measuring
+  nothing real, and the front-face "collisions" were the arm being told to reach into the
+  middle of a solid object. Only `top` was accidentally correct, because Z was consistent.
+  Everything reported from V5-0 before this had to be re-run; the placement decision
+  changed as a result (x=0.62 -> 0.58). | ~35 min | axis conventions need to be asserted,
+  not commented. The fix was renaming w/d/h to width/depth/height AND a test that every
+  face plane coincides with the real surface -- the second is what would have caught it
+- 2026-08-04 | **A backdrop is scenery to us and a wall to the robot.** Added a matte
+  panel across +Y for the inspection background. Right-face raster coverage went from
+  89.6% (bare probe scene) to **0.0%** in the real scene, because the arm must swing its
+  elbow past y=0.40 to press on a +Y surface. Nothing in the scene looked wrong; the panel
+  is 6 mm thick and reads as decoration. Fixed by deleting it and widening the single +X
+  panel, which still fills the background at every framed camera azimuth. | ~25 min |
+  ANYTHING added to a scene is an obstacle until proven otherwise. Re-run the reachability
+  gate against the REAL scene, never only the simplified probe -- the probe passed
+- 2026-08-04 | **The failure reason lied, and sent me hunting the wrong bug.** The raster
+  tried a cone of tool orientations per point and, on failure, recorded the reason from
+  whichever orientation happened to be tried LAST. One point reached its target with
+  **0.0 mm position error** and was rejected for collision -- and was reported as
+  "unreachable". I spent 20 minutes looking for a kinematic problem that did not exist.
+  Fixed: if any orientation actually reached the point, report the binding constraint
+  (collision/joint_limit); "unreachable" now means genuinely out of reach. | ~20 min |
+  a diagnostic that aggregates over retries must report the MOST INFORMATIVE outcome, not
+  the last one. Wrong-but-plausible error messages cost more than no error message
+- 2026-08-04 | **One failed point silently zeroed a whole face.** The raster warm-started
+  each IK solve from the previous success. If the FIRST point of a face failed, the seed
+  never advanced, every later point cold-started into a bad basin, and the face reported
+  0% -- a number driven by iteration order, not by the robot. It is indistinguishable from
+  a genuine unreachable face. Fixed by falling back to the cold seed per point, making the
+  result order-independent. | ~15 min | any warm-started search needs a fallback, or its
+  first failure becomes its final answer. Test: does shuffling the input order change the
+  result? If yes, the result is not a measurement
+- 2026-08-04 | **Revealing a hidden geom made it BLACK.** The three condition pools were
+  written with `material="soilmat" ... rgba="0 0 0 0"` and revealed by setting alpha to 1.
+  In MuJoCo a geom's own `rgba` OVERRIDES its material colour, so every patch appeared
+  black regardless of its material -- brown dirt, white scratches and grey dents rendered
+  identically. The classifier would have been fed three visually identical classes. v4 got
+  this right by writing the material's RGB into the geom and zeroing only alpha; that
+  detail was not obvious from reading v4 and had to be rediscovered from a render.
+  | ~10 min | if a value can be specified in two places, find out which one wins BEFORE
+  building on it -- and look at the picture, because this was invisible in every assertion
+  I had written
+
+- 2026-08-04 | Smoke-testing the CLI with `--eval 2` **overwrote the committed baseline
+  stats** with 2-trial data. `stats.json`, `stats_v3.json` and `stats_v4.json` are the
+  recorded baselines the whole project measures against, and any run of the eval clobbers
+  them regardless of trial count. Caught immediately by `git diff`, and the full evals
+  were re-run to restore them -- but a smoke test should not be able to destroy the
+  reference data. | ~20 min of re-running | either the eval should refuse to write stats
+  below some trial count, or the committed baselines should live somewhere the eval
+  cannot reach. Verification runs must not have side effects on recorded results
+
+- 2026-08-04 | **The v4 keyframe trap, verbatim, one project later.** CLAUDE.md has
+  recorded since v2 that "the keyframe `home` predates the cartridge free joint -- its
+  qpos must be set explicitly after `mj_resetDataKeyframe`". The v5 scene inherits the
+  same `home` from xarm7.xml, which declares only 13 arm+gripper values; MuJoCo zero-fills
+  the rest. Result: anyone resetting to `home` teleports the pad tool to the WORLD ORIGIN,
+  20 mm inside the bench, with a degenerate zero quaternion. Nothing in V5-A resets that
+  way, which is exactly why it survived every check I wrote -- a landmine armed for the
+  first controller that does. `home` can't be fixed in xarm7.xml without touching three
+  validated cells, so the scene now emits its own complete `v5home`. | ~25 min | a gotcha
+  written in a doc is not a fix. This one was DOCUMENTED, and recurred anyway, because
+  documentation doesn't run. It's an assertion now
+- 2026-08-04 | **A 4 mm decorative strip buried 7 pieces of ground truth.** The front
+  facia accent stands proud of the cabinet face across a 60 mm z-band. Seven condition
+  patches were sampled behind it -- physically invisible from every camera at every
+  index angle. The classifier would have been graded against defects it is structurally
+  incapable of seeing, capping accuracy for a reason with nothing to do with vision, and
+  it would have looked like a vision problem. | ~15 min | when ground truth is placed
+  procedurally, assert it is OBSERVABLE, not just that it exists. "Is it there?" and
+  "can the sensor see it?" are different questions and only the first was being asked
+- 2026-08-04 | **The compliant pad crushed through its own mount, and its compliance
+  wasn't the number we declared.** Two independent bugs in one geom. (a) `solimp` width
+  0.012 on a pad of half-thickness 0.010: contact impedance never reached full stiffness
+  before full penetration, measured at **18.6 mm of penetration at 20 N through a 10 mm
+  pad**. A wiping pass is well inside that range, so V5-C would have been built on a tool
+  that does not exist. (b) MuJoCo AVERAGES `solref` between the two geoms in a contact
+  unless one sets `priority`; the declared 0.045 was silently acting as 0.0325 against the
+  post, and would have differed against every other surface. Fixed both, then swept the
+  parameters and found two otherwise-sensible settings with a solver instability that
+  spiked penetration to 12-17 mm at 40 N and recovered at 60 -- non-monotonic, i.e. the
+  pad passes through its mount at one load and not at a higher one. Final values give
+  1.4-4.6 mm across 0-60 N, monotonic. | ~45 min | contact parameters are not
+  declarations, they are inputs to a negotiation between two geoms and a solver. MEASURE
+  the force/penetration curve and require MONOTONICITY -- a single spot-check at one load
+  would have passed the unstable settings
+- 2026-08-04 | **CELL_SPEC said the indexer carries "a ~5 kg device"; the modelled device
+  was 21.28 kg.** No geom in the cabinet carried a mass or density, so MuJoCo filled the
+  solid boxes at its 1000 kg/m3 default -- a water-filled cabinet. The 5 kg was neither
+  measured nor flagged, in a document whose own preamble promises every number is read out
+  of the simulation. Nothing in V5-0/V5-A depends on it (the study is kinematics-only) but
+  the indexer sizing does. Now an explicit 8.0 kg placeholder, labelled as an open ask.
+  Setting it on the main box alone left the cover, facia and back panel at default density
+  and the total came out 9.48 kg -- caught within one minute by `v5_check_spec.py`, which
+  is precisely why that check exists. | ~20 min | a physical parameter nobody set still
+  HAS a value, and it is whatever the engine defaults to. Grep the scene for geoms with
+  neither mass nor density before quoting any mass anywhere

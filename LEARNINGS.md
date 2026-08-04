@@ -236,3 +236,129 @@ and fatal. Verified a real 0.016 rad gap.
 how this survives cartridges we never modelled. Data is the bottleneck, so we start now.
 
 ---
+
+## 2026-08-04 — Why we said no to sticky tape
+
+**What we built:** The real DrinkPrime process, transcribed from their own 13 work
+instructions, and an explicit line through it marking what a robot can and cannot do.
+
+**Rigid vs deformable.** To handle an object you need to know where it is. For a rigid
+object that is six numbers — three for position, three for how it is turned — and they
+are enough forever, because the shape never changes. A strip of Teflon tape, a sticker,
+a wiring harness, a length of tubing has **no fixed shape**: it sags, stretches, sticks
+to itself, and changes as you touch it. There is no small set of numbers to plan
+against, and your camera cannot recover one. This is why "wind tape 20–30 turns onto a
+thread" is a research problem while "put this cylinder in that hole" is an afternoon.
+It isn't about how fiddly the job looks to a human — humans are *good* at floppy things.
+
+**Same class, different motion.** Their membrane cap screws down under a spanner; ours
+twists 55° like a camera lens. Both are "secure it by rotating," so what we learned
+transfers — but the motions are not interchangeable, and saying they are would have
+been caught by the customer reading their own document.
+
+**Why it matters:** Knowing which steps are impossible *today* is worth as much as
+making some steps work. It sets the boundary of what we can honestly sell, and it means
+nobody buys an arm for a job it cannot do.
+
+## 2026-08-04 — The diagram was the specification
+
+**What we built:** A corrected model of DrinkPrime's real process, after finding our
+first version had invented part of it.
+
+**Extraction has a modality, and the wrong one fails quietly.** Their quality-control
+process is a flow chart: boxes joined by arrows. We pulled the text out of it. Text
+extraction returns every *label* and not a single *arrow* — so we got all the nouns and
+none of the structure. Little oval notes reading "refer to Annexure 4" attach to a box by
+a drawn line; with the lines gone, each note glued itself to whichever label happened to
+sit nearest in reading order. **Eight of thirteen landed on the wrong box.** Nothing
+errored. We got back a confident, well-formed, wrong process — including the belief that
+a document called Annexure 1 defines their Easy/Medium/Hard grading, when it actually
+covers cabinet scratches three steps later. That belief was about to become a question we
+asked the customer.
+
+**The fix is embarrassingly simple: look at it.** Render the page as a picture and read
+it the way a person would.
+
+**Why it matters:** We keep learning the same lesson in new costumes — measure the part,
+not the gripper; calibrate through the real motion path, not a rig. Now: read the
+document in the form it was drawn in. Every one of these is the same mistake, which is
+**checking a proxy and believing you checked the thing.** The proxy is always cheaper,
+always available, and never announces that it dropped something.
+
+## 2026-08-04 — Can the arm even reach it? (and four bugs that said yes when it couldn't)
+
+**What we built:** The scaled-up scene — a whole water purifier on the bench instead of a
+110 mm cartridge — plus the study that checks the arm can actually work on it.
+
+**Workspace.** An arm doesn't have a "range" like a person's. It has a *workspace*: a
+3D region it can get its hand into, and at each point only some hand *angles* are
+possible. So "can it reach the front of the cabinet?" is really "can it get its hand
+there, pointing the right way, without folding into itself or hitting anything?" We
+tested that before building anything, because if the answer is no, everything after it
+is wasted. The answer turned out to depend almost entirely on **where the device sits on
+the bench** — slide it 200 mm and front-face coverage goes 79% → 100% — and almost not
+at all on how big the device is. So the cabinet dimensions we're still waiting on from
+DrinkPrime aren't blocking us. The bench layout was the real question.
+
+**The uncomfortable part.** The study said "10% coverage, fails". Then it said 83%. Then
+0% on one face. Every one of those was a **bug in the test, not in the robot**: a camera
+told to stand twice as far back as it needed, a face whose measurements were taken 35 mm
+inside the solid box, a scenery panel that was invisible to us and a wall to the robot,
+and an error message that said "can't reach" about a point it reached perfectly and was
+merely bumping into. Four different ways to get a confident, wrong number.
+
+**Why it matters:** A failing test is a claim about the world, and it can be wrong in
+both directions. The habit that saved us is cheap: when a number surprises you, go and
+*look* — render the picture, print the contact list, check the box is where you think.
+Every bug above was invisible in the numbers and obvious in a screenshot.
+
+## 2026-08-04 — The cheapest fix was a turntable
+
+**What we built:** A rotating stage under the device — and the specification document
+you'd hand to whoever builds the real cell.
+
+**Some problems aren't controller problems.** The arm couldn't reach the back of the
+cabinet. Not "struggled" — *couldn't*, from every one of eight positions we tried, at
+every point on the face. And separately, the camera could either see the device from
+well-separated angles **or** the arm could clean its front face properly, but not both:
+moving the device closer helped one and hurt the other. Two problems, one cause — a part
+that can't move can only be approached from the side the robot lives on.
+
+**So we moved the part instead of the robot.** A low rotating platter under the device,
+about the cost of a nice laptop, and every face turns to meet the arm in the one position
+where it works best. Back face: 0% → 100%. The camera trade-off disappears entirely.
+This is completely standard — it's what welding positioners and paint booths do — we
+just had to stop trying to solve it with cleverness.
+
+**Why it matters:** This is the same lesson as the funnel that guides the cartridge into
+its socket, and the nest that holds it upright. **Ask what shape or mechanism makes the
+problem disappear before writing a controller.** Three times now the answer has been a
+piece of metal, not code. And a specific, costed piece of hardware ("you need a ~£1K
+indexing table") is a far more useful thing to hand a customer than a success rate.
+
+## 2026-08-04 — We asked four robots to attack our own work
+
+**What we built:** Nothing new — we spent a run trying to break what we'd just built, and
+succeeded twenty-two times.
+
+**Adversarial review.** Rather than re-reading our own work (where you see what you meant,
+not what you wrote), we set four independent reviewers on it with different jobs: check
+every number against the simulation, hunt for physics bugs, find contradictions between
+documents, and hunt for overclaiming. Then a second pass tried to *disprove* each
+complaint, so only the ones that survived counted. Ten were wrong and got thrown out;
+twenty-two were real.
+
+**What it caught.** The wiping pad **crushed straight through its own mount** under a
+normal press — 18.6 mm of squash on a 10 mm pad — so the tool we'd specified couldn't
+exist. A decorative strip on the cabinet front was **burying seven of the dirt marks the
+camera is graded on**, invisible from every angle; accuracy would have been capped for a
+reason that looked like a vision problem and wasn't. The device weighed **21 kg** because
+nobody set a weight and the simulator helpfully filled the box with water. And a reset
+routine we'd inherited **teleported the pad tool into the bench** — a bug we had already
+written down years-of-project-time ago, in a file, where it sat being true and doing
+nothing.
+
+**Why it matters:** That last one is the lesson. **A gotcha you documented is not a gotcha
+you fixed** — documentation doesn't run. Everything caught here is now an automated check
+that fails loudly. And the honest count for the day is thirteen bugs, every one of them in
+our own measuring equipment rather than in the robot.
