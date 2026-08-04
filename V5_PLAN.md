@@ -1,7 +1,9 @@
 # v5 Plan — the three-stage funded demo
 
-Written against the **real** process: 13 Waterwala Labs work instructions (Ref
-0024DPCRO001–0010, 0024DPNAP0008, + 3 QC flow pages, R0, 11-04-2024). The process
+Written against the **real** process: **13 Waterwala Labs documents** — 10 stage work
+instructions (Ref 0024DPCRO001–0010, 0024DPNAP0008) **plus** 3 QC flow-chart pages, R0,
+11-04-2024. Thirteen TOTAL, not thirteen work instructions plus three more; the older
+phrasing here read as 16 and was miscopied into two other files. The process
 model is checked in as [sim_poc/dp_process.py](sim_poc/dp_process.py) — data only,
 transcribed from the source PDFs, with our engineering judgement clearly separated
 from their text. Run it for a dump.
