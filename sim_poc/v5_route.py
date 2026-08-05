@@ -17,12 +17,14 @@ together along `dp_process.V5_ROUTES`.
     hard_rectifiable     same line as medium  (their chart rejoins it)
     hard_non_rectifiable TRIAGE -> ROUTE_TO_SCRAP_APPROVAL
 
-AND A SECOND ONE, WHICH MATTERS MORE. Two of those step names have NO MOTION BEHIND THEM
-(see STEP_EVIDENCE below): nothing picks, aligns or inserts the membrane element, and
-nothing physically delivers a unit to the scrap gate. Route-plan compliance compares
-`steps_done` to `plan`, so those steps pass BY BEING NAMED. Every run now prints which
-steps are MEASURED, which are a PROXY and which are UNBACKED. Do not quote compliance --
-or end-to-end, which inherits it -- as "every named action was performed".
+AND A SECOND ONE, WHICH MATTERS MORE. Route-plan compliance compares `steps_done` to
+`plan`, so any step with no motion behind it PASSES BY BEING NAMED. Two did.
+`MEMBRANE_INSERT` was one of them and is now a REAL, MEASURED motion (2026-08-05) -- the
+arm picks the element and places it in the open bowl, judged on the element. What remains
+UNBACKED is `ROUTE_TO_SCRAP_APPROVAL`: nothing physically delivers a unit anywhere, it is
+a software decision. Every run prints which steps are MEASURED, which are a PROXY and
+which are UNBACKED. Do not quote compliance -- or end-to-end, which inherits it -- as
+"every named action was performed".
 
 THE FORK WE CANNOT DECIDE, AND DO NOT PRETEND TO. Their chart splits HARD into
 RECTIFIABLE and NON RECTIFIABLE on whether rectification cost exceeds 80-90% -- of what,
@@ -84,9 +86,10 @@ STEP_EVIDENCE = {
     "TRIAGE":                 ("MEASURED", "camera grades the unit; 97.5% held out"),
     "CLEAN_CABINET":          ("MEASURED", "pad rasters 5 faces; coverage, force, tilt logged"),
     "VERIFY_CLEAN":           ("MEASURED", "2nd camera re-inspects; residue counted"),
-    "MEMBRANE_INSERT":        ("UNBACKED", "NO pick, align or insert exists. reset_mem() "
-                                           "jitters the loose element on its nest by ~4 mm "
-                                           "and nothing else ever moves it"),
+    "MEMBRANE_INSERT":        ("MEASURED", "arm picks the element and places it in the OPEN "
+                                           "bowl; seating judged on the element (off-axis "
+                                           "mm, base vs floor, upright). Was UNBACKED until "
+                                           "2026-08-05 -- the capped bowl had no path in"),
     "CAP_TIGHTEN":            ("MEASURED", "cap driven multi-turn, stalls on torque"),
     "LEAK_DIP":               ("PROXY",    "dip motion is real; BUBBLES ARE MODELLED FROM "
                                            "TORQUE, no fluid or gas is simulated"),
@@ -205,12 +208,18 @@ class RouteCell(MB.MemCell):
             if route in ("medium", "hard_rectifiable"):
                 # --- the Stage-10 subassembly, the V5-E station
                 self.reset_mem(seed)
+                ins = self.insert_element()
+                self.cap_present(True)
+                mujoco.mj_forward(self.m, self.d)
                 tg = self.tighten()
                 steps_done += ["MEMBRANE_INSERT", "CAP_TIGHTEN"]
                 chg = self.pressurise(tg["torque_nm"])
                 self.emit_bubbles(chg["seal_holds"])
                 px, _ = self.dip_and_grade()
                 steps_done += ["LEAK_DIP", "VERIFY_LEAK"]
+                out["elem_inserted"] = bool(ins["inserted"])
+                out["elem_align_mm"] = ins["align_mm"]
+                out["elem_seat_xy_mm"] = ins["seat_xy_mm"]
                 out["turns"] = tg["turns"]
                 out["torque_nm"] = tg["torque_nm"]
                 out["bubble_px"] = px
@@ -222,7 +231,8 @@ class RouteCell(MB.MemCell):
                 out["cap_z_mm"] = float(tg["cap_z_mm"])
                 out["leak_ok"] = bool(px <= self.mcfg.bubble_px_max
                                       and tg["stalled"]
-                                      and tg["torque_nm"] >= self.mcfg.torque_pass_nm)
+                                      and tg["torque_nm"] >= self.mcfg.torque_pass_nm
+                                      and ins["inserted"])
                 out["leak_false_pass"] = bool(px <= self.mcfg.bubble_px_max
                                               and not chg["seal_holds"])
                 if verbose:
@@ -302,10 +312,12 @@ def report(rows):
         mark = "  " if kind == "MEASURED" else ("~ " if kind == "PROXY" else "!!")
         print(f"   {mark}{kind:<9} {s:<24} n={used:<3} {why}")
     unb = sorted({s for r in rows for s in r["unbacked_steps"]} - {"PASS"})
-    print(f"\n  => {', '.join(unb)} pass by BEING NAMED. No element pick/align/insert")
-    print("     exists, and nothing physically delivers a unit to the scrap gate. Read")
+    print(f"\n  => {', '.join(unb)} still pass by BEING NAMED: nothing physically")
+    print("     delivers a unit to the scrap gate, it is a software decision. Read")
     print("     compliance as 'the cell ran the sequence it chose', NOT as 'every named")
     print("     action was performed'. END-TO-END INHERITS THIS CAVEAT.")
+    print("     (MEMBRANE_INSERT was on this list until 2026-08-05 and is now MEASURED --")
+    print("      the arm really picks the element and places it in the open bowl.)")
 
     cl = [r for r in rows if r["clean_ok"] is not None]
     lk = [r for r in rows if r["leak_ok"] is not None]

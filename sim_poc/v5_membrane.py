@@ -72,6 +72,24 @@ class MemConfig:
     stall_dz_um_s: float = 100.0      # axial advance below this = seated
     stall_hold_s: float = 0.4
 
+    # --- MEMBRANE INSERT (2026-08-05). A REAL MOTION, where there was none.
+    #     The bowl is OPEN while the element goes in -- see present_cap().
+    grip_below_top: float = 0.012     # pads this far below the element top. Grip HIGH: the
+                                      # fingers are wider than the bore and cannot follow
+                                      # the element in, so this sets the release depth.
+    carry_speed: float = 0.05         # m/s setpoint limit. The pads are flat and close
+                                      # along Y, so in X the element rides on FRICTION
+                                      # ALONE; an unlimited carry slid it 19 mm in the jaws.
+    align_speed: float = 0.010
+    align_tol_m: float = 0.0010       # against 1.5 mm radial clearance
+    align_tries: int = 5
+    rim_clear_m: float = 0.004
+    transit_z: float = 0.36           # go OVER the station, never through it: the direct
+                                      # path from home swept the arm into the bowl and
+                                      # shoved it 53.7 mm off its post.
+    seat_tol_m: float = 0.006
+    seat_z_max: float = 0.012
+
     # --- sabotage: stop early so the seal is never preloaded
     sabotage_turns: float = 4.0
 
@@ -84,6 +102,15 @@ class MemConfig:
 
 
 MCFG = MemConfig()
+
+# the thread, as the scene defines it: cap_z = -(pitch/2pi) * cap_rot, pitch 2 mm/turn.
+PITCH_PER_RAD = 0.00031831
+
+# Gripper geometry, MEASURED from the model rather than inherited. The two finger-pad rows
+# sit +20.9 mm and +38.9 mm ABOVE link_tcp. PAD_MID is their midpoint (line this up with
+# the intended grip height); PAD_LO is the lower row (this is what must clear the rim).
+PAD_MID, PAD_LO = 0.0299, 0.0209
+ELEM_HALF_H = 0.036
 
 
 class MemCell(CL.Cell):
@@ -112,6 +139,11 @@ class MemCell(CL.Cell):
                             if mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_EQUALITY,
                                                  k) == "partlock")
         self.bin_site = m.site("bin_centre").id
+        # the cap's own geoms, so it can be absent while the element goes in
+        self.cap_geoms = [g for g in range(m.ngeom)
+                          if m.geom_bodyid[g] == m.body("mem_cap").id]
+        self._cap_alpha = {g: float(m.geom_rgba[g][3]) for g in self.cap_geoms}
+        self._cap_on = True
         self.rend_m = None
 
     # ------------------------------------------------------------------ state
@@ -135,7 +167,12 @@ class MemCell(CL.Cell):
             self.m.geom_size[g][0] = float(np.clip(rng.normal(0.0030, 0.00022),
                                                    0.0024, 0.0036))
         self.d.qpos[self.cap_rot_q] = float(rng.uniform(0.0, 2 * np.pi))
-        self.d.qpos[self.cap_z_q] = -0.00031831 * self.d.qpos[self.cap_rot_q]
+        self.d.qpos[self.cap_z_q] = -PITCH_PER_RAD * self.d.qpos[self.cap_rot_q]
+        # THE BOWL ARRIVES OPEN. The cap cannot be fitted while the element still has to
+        # go in -- it overhangs the bore -- so it is absent here and presented afterwards
+        # by cap_present(True). See the note above insert_element for why no cap position
+        # works, and note that presenting it is a FIXTURE action, not a robot motion.
+        self.cap_present(False)
         for g in self.bubbles:
             self.m.geom_rgba[g][3] = 0.0
         self._rot0 = float(self.d.qpos[self.cap_rot_q])
@@ -143,6 +180,145 @@ class MemCell(CL.Cell):
         self.q_des = self.d.qpos[self.qadr].copy()
         self.q_warm = None
         return rng
+
+    # ------------------------------------------------- 3.4 element into the bowl
+    #
+    # THE BOWL IS OPEN WHILE THIS HAPPENS, and that is not a convenience -- it is the only
+    # physically possible order, and it matches a de-scope this module already declared.
+    #
+    # The cap overhangs the whole bore (r=34 mm) 20 mm above a 155 mm rim, so a 72 x 42 mm
+    # element has no path in while it is fitted. Retracting the cap up its own thread does
+    # not help: the gripper assembly spans tcp+0.005..tcp+0.185 at radii to 99 mm and must
+    # occupy exactly the space above the bore to lower the element, so every legal cap
+    # position sits inside the gripper envelope. Measured, not argued.
+    #
+    # So the cap is ABSENT during insertion and is then PRESENTED ENGAGED ON THE FIRST
+    # THREAD -- which is verbatim the de-scope in this module's own docstring
+    # ("the cap is presented engaged on the first thread -- thread-starting is its own
+    # research problem"). Presenting it is a fixture action, NOT a robot motion, and it is
+    # reported as such. What the robot really does here is pick, align and place the
+    # element, and that is measured on the element.
+    def cap_present(self, present):
+        """Fit or remove the cap as a fixture action. Not a robot motion; labelled so."""
+        for g in self.cap_geoms:
+            self.m.geom_contype[g] = 1 if present else 0
+            self.m.geom_conaffinity[g] = 1 if present else 0
+            self.m.geom_rgba[g][3] = self._cap_alpha[g] if present else 0.0
+        self._cap_on = bool(present)
+
+    def elem_pose(self):
+        """Element position and uprightness. Judged on the PART, never the wrist."""
+        p = self.d.xpos[self.elem_b].copy()
+        R = self.d.xmat[self.elem_b].reshape(3, 3)
+        return p, float(R[:, 2] @ np.array([0.0, 0.0, 1.0]))
+
+    def elem_speed(self):
+        a = self.m.jnt_dofadr[self.m.body_jntadr[self.elem_b]]
+        return float(np.linalg.norm(self.d.qvel[a:a + 6]))
+
+    def bowl_axis_xy(self):
+        return self.d.xpos[self.bowl_b][:2].copy()
+
+    def bowl_floor_z(self):
+        g = self.m.geom("mem_bowl_base").id
+        return float(self.d.geom_xpos[g][2] + self.m.geom_size[g][1])
+
+    def bowl_rim_z(self):
+        zs = [self.d.geom_xpos[self.m.geom(f"mem_wall{i}").id][2]
+              + self.m.geom_size[self.m.geom(f"mem_wall{i}").id][2] for i in range(8)]
+        return float(max(zs))
+
+    def _glide(self, tgt, grip, speed, frames=None, tag=""):
+        """Velocity-limited setpoint -- bounds the acceleration a friction grip must survive."""
+        p = self.d.site_xpos[self.site].copy()
+        n = max(1, int(float(np.linalg.norm(tgt - p)) / (speed * self.dt)))
+        for i in range(1, n + 1):
+            self.step_to(p + (tgt - p) * i / n, CL.grasp_mat(), grip, 0.0, frames, tag)
+
+    def _hold(self, tgt, grip, s=2.5, frames=None, tag=""):
+        """Hold until the carried element stops swinging."""
+        t = 0.0
+        while t < s:
+            self.step_to(tgt, CL.grasp_mat(), grip, 0.0, frames, tag)
+            t += self.dt
+            if t > 0.4 and self.elem_speed() < 0.01:
+                break
+
+    def insert_element(self, verbose=False, frames=None):
+        """Pick the membrane element off its nest and place it in the open bowl."""
+        mc, gm = self.mcfg, CL.grasp_mat()
+        p0, _ = self.elem_pose()
+        tcp_grasp = p0[2] + ELEM_HALF_H - mc.grip_below_top - PAD_MID
+        tcp_rel = self.bowl_rim_z() + mc.rim_clear_m - PAD_LO
+        carry_z = max(tcp_grasp + 0.12, tcp_rel + 0.052)
+        out = {"picked": False, "inserted": False, "align_mm": None, "align_iters": 0,
+               "seat_xy_mm": None, "seat_dz_mm": None, "upright": None}
+
+        # TRANSIT OVER THE STATION, never through it.
+        here = self.d.site_xpos[self.site].copy()
+        self.move(np.array([here[0], here[1], mc.transit_z]), gm, self.cfg.grip_open,
+                  tol=0.006, t_max=6.0, frames=frames, tag="ELEM_UP")
+        self.move(np.array([p0[0], p0[1], mc.transit_z]), gm, self.cfg.grip_open,
+                  tol=0.005, t_max=8.0, frames=frames, tag="ELEM_OVER")
+        self.move(np.array([p0[0], p0[1], tcp_grasp]), gm, self.cfg.grip_open,
+                  tol=0.003, t_max=8.0, frames=frames, tag="ELEM_DESCEND")
+        self._hold(np.array([p0[0], p0[1], tcp_grasp]), self.cfg.grip_closed, 1.2,
+                   frames, "ELEM_GRIP")
+        self._glide(np.array([p0[0], p0[1], carry_z]), self.cfg.grip_closed,
+                    mc.carry_speed, frames, "ELEM_LIFT")
+        self._hold(np.array([p0[0], p0[1], carry_z]), self.cfg.grip_closed, 2.0,
+                   frames, "ELEM_LIFT")
+        p, _ = self.elem_pose()
+        out["picked"] = bool(p[2] - p0[2] > 0.05)
+        if not out["picked"]:
+            if verbose:
+                print("    INSERT: grip slipped off the nest")
+            return out
+
+        bxy = self.bowl_axis_xy()
+        self._glide(np.array([bxy[0], bxy[1], carry_z]), self.cfg.grip_closed,
+                    mc.carry_speed, frames, "ELEM_CARRY")
+        self._hold(np.array([bxy[0], bxy[1], carry_z]), self.cfg.grip_closed, 3.0,
+                   frames, "ELEM_CARRY")
+
+        # ALIGN ON THE PART: 1.5 mm radial clearance, and whatever the element slid to in
+        # the jaws is the error that matters. The wrist cannot report it.
+        for k in range(mc.align_tries):
+            p, _ = self.elem_pose()
+            err = self.bowl_axis_xy() - p[:2]
+            out["align_iters"] = k
+            if float(np.linalg.norm(err)) < mc.align_tol_m:
+                break
+            tcp = self.d.site_xpos[self.site].copy()
+            goal = np.array([tcp[0] + err[0], tcp[1] + err[1], carry_z])
+            self._glide(goal, self.cfg.grip_closed, mc.align_speed, frames, "ELEM_ALIGN")
+            self._hold(goal, self.cfg.grip_closed, 2.5, frames, "ELEM_ALIGN")
+        p, _ = self.elem_pose()
+        out["align_mm"] = float(np.linalg.norm(self.bowl_axis_xy() - p[:2]) * 1000)
+
+        tcp = self.d.site_xpos[self.site].copy()
+        self._glide(np.array([tcp[0], tcp[1], tcp_rel]), self.cfg.grip_closed, 0.015,
+                    frames, "ELEM_INSERT")
+        self._hold(np.array([tcp[0], tcp[1], tcp_rel]), self.cfg.grip_closed, 2.0,
+                   frames, "ELEM_INSERT")
+        self._hold(np.array([tcp[0], tcp[1], tcp_rel]), self.cfg.grip_open, 2.5,
+                   frames, "ELEM_RELEASE")
+        self._glide(np.array([tcp[0], tcp[1], mc.transit_z]), self.cfg.grip_open, 0.10,
+                    frames, "ELEM_RETRACT")
+        self._hold(np.array([tcp[0], tcp[1], mc.transit_z]), self.cfg.grip_open, 3.0,
+                   frames, "ELEM_SETTLE")
+
+        p, up = self.elem_pose()
+        dz = (p[2] - ELEM_HALF_H) - self.bowl_floor_z()
+        xy = float(np.linalg.norm(p[:2] - self.bowl_axis_xy()))
+        out.update(seat_xy_mm=xy * 1000, seat_dz_mm=dz * 1000, upright=up)
+        out["inserted"] = bool(xy < mc.seat_tol_m and abs(dz) < mc.seat_z_max and up > 0.95)
+        if verbose:
+            print(f"    INSERT: aligned to {out['align_mm']:.2f} mm in "
+                  f"{out['align_iters']} corrections -> seated xy {xy*1000:.2f} mm, "
+                  f"base {dz*1000:+.2f} mm off the floor, upright {up:.3f} -> "
+                  f"{'IN' if out['inserted'] else 'NOT SEATED'}")
+        return out
 
     def seal_load(self):
         """Total normal force on the O-ring -- the preload the torque acts against."""
@@ -309,6 +485,12 @@ class MemCell(CL.Cell):
     def run(self, seed, sabotage=False, verbose=False):
         mc = self.mcfg
         self.reset_mem(seed)
+        # 3.4 -- the element goes into the OPEN bowl. A real motion, measured on the part.
+        ins = self.insert_element(verbose=verbose)
+        # ...then the cap is PRESENTED engaged on the first thread. A FIXTURE action, the
+        # de-scope this module has always declared -- not a robot motion, not counted as one.
+        self.cap_present(True)
+        mujoco.mj_forward(self.m, self.d)
         tg = self.tighten(stop_turns=mc.sabotage_turns if sabotage else None,
                           verbose=verbose)
         chg = self.pressurise(tg["torque_nm"])
@@ -316,12 +498,16 @@ class MemCell(CL.Cell):
         px, _ = self.dip_and_grade(verbose=verbose)
 
         # --- SUCCESS IS JUDGED ON THE WORKPIECE, never on a commanded value
+        # The element must actually BE in the bowl for the assembly to mean anything.
         tight_ok = (tg["torque_nm"] >= mc.torque_pass_nm
                     and mc.turns_min <= tg["turns"] <= mc.turns_max
-                    and tg["stalled"])
+                    and tg["stalled"] and ins["inserted"])
         leak_pass = px <= mc.bubble_px_max          # what the CAMERA says
         truth_seal = chg["seal_holds"]              # what the workpiece actually did
         return {"seed": seed, "sabotage": bool(sabotage),
+                "elem_inserted": bool(ins["inserted"]), "elem_picked": bool(ins["picked"]),
+                "elem_align_mm": ins["align_mm"], "elem_seat_xy_mm": ins["seat_xy_mm"],
+                "elem_seat_dz_mm": ins["seat_dz_mm"], "elem_upright": ins["upright"],
                 **{k: tg[k] for k in ("turns", "torque_nm", "peak_torque_nm",
                                       "seal_n", "peak_seal_n", "cap_z_mm", "stalled")},
                 "charge_psi": chg["charge_psi"], "bubble_px": px,
@@ -341,6 +527,20 @@ def report(rows, label="V5-E MEMBRANE"):
         t = np.array([r["turns"] for r in hon])
         q = np.array([r["torque_nm"] for r in hon])
         s = np.array([r["peak_seal_n"] for r in hon])
+        ins = [r for r in hon if r.get("elem_align_mm") is not None]
+        if ins:
+            al = np.array([r["elem_align_mm"] for r in ins])
+            sx = np.array([r["elem_seat_xy_mm"] for r in ins])
+            dz = np.array([r["elem_seat_dz_mm"] for r in ins])
+            print(f"  MEMBRANE INSERT (3.4) -- a REAL motion, measured on the ELEMENT:")
+            print(f"    inserted         : {sum(r['elem_inserted'] for r in hon)}/{len(hon)}")
+            print(f"    align before drop: median {np.median(al):.2f} mm  worst {al.max():.2f} mm"
+                  f"   (radial clearance is 1.5 mm)")
+            print(f"    seated off-axis  : median {np.median(sx):.2f} mm  worst {sx.max():.2f} mm")
+            print(f"    base vs floor    : median {np.median(dz):+.2f} mm  worst {dz.max():+.2f} mm")
+            print(f"    NOTE: the bowl is OPEN for this. The cap is then PRESENTED engaged")
+            print(f"    on the first thread -- a FIXTURE action and a declared de-scope,")
+            print(f"    NOT a robot motion. Thread-starting is not simulated.")
         print(f"  TIGHTEN, on the workpiece:")
         print(f"    achieved turns   : median {np.median(t):.2f}  "
               f"range {t.min():.2f}-{t.max():.2f}")
@@ -376,6 +576,10 @@ def report(rows, label="V5-E MEMBRANE"):
           "seal_peak_n": float(max([r["peak_seal_n"] for r in hon], default=0.0)),
           "stalled": int(sum(r["stalled"] for r in hon)),
           "tight_ok": int(sum(r["tight_ok"] for r in hon)),
+          "elem_inserted": int(sum(r["elem_inserted"] for r in hon)),
+          "elem_align_mm_med": float(np.median([r["elem_align_mm"] for r in hon
+                                                if r["elem_align_mm"] is not None]))
+                               if any(r["elem_align_mm"] is not None for r in hon) else None,
           "honest_leak_pass": int(sum(r["leak_pass"] for r in hon)),
           "false_fail": int(sum(r["false_fail"] for r in hon)),
           "sabotage_caught": int(sum(not r["leak_pass"] for r in sab)),
