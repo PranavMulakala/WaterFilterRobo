@@ -5,14 +5,14 @@
   "coverage_worst": 1.0,
   "missed": 0,
   "soil": 129,
-  "f_max": 111.24278173059258,
-  "in_band": 0.9907534470365288,
-  "contact_run": 0.9341578356204522,
-  "contact_planned": 0.9341578356204522,
+  "f_max": 34.508424986233784,
+  "in_band": 1.0,
+  "contact_run": 0.9978501096444081,
+  "contact_planned": 0.9978501096444081,
   "raster_planned": 3744,
   "raster_skipped": 0,
-  "raster_infeasible": 0,
-  "tilt_mean_deg": 18.205128205128204,
+  "raster_infeasible": 136,
+  "tilt_mean_deg": 11.618625277161863,
   "tilt_max_deg": 30.0,
-  "exact_normal_frac": 0.0876068376068376
+  "exact_normal_frac": 0.1951219512195122
 }

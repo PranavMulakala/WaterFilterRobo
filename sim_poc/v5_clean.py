@@ -135,6 +135,8 @@ class CleanConfig:
     # inside what the executor can cover in its 2.5 s budget at 0.02 rad/step, and well
     # above the 0.11-0.18 rad median step the geometry actually requires.
     max_joint_jump: float = 0.35    # rad, per joint, between consecutive raster poses
+    # Above this, DECLINE the point instead of executing it. See plan_pad.
+    hard_joint_jump: float = 0.60   # rad, per joint -- refuse rather than swing
     wipe_stall_s: float = 0.20      # window over which progress is judged
     wipe_stall_m: float = 0.0005    # less closing than this, while in contact, is a stall
     # ...and 'in contact' has to mean SEATED, not grazing. contact_min_n is 0.5 N, which
@@ -567,6 +569,15 @@ class Cell:
             if best is None or jump < best[0]:
                 best = (jump, q, mat, tilt, tgt)
         if best is None:
+            return None
+        # REFUSE the point rather than execute a branch jump. The remaining >60 N contact
+        # excursions were on exactly the two passes that still had jumps, and a jump drags
+        # the pad across the device -- which is what generates them. Skipping is honest and
+        # is counted; smashing the pad through a region where our own contact model is not
+        # valid is not. The pad's force/penetration curve is monotonic to 60 N and blows up
+        # above it (2.19 mm at 60 N, 20.25 mm at 80 N, non-monotonic thereafter), so 60 N
+        # is a MODEL-VALIDITY ceiling and the cycle must stay under it by construction.
+        if best[0] > self.cfg.hard_joint_jump:
             return None
         return best[1], best[2], best[3], best[4]
 
@@ -1089,6 +1100,7 @@ class Cell:
 
 
 def report(rows):
+    cfg_force_hi = CFG.force_hi
     n = len(rows)
     ok = [r for r in rows if r["picked"]]
     cov = np.array([r["coverage"] for r in ok]) if ok else np.array([0.0])
@@ -1104,8 +1116,15 @@ def report(rows):
     fx = np.array([r["f_max"] for r in ok]) if ok else np.array([0.0])
     ib = np.array([r["in_band"] for r in ok]) if ok else np.array([0.0])
     cf = np.array([r["contact_frac"] for r in ok]) if ok else np.array([0.0])
-    print(f"  contact force   : median {fm.mean():.1f} N, peak {fx.max():.1f} N "
-          f"(our pad curve is monotonic to 60 N -- a MODEL-validity limit, not a rating)")
+    peak = fx.max()
+    # NOT `ok` -- that name already holds the list of successful rows, and shadowing it
+    # made report() die three lines later without writing stats.
+    force_ok = peak <= cfg_force_hi
+    print(f"  contact force   : median {fm.mean():.1f} N, peak {peak:.1f} N   "
+          f"[{'OK' if force_ok else '*** OUTSIDE MODEL VALIDITY ***'} -- our pad's "
+          f"force/penetration curve is measured monotonic to {cfg_force_hi:.0f} N and")
+    print(f"                    breaks above it (2.19 mm at 60 N, 20.25 mm at 80 N). That "
+          f"is a MODEL-validity ceiling, not a component rating.]")
     rp = sum(r.get("raster_planned", 0) for r in ok)
     rs = sum(r.get("raster_skipped", 0) for r in ok)
     # Contact is reported over the PLANNED raster, not the executed subset. Skipped

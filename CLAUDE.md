@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8 units, 900–907), 0 missed of 129; force **99.1%** in band, peak 111 N |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the 60 N model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | not started |
 | V5-F route wiring (triage grade selects the route, end-to-end eval) | not started |
@@ -83,7 +83,7 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 700–819 (triage), 1000–1009 + 1100–1109 (V5-D), 800–807 (cleaning; re-used for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
 needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
-so start at 1300 — 1000–1009, 1100–1109 and 1200–1209 went to V5-D.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
+so start at 1400 — 1000–1009, 1100–1109, 1200–1209 and 1300–1309 went to V5-D and Gate 1.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
 to 900 so a bare `--eval 8` reproduces the published number rather than a spent range.
 
 ## First steps every session

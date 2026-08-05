@@ -869,3 +869,56 @@ against 6/10 before.
 the trajectory is open-loop and the seed only moves the soil.
 
 **Seeds consumed:** 1200–1209. Start at 1300.
+
+---
+
+## GATE 1 — the 111 N question, closed by fixing it
+
+**Asked:** extend the pad's compliance validation past 111 N, or justify the peak, or fix it.
+
+**Extending it is not available.** The static rig (`v5_check_scene.py` §6 — press the pad
+with a known force, measure penetration) run past its usual 60 N:
+
+| N | 0 | 5 | 10 | 20 | 40 | **60** | 80 | 120 | 200 |
+|---|---|---|---|---|---|---|---|---|---|
+| penetration mm | 0.97 | 1.68 | 1.94 | 2.11 | 2.16 | **2.19** | **20.25** | 21.64 | 12.18 |
+
+The curve **breaks between 60 and 80 N** — an 18 mm jump to twice the pad's own
+half-thickness, non-monotonic above that. So 60 N is a **model-validity ceiling**, and no
+amount of sweeping makes it higher.
+
+**Justifying the peak was tempting and wrong.** The 111 N was a genuine transient — 0.012%
+of contact samples, 0.04 s of 307 s, at 3.70 mm penetration where the model still behaves.
+But "rarely in the broken region" is not "outside the broken region", and a founder video
+should not rest on that distinction.
+
+**So: fixed.** The >60 N excursions were on exactly the two passes that still had IK branch
+jumps, because a jump drags the pad across the device. `plan_pad` now **declines** a point
+whose nearest solution exceeds `hard_joint_jump = 0.60` rad rather than executing the
+swing, and counts it.
+
+| seeds 900–907 | before continuity fix | after continuity | **after refusal** |
+|---|---|---|---|
+| coverage | 94.6% | 100.0% | **100.0%** |
+| peak force | 271 N | 111 N | **34.5 N** |
+| in force band | 88.1% | 99.1% | **100.0%** |
+| contact during raster | 77.5% | 93.4% | **99.8%** |
+| raster points declined | 0 | 0 | **136 of 3744 (3.6%)** |
+| exact normal / mean tilt | 42.7% / 7.4° | 8.8% / 18.2° | 19.5% / 11.6° |
+
+**The whole cycle now operates inside the validated band** — zero samples above 60 N,
+peak 34.5 N. The 3.6% of declined points cost **no coverage at all**, because the pad's
+30 mm radius overlaps enough that those points were redundant. Deep-penetration outliers
+(up to 18 mm at low force) also vanished — they were the branch-jump transits.
+
+**Two things now assert the ceiling instead of assuming it.** `v5_check_scene.py` probes
+80/120/200 N and *prints* where the model breaks, deliberately without asserting
+monotonicity there. `v5_clean.py`'s report flags the peak `OK` or
+`*** OUTSIDE MODEL VALIDITY ***` against `force_hi` on every eval — the consumer asserting
+its own column, the same pattern as importing the tilt cone from the reachability gate.
+
+**V5-D re-run, fresh seeds 1300–1309:** honest verified **10/10** with **zero** residue,
+false verifies **0/10**, sabotaged caught **10/10** (193 patches present on the sabotaged
+arm, so the soil was there).
+
+**Seeds consumed:** 1300–1309. Start at 1400.

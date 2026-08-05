@@ -570,3 +570,31 @@ patch cleaned, contact force in range 99% of the time, peak force down from 271 
 problems and had a separate plan for each. They were one. That's worth remembering: when
 two symptoms resist separate fixes, check whether they share a cause before building two
 solutions.
+
+## 2026-08-04 — "Tested up to 60" doesn't mean "fine at 60"
+
+**What we built:** the answer to a question we'd been dodging. Our wiping pad's squashiness
+had been measured up to 60 newtons of force, and the robot was briefly hitting 111. So we
+measured further.
+
+**The curve doesn't tail off past 60 — it falls apart.** Up to 60 N the pad squashes a
+sensible 2.2 mm. At 80 N our simulation says it squashes *20 mm* — twice as deep as the pad
+is thick, i.e. straight through itself. Above that the numbers wander around meaninglessly.
+So "validated to 60 N" never meant "we know it's fine to 60 and probably a bit beyond". It
+meant "past here, the simulation is making things up."
+
+**The tempting answer was to argue.** The 111 N was genuinely a blip — four hundredths of a
+second out of five minutes of contact, and the pad wasn't visibly misbehaving at that
+instant. It would have been easy to write a paragraph explaining why that's acceptable. But
+*rarely* inside a region where your model is nonsense is not the same as *outside* it, and
+that's not a distinction you want under a customer demo.
+
+**So we fixed it instead**, and it cost nothing. The high-force moments all came from the
+arm making an awkward contortion between two wiping spots and dragging the pad. Telling the
+planner to skip those spots rather than attempt them dropped the peak from 111 N to 34.5 N
+— comfortably inside the trustworthy range — with **no loss of cleaning at all**, because
+the pad is wide enough that those spots were already covered by their neighbours.
+
+**Why it matters:** the ceiling of a test is a fact about how far someone bothered to test,
+not a fact about the hardware. If you don't probe past it, that number quietly gets quoted
+as a rating. Our check now deliberately tests to 200 N and *prints where it breaks*.

@@ -200,6 +200,26 @@ def main():
     check(max(pen) < m.geom_size[pf][2],
           f"pad never crushes through its own half-thickness "
           f"(max {max(pen)*1000:.2f} mm < {m.geom_size[pf][2]*1000:.0f} mm)")
+    # WHERE THE MODEL STOPS BEING A MODEL. Probed, printed, and deliberately NOT asserted
+    # monotonic -- the point is to record the ceiling, not to pretend it is higher. At
+    # 80 N penetration jumps 2.19 -> 20.25 mm, i.e. twice the pad's half-thickness, and
+    # above that it is non-monotonic (111 N -> 11.7, 120 N -> 21.6, 200 N -> 12.2). So
+    # 60 N is a MODEL-VALIDITY CEILING, not a component rating, and any station pressing
+    # this pad must stay under it BY CONSTRUCTION rather than by luck. v5_clean asserts
+    # exactly that on every eval.
+    hi = []
+    for f in (80, 120, 200):
+        mujoco.mj_resetDataKeyframe(m, d, keys["v5home"])
+        for _ in range(3000):
+            d.xfrc_applied[body] = [0, 0, -f, 0, 0, 0]
+            mujoco.mj_step(m, d)
+        hi.append(max([-c.dist for c in d.contact[:d.ncon]] or [0]))
+    d.xfrc_applied[body] = np.zeros(6)
+    print("        BEYOND VALIDITY, penetration mm @ 80/120/200 N: "
+          + " ".join(f"{p*1000:.1f}" for p in hi)
+          + f"  (half-thickness {m.geom_size[pf][2]*1000:.0f} mm -- the curve breaks")
+    print("        between 60 and 80 N; 60 N is the ceiling the cleaning station must "
+          "stay under)")
     mujoco.mj_resetData(m, d)
     mujoco.mj_forward(m, d)
 
