@@ -725,3 +725,25 @@ what we now understand.
   others do not, diff the instances before diffing the theory. Also: a median that looks
   healthy (-2.4 mm) beside a min that does not (-233 mm) means outliers, not bias -- read
   both before reaching for a systematic explanation
+- 2026-08-04 | **"Validated to 60 N" was hiding that the model BREAKS at 80 N.** The pad's
+  force/penetration curve had only ever been swept to 60 N, and everyone (me included)
+  read that as "validated so far" rather than "we have no idea past here". Swept properly:
+  0.97 / 1.68 / 1.94 / 2.11 / 2.16 / 2.19 mm at 0-60 N, then **20.25 mm at 80 N** -- twice
+  the pad's own half-thickness -- and non-monotonic above (21.6 at 120, 12.2 at 200). The
+  cleaning cycle's 111 N peak was a real transient (0.012% of samples, 0.04 s) at a sane
+  3.70 mm penetration, which made "it's fine, it's rare" very tempting. It is not fine:
+  rarely inside a broken region is not outside it. Fixed instead -- the >60 N excursions
+  were on exactly the two passes that still had IK branch jumps, so declining those points
+  (`hard_joint_jump`) took the peak to 34.5 N with ZERO coverage cost. | ~1 h | the ceiling
+  of a validation sweep is not a property of the hardware, it is a property of how far
+  someone bothered to sweep. Probe past it and RECORD where it breaks, or the number gets
+  quoted as a rating. `v5_check_scene` now prints 80/120/200 N without asserting them
+- 2026-08-04 | **Shadowed `ok` and the eval died after printing its headline.** Added
+  `ok = peak <= force_hi` inside `report()`, where `ok` already held the list of successful
+  rows. The report printed COVERAGE, MISSED SPOTS and the force line, then died on
+  `for r in ok` -- so the summary looked complete on screen while `stats_v5_clean.json` was
+  never written and still held the PREVIOUS run's numbers. I only noticed because the JSON
+  said peak 111 N while the console said 34.5 N. | ~10 min | the crash was harmless only by
+  luck: a partial report that dies BEFORE the write is safe, one that dies after is a file
+  half-updated. Compare the console against the artifact whenever both exist -- that
+  disagreement was the entire signal
