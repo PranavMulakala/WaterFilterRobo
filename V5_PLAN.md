@@ -937,3 +937,79 @@ false verifies **0/10**, sabotaged caught **10/10** (193 patches present on the 
 arm, so the soil was there).
 
 **Seeds consumed:** 1300–1309. Start at 1400.
+
+---
+
+## V5-E RESULT — membrane assembly, Stage 10
+
+`sim_poc/v5_membrane.py`. Subclasses V5-C's `Cell`, so the planner and motion layer are
+inherited rather than re-derived — the same extends-by-import rule v4→v3→v2 followed.
+
+### The threaded cap is a real screw, and it stalls on torque
+
+MuJoCo has no screw joint, so one is built: a hinge and a slide tied by an equality,
+`cap_z = −(pitch/2π)·cap_rot`, 2 mm pitch. Tracking measured at **−6.315 mm against
+−6.266 expected**. The driver is a velocity actuator whose **forcerange IS the torque
+limit**, so it stalls the way a nutrunner stalls.
+
+**This is NOT our v2/v3/v4 55° indexed bayonet and must never be called equivalent.** The
+class of problem transfers (align → engage with clearance → rotate to secure); the motion
+does not. Their cap is threaded and spanner-tightened to a torque criterion.
+
+**Stall is detected on AXIAL PROGRESS, not rotation.** Measured: the cap advances at
+~1250 µm/s on free thread, 588 µm/s as the seal loads, and **43 µm/s** once seated — a 30×
+collapse. Rotation rate only decays gently (3.9 → 0.54 rad/s over 20 s) and never crosses a
+clean threshold; a rate-based detector reported `stalled=False` on a cap plainly seated at
+6.00 N·m.
+
+The torque is **real friction against a real preload**: 178 N × 1.1 × 0.030 m ≈ 5.9 N·m
+against a measured 6.0. The O-ring is 12 soft spheres the cap compresses, with a hard rim
+behind them so the cap seats instead of crushing through.
+
+### The number — fresh seeds 1400–1409, paired, looked at once
+
+| | |
+|---|---|
+| achieved turns | median **9.68**, range 9.13–10.02 |
+| torque at cutoff | **6.00 N·m** every unit — *that is the definition of a torque-limited stall, not an artifact* |
+| seal preload | median **333 N**, peak 341 N |
+| stalled on torque | **10/10** |
+| tighten OK (workpiece) | **10/10** |
+| honest units pass the bubble test | **10/10** |
+| false FAIL | **0/10** |
+| **sabotaged units caught** | **10/10** |
+| **FALSE PASS** | **0/10** ← the dangerous error |
+
+Sabotage = cap driven only 4 turns, so the seal is never preloaded (0.20 N·m against a
+5.4 N·m pass threshold). Bubble pixels: **0** on every sealed unit, **1642–2878** on every
+unsealed one.
+
+### Honest labels, all of them
+
+- **Bubbles are a PROXY.** Revealed as a modelled consequence of the torque the workpiece
+  achieved. **There is no fluid or gas simulation anywhere in this repo.** What stays real
+  is that the grader only ever sees pixels — the pass/fail is *caused*, not asserted. The
+  rule (`val > 0.95`) was frozen on calibration seed 9000+ with bubbles forced on and off:
+  **0 px sealed, 3266 px leaking**, so the 40 px threshold sits ~80× clear of both.
+- **End plug, ball valve and the 85 PSI charge are LOGGED STATE**, not gas physics.
+- **That the charge is HELD through the dip is OUR inference** from the 3.6 → 3.7 ordering.
+  Stage 10 does not say it explicitly.
+- **The torque figure is OURS.** Stage 10 says only *"Ensure the cap is tightened properly
+  with the spanner"* — a qualitative criterion, no number anywhere in the corpus.
+- **Geometry is PLACEHOLDER.** Swap-in point is the `MEM_*` block in `make_scene_v5.py`,
+  against item codes 100059 / 100031 / 100099.
+- **Stage 10's 80–90 PSI is NOT the contested figure.** The unreconciled 45-vs-80 PSI
+  contradiction is the *assembled-device* test and is deliberately untouched here.
+- **The arm does not manipulate in this station yet.** The driver is a station fixture and
+  the dip is a teleport. V5-E's claim is about the thread and the bubble check; the
+  pick-and-place it would need is what v3/v4 already demonstrate at 100%.
+
+### The bug worth keeping
+
+The first run returned **10.06 turns and 6.00 N·m on all ten "held-out" units, to the
+decimal** — because the seed varied only the element's position on its nest, which nothing
+in the tightening depends on. n = 1 wearing n = 10, the same defect as the 700.0 N clamp
+and the 0.854 surface probe. Fixed by varying what actually differs between real
+assemblies: **O-ring friction and squeeze, and the angle the cap is presented engaged at.**
+
+**Seeds consumed:** 1400–1409. Start at 1500.

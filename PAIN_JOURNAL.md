@@ -773,3 +773,28 @@ what we now understand.
   carries a comment saying "if you add a joint, this string is part of the change", that is
   a checklist, not decoration. `v5_check_scene` catches spawn interpenetration in one run
   and should be the FIRST thing executed after any geometry edit, not the last
+- 2026-08-04 | **V5-E's first "held-out" run returned 10.06 turns and 6.00 Nm on all TEN
+  units, to the decimal.** The seed varied only the membrane element's position on its
+  nest -- and nothing in the cap tightening depends on it, so ten seeds measured one unit
+  ten times. Third instance of this exact defect in the repo (700.0 N force clamp; 0.854
+  surface probe on every face), and the smell test caught it again. Fixed by varying what
+  actually differs between real assemblies: O-ring friction (0.90 +- 0.13) and squeeze
+  (3.0 +- 0.22 mm), and the angle the cap is presented engaged at. Turns then spread
+  9.13-10.02. Note torque at cutoff stays 6.00 on every unit and that is CORRECT -- a
+  torque-limited driver stalls at its limit by definition -- so the two identical-looking
+  columns need opposite interpretations, and the report says which is which. | ~25 min |
+  before believing an n-unit spread, ask what path the seed takes to reach the measurement.
+  If you cannot name it, there isn't one
+- 2026-08-04 | **Four V5-E modelling traps, none of them about the robot.** (1) A hinge and
+  a slide tied by an equality is a screw -- but the cap is a CHILD body of the bowl, and
+  MuJoCo excludes contacts between bodies connected by a joint, so the cap wound 49 mm down
+  through its own O-ring without ever loading it. Explicit `<pair>` entries override the
+  filtering. (2) Coaxial cylinder-on-cylinder flat contact generates nothing usable; the
+  O-ring only worked once it became a ring of SPHERES. (3) The cap crushed straight through
+  the seal at ~500 N until a hard rim was added for it to seat on -- a seal with nothing
+  behind it is just a soft obstacle. (4) The bubble grader gated on LOW saturation and
+  scored ZERO both ways: the bubbles are translucent white over blue water, so they take
+  the water's hue and are not desaturated. Brightness alone separates them 0 px vs 3266.
+  | ~1.5 h | every one of these is the physics engine's contact model, not the controller.
+  Probe the mechanism in isolation BEFORE wiring a cycle around it -- the screw test that
+  found three of them is fifteen lines

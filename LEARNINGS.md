@@ -598,3 +598,36 @@ the pad is wide enough that those spots were already covered by their neighbours
 **Why it matters:** the ceiling of a test is a fact about how far someone bothered to test,
 not a fact about the hardware. If you don't probe past it, that number quietly gets quoted
 as a rating. Our check now deliberately tests to 200 N and *prints where it breaks*.
+
+## 2026-08-04 — Building a screw thread out of two simpler joints
+
+**What we built:** the membrane station — screw the cap onto the filter housing until it's
+properly tight, pressurise it, dip it, and watch for bubbles. Ten units: every one
+tightened correctly and passed, and every deliberately-loosened one was caught.
+
+**Their cap is not our cap, and we keep saying so.** Everything we'd built before twists a
+part a fixed 55° and locks it — like a bayonet lightbulb. DrinkPrime's real cap is a
+**screw thread**, wound down several turns and stopped when it's tight *enough*. Same
+family of task, genuinely different motion, and we label it that way every time.
+
+**The physics engine has no "screw".** It has hinges (rotate) and sliders (travel), so we
+tied one to the other: for every turn, move down 2 mm. That single constraint is a thread.
+The cap now winds down about ten turns and squashes a rubber O-ring, exactly as the real
+one does.
+
+**"Tight enough" is a force, not an angle** — and that's the interesting part. We don't
+tell it to stop after N turns; we drive it until it *can't turn any more*. Real assembly
+tools work this way, which is why a torque wrench clicks. What we report is what the tool
+achieved: turns completed and the torque it stopped at. Detecting that stall took one
+insight — watch how fast the cap is still *descending*, not how fast it's spinning. Descent
+collapses 30-fold the instant it seats; spin just tails off vaguely.
+
+**The bubbles are honest fakery, and the label is part of the work.** We simulate no air
+and no water. Bubbles appear when the cap is under-tightened — a modelled consequence, not
+computed physics. What stays real is that the camera has to actually *see* them to fail the
+part, so the verdict is caused by the tightening rather than read from a variable. The demo
+says this on screen.
+
+**Why it matters:** the honest version of a demo is often "this bit is real, that bit is a
+stand-in, here's the line between them." Drawing that line explicitly is what makes the
+real bit believable.

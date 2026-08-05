@@ -80,7 +80,10 @@ TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
 # -- and THIS BLOCK IS THE SWAP-IN POINT. Replace the numbers here, re-run the gates, and
 # nothing downstream should need touching. They are a plausible domestic RO housing.
 MEM_XY = (0.34, 0.30)         # membrane station: bowl fixture
-BIN_XY = (0.52, 0.26)         # water bin for the Stage-10 bubble test
+BIN_XY = (0.50, 0.37)         # water bin for the Stage-10 bubble test.
+# 0.37, not 0.26: at 0.26 the bin's -Y wall sat exactly on the rotary indexer's
+# 175 mm platter radius and spawned 6 mm interpenetrated. v5_check_scene catches
+# that in one run, which is why it goes FIRST after any geometry edit.
 MEM_BOWL_R = 0.032            # bowl outer radius
 MEM_BOWL_H = 0.115            # bowl height
 MEM_CAP_R = 0.034             # cap outer radius
@@ -326,6 +329,14 @@ def build(seed=SEED, cab_x=CAB_X):
     <camera name="verify_top" fovy="40"
             pos="{_cam((0.30, -0.30, 1.05), (0.58, 0, 0.46))[0]}"
             xyaxes="{_cam((0.30, -0.30, 1.05), (0.58, 0, 0.46))[1]}"/>
+
+    <!-- V5-E DIP CAMERA. The bubble test is graded through this one. verify_top is aimed
+         at the device's top face and the water bin is a third of a metre away, so grading
+         the dip through it counted backdrop: the ROI was pixel-identical with bubbles on
+         and off. A station that watches for bubbles needs a camera pointed at the water. -->
+    <camera name="verify_dip" fovy="42"
+            pos="{_cam((BIN_XY[0] - 0.26, BIN_XY[1] - 0.20, 0.34), (BIN_XY[0], BIN_XY[1], 0.13))[0]}"
+            xyaxes="{_cam((BIN_XY[0] - 0.26, BIN_XY[1] - 0.20, 0.34), (BIN_XY[0], BIN_XY[1], 0.13))[1]}"/>
 
     <camera name="inspect" fovy="48"
             pos="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[0]}"
@@ -677,15 +688,15 @@ def build(seed=SEED, cab_x=CAB_X):
          No fluid is simulated: the "water" geom has contype 0 and exists so the render
          reads as a dip. -->
     <body name="waterbin" pos="{BIN_XY[0]:.3f} {BIN_XY[1]:.3f} 0">
-      {"".join(f"""<geom name="bin_w{i}" type="box" size="{0.006 if i < 2 else 0.075} {0.075 if i < 2 else 0.006} 0.055"
-            pos="{(0.075 if i == 0 else -0.075 if i == 1 else 0):.3f} {(0 if i < 2 else 0.075 if i == 2 else -0.075):.3f} 0.055"
+      {"".join(f"""<geom name="bin_w{i}" type="box" size="{0.006 if i < 2 else 0.085} {0.085 if i < 2 else 0.006} 0.105"
+            pos="{(0.085 if i == 0 else -0.085 if i == 1 else 0):.3f} {(0 if i < 2 else 0.085 if i == 2 else -0.085):.3f} 0.105"
             material="binmat"/>
       """ for i in range(4))}
-      <geom name="bin_floor" type="box" size="0.075 0.075 0.005" pos="0 0 0.005"
+      <geom name="bin_floor" type="box" size="0.085 0.085 0.005" pos="0 0 0.005"
             material="binmat"/>
-      <geom name="bin_water" type="box" size="0.070 0.070 0.036" pos="0 0 0.046"
+      <geom name="bin_water" type="box" size="0.080 0.080 0.088" pos="0 0 0.098"
             material="watermat" contype="0" conaffinity="0"/>
-      <site name="bin_centre" pos="0 0 0.070" size="0.005" rgba="0 0 0 0"/>
+      <site name="bin_centre" pos="0 0 0.020" size="0.005" rgba="0 0 0 0"/>
     </body>
   </worldbody>
 
