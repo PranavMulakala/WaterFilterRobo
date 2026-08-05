@@ -15,7 +15,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
 | V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
-| V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4` |
+| V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4`. **Re-rendered 2026-08-05** after 11f9ea9 silently broke it: the video called `reset_mem()` (which now leaves the bowl OPEN) and then drove `capdrv` directly, so it filmed a bowl with no element and tightened an invisible non-colliding cap while the HUD printed STALLED unconditionally. **The render path must call the evaluated methods** |
 
 **All v5 phases are DONE (V5-0 through V5-G) — but "done" is not "physically complete".**
 An external audit (`codex-review` branch, `REVIEW_V5_E_F_G_END_TO_END.md`) raised ~17
@@ -25,11 +25,16 @@ CAB_TOP account (P1); V5-E re-measured on genuinely fresh seeds 1800–1809, whi
 retires the contaminated-1400s finding (P0); missing route margins (P1); the overstated
 "routes are theirs, not invented" (P1).
 
-**Still open, and `ROUTE_TO_SCRAP_APPROVAL` is the one that matters:** it remains an
-**UNBACKED** step — no robot or indexer motion delivers a unit to the scrap gate; it is a
-software decision. Declared in `v5_route.STEP_EVIDENCE` and printed every run, but declaring
-a gap is not filling it. Also open: V5-G has no DR envelope; CELL_SPEC gaps; three
-over-length LEARNINGS entries.
+**Still open, and the HARD handoff is the one that matters.** `ROUTE_TO_SCRAP_APPROVAL`
+is an **UNBACKED** step: no robot, indexer, conveyor or fixture motion delivers a unit
+anywhere — it is a software decision. Worse, `v5_route` sets `steps_ok = True`
+**unconditionally** for that route, so a HARD unit scores an end-to-end success on a correct
+grade plus a matching trace alone. **That is why the headline to quote is FULLY BACKED
+(22/28), not end-to-end (26/28)** — the 4-unit gap is exactly those HARD units.
+**HARD physical handoff: 0/6 implemented.** Also open: V5-G has no DR envelope; CELL_SPEC
+gaps; three over-length LEARNINGS entries; the leak result is a measured image of a
+*modelled* outcome (torque sets `seal_holds`, which sets the bubbles) and has no independent
+falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
@@ -131,8 +136,12 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 700–819 (triage), 1000–1009 + 1100–1109 (V5-D), 800–807 (cleaning; re-used for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
 needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
-so start at 1728 — 1000–1309 went to V5-D and Gate 1, 1400–1409 to V5-E, 1500–1539 to V5-F,
-1700–1727 to the V5-F metric re-measure (2026-08-05).** Use it once and look at it once.
+so allocate BY NAMED PHASE, never by a floating start alone — a large range starting at
+1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
+**1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
+generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
+**1800–1809 the V5-E published headline (2026-08-05)**. Next free block: **1810+**.**
+Use it once and look at it once.
 **1604 and 1607 are BURNED for evaluation** — they are the V5-G demo seeds, rendered and
 watched frame by frame, so their outcomes are known and they can never be a held-out set
 again. *(An earlier note here said "start at 1600" and V5_PLAN said "rendering consumes no

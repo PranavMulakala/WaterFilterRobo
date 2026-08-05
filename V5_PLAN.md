@@ -1016,7 +1016,13 @@ The torque is **real friction against a real preload**: 178 N × 1.1 × 0.030 m 
 against a measured 6.0. The O-ring is 12 soft spheres the cap compresses, with a hard rim
 behind them so the cap seats instead of crushing through.
 
-### The number — fresh seeds 1400–1409, paired, looked at once
+### The number — **superseded**. Headline is now fresh seeds 1800–1809
+
+> **The table below is the PRE-INSERTION result on 1400–1409 and is kept only as the
+> paired diagnostic.** Those seeds are permanently labelled development/diagnostic —
+> they were used to develop a fix and then reused, so they are not held-out evidence and
+> must never re-enter a generalisation claim. The published V5-E figures are the
+> 1800–1809 ones in the section above.
 
 | | |
 |---|---|
@@ -1062,7 +1068,8 @@ in the tightening depends on. n = 1 wearing n = 10, the same defect as the 700.0
 and the 0.854 surface probe. Fixed by varying what actually differs between real
 assemblies: **O-ring friction and squeeze, and the angle the cap is presented engaged at.**
 
-**Seeds consumed:** 1400–1409. Start at 1500.
+**Seeds consumed:** 1400–1409 (**development/diagnostic, permanently**) and
+**1800–1809 (the published V5-E headline)**.
 
 ---
 
@@ -1244,7 +1251,8 @@ v4 lesson that cost 37 points of accuracy — **applies to the camera as much as
 part.**
 
 Fixed by adding a separate `demo_dip` camera with no measurement role. `verify_dip` is back
-at its calibrated pose and **V5-E reproduces exactly**: median 9.68 turns, 10/10 honest
+at its calibrated pose and **V5-E reproduced exactly at the time** (median 9.68 turns —
+*that figure is pre-insertion and superseded; see the V5-E section*), 10/10 honest
 pass, 0 false fail, 10/10 sabotage caught, 0 false pass, `stats_v5_membrane.json`
 byte-identical.
 

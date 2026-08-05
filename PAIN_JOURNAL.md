@@ -928,3 +928,30 @@ what we now understand.
   placement fails, log the pose of EVERY body involved -- part, fixture and tool -- not just
   the one you are commanding. Both bugs were invisible from the commanded trajectory and
   obvious from three extra numbers
+- 2026-08-05 | **Landed a fix and silently broke the demo of it, in the same commit.**
+  11f9ea9 made `reset_mem()` leave the bowl OPEN (cap absent) so the element could be
+  inserted. `v5_video.py` calls `reset_mem()` and then drives `capdrv` DIRECTLY -- it
+  duplicates the tightening loop instead of calling `tighten()`, and it never called
+  `insert_element()` or `cap_present(True)`. So after my commit the committed demo rendered
+  a bowl with NO element and "tightened" a cap that was invisible AND non-colliding, while
+  the HUD printed `STALLED` unconditionally after the loop regardless of whether the stall
+  predicate ever held. Neither MP4 was re-rendered, so the shipped video was from c394900
+  and README still called it the current full route. Found by an external audit, not by me,
+  and not by any gate -- all three gates passed and every baseline was byte-identical.
+  | ~45 min | **A DEMO THAT RE-IMPLEMENTS THE CONTROLLER WILL DRIFT FROM IT, ALWAYS.** The
+  video already had the right pattern for cleaning (`run(seed, frames=...)` -- calling the
+  real method with a frame callback) and the wrong one for tightening (a copied loop). The
+  copied one is what broke. Rule: a render path may only ADD frame callbacks; if it contains
+  a `while` loop that steps physics, it is a second implementation and it will rot. Second
+  rule, from the same commit: **when a change alters what a station STARTS with, grep every
+  caller of the reset.** `reset_mem` had two callers and I checked one
+- 2026-08-05 | **Reported alignment against the clearance and seating against four times it.**
+  The insert quoted "aligned 0.30 mm against 1.5 mm radial clearance" -- true -- while the
+  actual pass/fail used `seat_tol_m = 6.0 mm`, `seat_z_max = 12 mm` and `upright > 0.95`
+  (18.2 deg of tilt in a bore that physically permits ~2.4). The worst settled offset was
+  1.537 mm: BEYOND the clearance I was quoting, passing by a 4x margin. Not wrong data --
+  a criterion that could not fail, sat next to a tighter number that could. | ~20 min |
+  **DERIVE ACCEPTANCE FROM GEOMETRY, THEN CHECK IT CAN FAIL.** Bore 22.5 mm minus element
+  21.0 mm IS the bound; the criterion is now 1.5 + 0.3 mm settling, z within 4 mm, tilt
+  within 2.6 deg. It still passes 10/10, which is the point -- tightening it cost nothing
+  and the old number was unearned. If a threshold is 4x the physical limit it is not a test

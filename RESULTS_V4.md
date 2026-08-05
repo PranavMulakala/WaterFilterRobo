@@ -2,7 +2,8 @@
 
 > **v4 is no longer the current work.** The project moved to **v5** on 2026-08-04 — a
 > unit-scale cell working on the whole purifier rather than one cartridge. Two of its
-> three stations are built (TRIAGE, CLEAN); **membrane assembly is not started**, so v5
+> *(Stale as of 2026-08-05: membrane assembly, route wiring and the video are all built.
+> See V5_PLAN.md.)* three stations are built (TRIAGE, CLEAN); **membrane assembly is not started**, so v5
 > does not yet reassemble anything. v5
 > results live in **[V5_PLAN.md](V5_PLAN.md)**; current state is at the top of
 > **[CLAUDE.md](CLAUDE.md)**. Read this file for the v4 numbers and for the vision

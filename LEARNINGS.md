@@ -750,3 +750,19 @@ the PART not the wrist, and travel OVER a workstation rather than through it.
 **Why it matters:** "the robot can't do it" and "the world won't allow it" look identical in
 a failure log, and only one of them is fixed by better control. We burned two prototypes
 tuning a grip that was never going to fit.
+
+## 2026-08-05 — The demo that quietly stopped filming the real thing
+
+**What we built:** a fix to the video, which had started filming a machine that no longer
+existed — and a seating test tied to the gap the part actually has to fit through.
+
+**The concept: a demo that re-implements the system stops being evidence of it.** Making the
+housing arrive open so the element could go in didn't reach the video, because the video
+COPIED the tightening loop instead of calling it — so it filmed an empty housing and
+"tightened" a cap that was invisible and collided with nothing, over a caption reading
+STALLED that was printed unconditionally. It now calls the same routines the measurements
+do. Related: our seating test allowed 6 mm of error in a hole with 1.5 mm of room.
+
+**Why it matters:** a demo lies in two ways — showing what didn't happen, and passing a test
+that could not fail. Both were live here, and both were invisible from the output, which
+looked flawless.

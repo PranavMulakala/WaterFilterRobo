@@ -19,18 +19,26 @@ and the arm works around it in three stations:
   to). No cream, detergent or chemistry is simulated — what is verified is that the soil
   the camera could see is gone.
 - **MEMBRANE ASSEMBLY** — Stage 10, their real named station: the threaded cap is driven
-  multi-turn until it **stalls on torque** (median **9.68 turns** at 6.00 N·m), then the
+  multi-turn until it **stalls on torque** (median **9.40 turns** at 6.00 N·m), then the
   assembly is pressurised and dipped for a bubble check. **10/10** honest passes, **10/10**
   sabotaged units caught, **0** false passes. Their cap is threaded and spanner-tightened,
   *not* our v2/v3 bayonet, and the bowl/cap/O-ring geometry is a **placeholder** until CAD
   arrives.
 
 Those three are wired together by a **routing** step that sends each unit down the route
-its grade selects. On 28 held-out units: route-plan compliance **28/28**, right route
-(grade matches truth) **26/28**, end-to-end (right route *and* every step succeeded)
-**26/28**, with **0** false-easy. HARD units stop at a **human scrap-approval gate** — their
-chart forks HARD on rectification cost and we have no cost model, so the cell refuses to
-make that call.
+its grade selects. On 28 held-out units, and these are four different questions:
+
+| | |
+|---|---|
+| declared-trace conformance | **28/28** — the cell emitted the trace its own prediction selected |
+| right route (grade == truth) | **26/28** — capped by triage |
+| end-to-end (software) | **26/28** — right route, and every step its route *defines* succeeded |
+| **fully backed** | **22/28** — …and no claimed action that nothing implements |
+
+**Read the last row as the honest headline.** The 4-unit gap is the HARD route: it stops at
+a **human scrap-approval gate**, and *nothing physically delivers the unit there* — it is a
+software decision. Their chart forks HARD on rectification cost, we have no cost model, so
+the cell refuses to make that call. **false-easy is 0/28.**
 
 **Before that (v4)** the same ideas ran on a single cartridge: extract it, grade it from
 an image, and clean / lightly-wash / replace accordingly. Every route completes **100%**
@@ -79,7 +87,7 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | **v5 TRIAGE — grade a whole unit** | **97.5%** on 120 fresh units; **missed-hard 0.0%**, false-easy 2.5% |
 | **v5 CLEAN — wipe five faces** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **34.5 N** vs a **45 N** validity ceiling |
 | **v5 VERIFY — prove the check can fail** | honest **10/10** verified with zero residue, **0/10** false verifies, sabotage caught **10/10** |
-| **v5 MEMBRANE — Stage 10 cap + bubble test** | stalls on torque, median **9.68 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass |
+| **v5 MEMBRANE — Stage 10** | **arm really inserts the element 10/10** (aligned 0.30 mm median vs 1.5 mm clearance); cap stalls on torque, median **9.40 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass. **The cap is presented by a fixture, not fitted by the robot** |
 | **v5 ROUTING — grade picks the route** | route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0/28** |
 | **Refurb decision loop (v4)** | routing **100%**, end-to-end **86.7%**, false-clean **0.0%** (60 held-out) |
 | **Refurb swap cycle (v3)** | **100%** (125/125 full cycles) |
