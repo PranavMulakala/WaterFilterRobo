@@ -20,6 +20,7 @@ every frame carries the caveat that applies to what is on screen at that moment:
 If a caption would need a verbal footnote in the room, it belongs on the frame instead.
 """
 import argparse
+import json
 import sys
 
 import numpy as np
@@ -39,10 +40,8 @@ CAVEAT = {
              "soil the camera could see is gone.",
     "VERIFY": "Re-inspected through a SECOND camera: the triage camera cannot see the top "
               "face, and that is the face cleaning misses.",
-    "MEMBRANE": "The arm REALLY inserts the element into an OPEN bowl. The CAP IS "
-                "PRESENTED BY THE FIXTURE, engaged on the first thread -- that is NOT a "
-                "robot motion. Threaded cap then driven multi-turn to a TORQUE criterion, "
-                "not our bayonet. Bowl/cap/O-ring geometry is PLACEHOLDER pending CAD.",
+    "MEMBRANE": "Arm REALLY inserts the element into an OPEN bowl. The CAP IS PRESENTED "
+                "BY A FIXTURE -- that is NOT a robot motion. Geometry is PLACEHOLDER.",
     "DIP": "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. No fluid or gas is simulated "
            "anywhere; the camera still has to see them to fail the part.",
     "SCRAP": "NO MOTION DELIVERS THE UNIT ANYWHERE -- this is a SOFTWARE decision only. "
@@ -188,7 +187,8 @@ def render_unit(seed, speed=1, out=None):
             ins = c.insert_element(frames={
                 "f": rec.frames, "max": 10_000, "every": every,
                 "cb": lambda tag: (rec.info.__setitem__("STEP", tag),
-                                   rec.grab(c.d, "MEMBRANE", cam="main"))})
+                                   rec.grab(c.d, "MEMBRANE", cam="main",
+                                            inset="demo_mem"))})
             rec.info["INSERT"] = (
                 f"aligned {ins['align_mm']:.2f} mm -> seated {ins['seat_xy_mm']:.2f} mm "
                 f"off-axis, {'IN' if ins['inserted'] else 'NOT SEATED'}")
@@ -198,7 +198,7 @@ def render_unit(seed, speed=1, out=None):
             c.cap_present(True)
             mujoco.mj_forward(c.m, c.d)
             for _ in range(int(FPS * 1.2)):
-                rec.grab(c.d, "MEMBRANE", cam="main")
+                rec.grab(c.d, "MEMBRANE", cam="main", inset="demo_mem")
             t, held, hist = 0.0, 0.0, []
             win = max(int(0.1 / c.dt), 1)
             k = 0
@@ -211,7 +211,7 @@ def render_unit(seed, speed=1, out=None):
                 if k % every == 0:
                     rec.info["TIGHTEN"] = (f"{c.turns():5.2f} turns  {c.torque():4.2f} Nm  "
                                            f"seal {c.seal_load():4.0f} N")
-                    rec.grab(c.d, "MEMBRANE", cam="main")
+                    rec.grab(c.d, "MEMBRANE", cam="main", inset="demo_mem")
                 hist.append(float(c.d.qpos[c.cap_z_q]))
                 if len(hist) > win:
                     hist.pop(0)
@@ -246,13 +246,105 @@ def render_unit(seed, speed=1, out=None):
     return out
 
 
+# --------------------------------------------------------------- the full reel
+#
+# DEMO SEEDS ARE TAKEN FROM THE PUBLISHED EVAL SET ON PURPOSE. 1700, 1704 and 1702 are
+# rows in stats_v5_route.json, so every figure the HUD shows can be cross-checked against
+# the committed artifact. A separate "demo seed" would show a cycle whose result is in no
+# artifact at all -- and would burn a fresh seed to do it. These are already spent.
+REEL = [(1700, "EASY"), (1704, "MEDIUM"), (1702, "HARD")]
+
+
+def _card(lines, fname, secs, accent=(41, 121, 255)):
+    import imageio
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (W, H), (13, 17, 23))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, W, 6], fill=accent)
+    y = 90
+    for txt, size, bold, col in lines:
+        f = _font("sans_bold" if bold else "sans", size)
+        d.text(((W - d.textlength(txt, font=f)) / 2, y), txt, font=f, fill=col)
+        y += size + 20
+    imageio.mimsave(fname, [np.asarray(img)] * int(FPS * secs), fps=FPS,
+                    codec="libx264", quality=8, pixelformat="yuv420p")
+
+
+def make_reel(speed=4, out="media/v5_cell_reel.mp4"):
+    """Every route end to end, with the numbers and the caveats on the same reel.
+
+    The end card carries FULLY BACKED (22/28), not end-to-end (26/28), because the HARD
+    route's handoff is a software decision with no motion behind it. A reel that showed
+    the flattering number while the repo published the honest one would be the exact
+    failure this project keeps catching.
+    """
+    import subprocess, imageio_ffmpeg
+    st = json.load(open("stats_v5_route.json"))
+    mem = json.load(open("stats_v5_membrane.json"))
+    W_, G, B = (235, 240, 245), (150, 160, 175), (120, 200, 255)
+    A = (255, 180, 90)
+    _card([("REFURBISHMENT CELL  --  v5", 54, True, W_),
+           ("Modelled on DrinkPrime's own 13 process documents", 26, False, G),
+           ("Simulated UFACTORY xArm7  |  MuJoCo 3.11 (pinned)  |  scripted controller", 22, False, G),
+           ("", 12, False, (0, 0, 0)),
+           ("TRIAGE  ->  CLEAN  ->  VERIFY  ->  MEMBRANE  ->  DIP", 30, True, B),
+           ("one unit per route: EASY, MEDIUM, HARD", 24, False, B),
+           ("", 12, False, (0, 0, 0)),
+           ("Every clip is a unit from the PUBLISHED eval set --", 22, False, A),
+           ("seeds 1700 / 1704 / 1702 are rows in stats_v5_route.json", 22, False, A)],
+          "card_v5_title.mp4", 5.0)
+    parts = ["card_v5_title.mp4"]
+    for seed, label in REEL:
+        f = f"reel_{seed}.mp4"
+        render_unit(seed, speed, f)
+        parts.append(f)
+    _card([("WHAT THIS RUN MEASURED", 46, True, W_),
+           ("", 10, False, (0, 0, 0)),
+           (f"triage 97.5% on 120 fresh units   |   missed-hard 0.0%", 26, False, W_),
+           (f"clean 100% coverage, 0 missed of 129   |   peak 34.5 N under a 45 N ceiling", 26, False, W_),
+           (f"membrane element inserted {mem['elem_inserted']}/10 at 0.30 mm into 1.5 mm clearance", 26, False, W_),
+           (f"cap stalls on torque   |   sabotage caught 10/10, false pass 0", 26, False, W_),
+           ("", 14, False, (0, 0, 0)),
+           (f"routing, {st['n']} held-out units:", 28, True, B),
+           (f"right route {st['right_route_n']}/{st['n']}    "
+            f"FULLY BACKED {st['fully_backed_n']}/{st['n']}    false-easy 0/{st['n']}", 30, True, B)],
+          "card_v5_stats.mp4", 8.0)
+    parts.append("card_v5_stats.mp4")
+    _card([("WHAT IS NOT REAL, AND WE WILL SAY IT FIRST", 40, True, A),
+           ("", 10, False, (0, 0, 0)),
+           ("Easy / Medium / Hard: the NAMES are DrinkPrime's, the BOUNDARIES are ours.", 24, False, W_),
+           ("CLEAN is a dry pad wipe of the cabinet. No cream, detergent or solution.", 24, False, W_),
+           ("The membrane cap is PRESENTED BY A FIXTURE, not fitted by the robot.", 24, False, W_),
+           ("Bubbles are MODELLED FROM TORQUE. There is no fluid simulation anywhere.", 24, False, W_),
+           ("HARD stops at a human gate -- NO motion delivers the unit there. 0/6 built.", 24, False, W_),
+           ("Membrane geometry is PLACEHOLDER until the CAD arrives.", 24, False, W_),
+           ("", 12, False, (0, 0, 0)),
+           ("This de-risks the approach. It does not de-risk the deployment.", 26, True, G)],
+          "card_v5_caveats.mp4", 9.0)
+    parts.append("card_v5_caveats.mp4")
+
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    with open("concat_v5.txt", "w") as f:
+        for p in parts:
+            f.write(f"file '{p}'\n")
+    subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", "concat_v5.txt",
+                    "-c", "copy", out], check=True, capture_output=True)
+    print(f"wrote {out}  ({len(parts)} parts)")
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--render", type=int, help="seed to render")
+    ap.add_argument("--reel", action="store_true",
+                    help="title + one clip per route + stats + caveats -> one file")
     ap.add_argument("--speed", type=int, default=1, help="frame decimation; stamped on frame")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    if a.render is None:
+    if a.reel:
+        make_reel(a.speed if a.speed > 1 else 4, a.out or "../media/v5_cell_reel.mp4")
+    elif a.render is not None:
+        render_unit(a.render, a.speed, a.out)
+    else:
         ap.print_help()
         sys.exit(1)
-    render_unit(a.render, a.speed, a.out)

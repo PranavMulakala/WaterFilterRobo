@@ -140,7 +140,11 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E published headline (2026-08-05)**. Next free block: **1810+**.**
+**1800–1809 the V5-E published headline (2026-08-05)**. Next free block: **1810+**.
+**Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
+1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
+`stats_v5_route.json`, so the footage is traceable to a published artifact instead of
+burning fresh seeds to show the same thing.**
 Use it once and look at it once.
 **1604 and 1607 are BURNED for evaluation** — they are the V5-G demo seeds, rendered and
 watched frame by frame, so their outcomes are known and they can never be a held-out set
