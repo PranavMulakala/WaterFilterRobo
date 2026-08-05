@@ -3,10 +3,11 @@
     ../venv/bin/python v5_clean.py --run 3          one unit, verbose
     ../venv/bin/python v5_clean.py --eval 8          held-out; --seed0 defaults to 900
 
-NOT IMPLEMENTED YET, despite what an older version of this docstring claimed: there is no
-`--sabotage` (that is V5-D) and no `--render` (that is V5-G). The argument parser has only
---run / --eval / --seed0. The `frames` dict is threaded through every motion method, so a
-renderer is wiring rather than construction -- sim_poc4.py has a working template.
+    ../venv/bin/python v5_clean.py --sabotage 8      V5-D falsification test
+
+`--render` is still NOT implemented (that is V5-G): no v5 station writes video. The
+`frames` dict is threaded through every motion method, so a renderer is wiring rather than
+construction -- sim_poc4.py has a working template.
 
 WHAT THIS IS. DrinkPrime Stage 2 (Cabinet Cleaning) and Stage 3 (Back Panel & Top Cover
 Cleaning). Their own acceptance criterion is COVERAGE, in their words:
@@ -123,6 +124,13 @@ class CleanConfig:
     # first graze while the wrist was still 20-90 mm out: coverage fell 100% -> 88.9%.
     # A position-controlled arm pressing into a surface converges to a STEADY-STATE
     # error; the useful signal is that it has stopped closing, not that it has touched.
+    # --- V5-D verification. The check re-inspects the unit we just cleaned through the
+    #     SAME observation path the triage station uses -- same fixed camera, same index
+    #     angles, same per-face regions, same feature extractor. That is not tidiness: v4's
+    #     first sabotage test wrongly PASSED 2 of 5 dirty parts precisely because
+    #     verification looked through one camera view while the inspection it was checking
+    #     used two. A verifier that sees less than the process it verifies cannot fail.
+    verify_soil_max: int = 0        # residual soil components tolerated, per unit
     wipe_stall_s: float = 0.20      # window over which progress is judged
     wipe_stall_m: float = 0.0005    # less closing than this, while in contact, is a stall
     # ...and 'in contact' has to mean SEATED, not grazing. contact_min_n is 0.5 N, which
@@ -255,6 +263,12 @@ class Cell:
         self.tool_geoms = {g for g in range(m.ngeom) if m.geom_bodyid[g] in tool_bodies}
         self.pad_jq = m.jnt_qposadr[m.body_jntadr[m.body("padtool").id]]
         self.tool_rel = None
+        self.rend = None            # built lazily; rendering is the expensive part
+        self.rend_top = None        # V5-D: the top face needs its own camera
+        # V5-D: when True the pad still moves, still presses and still logs contact --
+        # it simply stops REMOVING soil. Sabotaging the outcome rather than the motion is
+        # what makes the falsification test about the verifier instead of about the arm.
+        self.sabotage = False
 
     # ------------------------------------------------------- tool changer
     def couple(self):
@@ -321,6 +335,148 @@ class Cell:
                 tot += abs(f6[0])
         return tot
 
+    # ------------------------------------------------------- V5-D verification
+    def _sync_triage_globals(self):
+        """Point v5_triage's face-projection globals at THIS model.
+
+        face_regions() reads module-level constants that load_scene() normally fills in.
+        v5_clean builds its own model and never calls load_scene, so those constants would
+        silently describe whatever was loaded last -- and being right by default is not the
+        same as being right on purpose.
+        """
+        m, d = self.m, self.d
+        g = m.geom("cab_body").id
+        TR.CFG_CAB_XY = (float(d.geom_xpos[g][0]), float(d.geom_xpos[g][1]))
+        TR.CAB_HALF_XY = (float(m.geom_size[g][0]), float(m.geom_size[g][1]))
+        zs = [(d.geom_xpos[i][2] - m.geom_size[i][2], d.geom_xpos[i][2] + m.geom_size[i][2])
+              for i in range(m.ngeom)
+              if m.geom_bodyid[i] == self.cab_bodyid and m.geom_contype[i]]
+        TR.CAB_BASE = float(min(a for a, _ in zs))
+        TR.CAB_TOP = float(max(b for _, b in zs))
+
+    def soil_face(self, g):
+        """Which face a soil geom sits on, in the cabinet's own frame."""
+        cab = self.cab_bodyid
+        p0 = self.d.xpos[cab]
+        R0 = self.d.xmat[cab].reshape(3, 3)
+        x, y, z = R0.T @ (self.d.geom_xpos[g] - p0)
+        hd, hw = self.m.geom_size[self.m.geom("cab_body").id][:2]
+        if z > 2 * self.m.geom_size[self.m.geom("cab_body").id][2] - 0.02:
+            return "top"
+        if x < -hd + 0.02:
+            return "front"
+        if x > hd + 0.01:
+            return "back"
+        return "left" if y < 0 else "right"
+
+    def verify(self):
+        """Re-inspect the unit THIS cycle just cleaned. Returns residual soil seen.
+
+        Deliberately NOT a fresh spawn: it renders the live model, so the geoms it looks
+        for are the same ones the wipe hid. And it reuses v5_triage's own `face_regions`
+        and `image_features` rather than a second implementation, so the verifier and the
+        grader cannot drift apart.
+
+        WHAT IT CANNOT SEE, AND THIS IS THE V5-D RESULT: the station camera sits at
+        z = 0.400 and the device's top face is at z = 0.450, so the camera is BELOW that
+        plane -- cos(top normal, view) = +0.076 -- and `face_regions` returns the four
+        VERTICAL faces only. The cleaning station wipes five faces and counts all five in
+        its coverage number. So soil left on the TOP is structurally invisible here. That
+        is reported per unit rather than hidden, and the sabotage test measures it.
+        """
+        m, d, cfg = self.m, self.d, self.cfg
+        self._sync_triage_globals()
+        if self.rend is None:
+            self.rend = mujoco.Renderer(m, TR.CFG.cam_h, TR.CFG.cam_w)
+        tt = m.jnt_qposadr[m.joint("tt_rot").id]
+        # park the arm clear of frame -- v5_check_spec asserts this pose is 0.000% of the
+        # inspect view, against 4.28% at the home pose
+        d.qpos[self.qadr] = TR.PARK
+        best = {}
+        for deg in TR.CFG.index_deg:
+            d.qpos[tt] = np.deg2rad(deg)
+            mujoco.mj_forward(m, d)
+            self.rend.update_scene(d, camera=TR.CFG.cam)
+            rgb = self.rend.render()
+            # grade each face ONCE, in the index position where it is most face-on --
+            # the same rule triage uses, so a face seen twice is not counted twice
+            for fid, cosang, roi in TR.face_regions(m, d, TR.CFG, deg):
+                if fid in best and best[fid][0] <= cosang:
+                    continue
+                f = TR.image_features(rgb, roi, TR.CFG)
+                if f is not None:
+                    best[fid] = (cosang, f)
+        # --- THE TOP FACE, from its own camera. Without this the check is blind exactly
+        #     where the cleaning fails: the first falsification run caught 10/10 sabotaged
+        #     units and still let 9 of 10 honestly-cleaned-but-dirty units pass, because
+        #     100% of the residue sat on the one face `inspect` cannot see.
+        top_f = None
+        if self.rend_top is None:
+            self.rend_top = mujoco.Renderer(m, TR.CFG.cam_h, TR.CFG.cam_w)
+        d.qpos[tt] = 0.0
+        mujoco.mj_forward(m, d)
+        self.rend_top.update_scene(d, camera="verify_top")
+        rgb = self.rend_top.render()
+        roi = self.top_region()
+        if roi is not None:
+            top_f = TR.image_features(rgb, roi, TR.CFG)
+
+        seen = sum(f["soil"] for _, f in best.values())
+        seen_top = int(top_f["soil"]) if top_f else 0
+        seen += seen_top
+        left = [g for g in self.revealed_soil if m.geom_rgba[g][3] > 0]
+        hidden_top = sum(1 for g in left if self.soil_face(g) == "top")
+        return {"soil_seen": int(seen), "soil_seen_top": seen_top,
+                "faces_graded": len(best) + (1 if top_f else 0),
+                "top_graded": bool(top_f is not None),
+                "soil_left_truth": len(left), "soil_left_top": int(hidden_top),
+                "verified": bool(seen <= cfg.verify_soil_max)}
+
+    def top_region(self):
+        """Search region for the TOP face, projected from the verify_top camera.
+
+        Same projection and same hull-mask format as v5_triage.face_regions, deliberately,
+        so image_features can be reused unchanged -- one feature extractor for every face
+        of both stations. Built here rather than inside face_regions because V5-B's triage
+        result is frozen at 97.5% and must not move: the triage station grades the four
+        vertical faces from `inspect`, and this is the CLEANING station's extra eye.
+        """
+        m, d = self.m, self.d
+        cam = m.camera("verify_top").id
+        p = d.cam_xpos[cam]
+        R = d.cam_xmat[cam].reshape(3, 3)
+        f = (TR.CFG.cam_h / 2) / np.tan(np.deg2rad(m.cam_fovy[cam]) / 2)
+        cg = m.geom("cab_body").id
+        cx, cy = float(d.geom_xpos[cg][0]), float(d.geom_xpos[cg][1])
+        hd, hw = float(m.geom_size[cg][0]), float(m.geom_size[cg][1])
+        z = TR.CAB_TOP
+        ins = TR.CFG.face_inset
+        quad = [(cx - hd + ins, cy - hw + ins), (cx + hd - ins, cy - hw + ins),
+                (cx + hd - ins, cy + hw - ins), (cx - hd + ins, cy + hw - ins)]
+        uv = []
+        for X in [np.array([qx, qy, z]) for qx, qy in quad]:
+            q = R.T @ (X - p)
+            depth = -q[2]
+            if depth < 1e-3:
+                return None
+            uv.append((TR.CFG.cam_w / 2 + f * q[0] / depth,
+                       TR.CFG.cam_h / 2 - f * q[1] / depth))
+        uv = np.array(uv)
+        u0 = max(0, int(uv[:, 0].min()) - 2)
+        u1 = min(TR.CFG.cam_w, int(uv[:, 0].max()) + 2)
+        v0 = max(0, int(uv[:, 1].min()) - 2)
+        v1 = min(TR.CFG.cam_h, int(uv[:, 1].max()) + 2)
+        if u1 - u0 < 40 or v1 - v0 < 40:
+            return None
+        H = TR._hull(uv)
+        gy, gx = np.mgrid[v0:v1, u0:u1]
+        inside = np.ones(gx.shape, bool)
+        for i in range(len(H)):
+            a, b = H[i], H[(i + 1) % len(H)]
+            inside &= ((b[0] - a[0]) * (gy - a[1])
+                       - (b[1] - a[1]) * (gx - a[0])) >= 0
+        return (v0, v1, u0, u1, inside)
+
     def wipe(self):
         """Hide soil geoms the pad's contact patch has passed over.
 
@@ -331,6 +487,8 @@ class Cell:
         f = self.pad_contact_force()
         if f < self.cfg.contact_min_n:
             return 0
+        if self.sabotage:
+            return 0                # V5-D: contact happened, removal deliberately withheld
         centre = self.d.geom_xpos[self.pad_face]
         R = self.d.geom_xmat[self.pad_face].reshape(3, 3)
         n_hat = R[:, 2]                       # pad's own face normal
@@ -957,16 +1115,101 @@ def report(rows):
             "exact_normal_frac": float(tz.mean())}
 
 
+def falsify(n, seed0):
+    """V5-D: the same unit cleaned honestly and cleaned NOT AT ALL, verified both ways.
+
+    PAIRED, deliberately. Each seed is run twice -- once with the wipe working and once
+    with removal withheld -- so the two arms differ in exactly one thing. An unpaired test
+    can be passed by a verifier that is merely lucky about which units it saw.
+
+    The exit criterion from V5_PLAN is n/n both ways: every honest cleaning verified, every
+    sabotaged cleaning caught. Anything less means the check cannot fail, and a check that
+    cannot fail is not evidence.
+    """
+    rows = []
+    for k in range(n):
+        seed = seed0 + k
+        rec = {"seed": seed}
+        for sab in (False, True):
+            c = Cell()
+            c.sabotage = sab
+            r = c.run(seed)
+            v = c.verify()
+            tag = "sab" if sab else "hon"
+            rec[f"{tag}_cov"] = r["coverage"]
+            rec[f"{tag}_seen"] = v["soil_seen"]
+            rec[f"{tag}_left"] = v["soil_left_truth"]
+            rec[f"{tag}_top"] = v["soil_left_top"]
+            rec[f"{tag}_pass"] = v["verified"]
+        rows.append(rec)
+        # print the honest side's RESIDUE too. A unit can be verified while still
+        # carrying soil -- that is a FALSE VERIFY, and it is the error this station's
+        # customer would care about most. Hiding it behind "seen 0" would repeat exactly
+        # the mistake v4's sabotage test was built to catch.
+        rec["hon_false"] = bool(rec["hon_pass"] and rec["hon_left"] > 0)
+        print(f"  seed {seed}: honest cov {rec['hon_cov']*100:5.1f}% "
+              f"left {rec['hon_left']:2d} (top {rec['hon_top']:2d}) seen {rec['hon_seen']:2d}"
+              f" -> {'VERIFIED' if rec['hon_pass'] else 'failed'}"
+              f"{' **FALSE VERIFY**' if rec['hon_false'] else ''}"
+              f" | sabotaged left {rec['sab_left']:2d} (top {rec['sab_top']:2d}) "
+              f"seen {rec['sab_seen']:2d} -> {'ESCAPED' if rec['sab_pass'] else 'caught'}")
+
+    hon_ok = sum(r["hon_pass"] for r in rows)
+    false_verify = sum(r["hon_false"] for r in rows)
+    hon_left_tot = sum(r["hon_left"] for r in rows)
+    hon_top_tot = sum(r["hon_top"] for r in rows)
+    sab_caught = sum(not r["sab_pass"] for r in rows)
+    # the sharp question: could a filthy unit pass because all its residue is on the face
+    # the camera cannot see?
+    blind = [r for r in rows if r["sab_left"] > 0 and r["sab_left"] == r["sab_top"]]
+    top_left = sum(r["sab_top"] for r in rows)
+    all_left = sum(r["sab_left"] for r in rows)
+
+    print(f"\nV5-D FALSIFICATION: {n} units, each run twice")
+    print(f"  honest cleanings VERIFIED   : {hon_ok}/{n}")
+    print(f"  FALSE VERIFIES              : {false_verify}/{n}   <- passed while still "
+          f"carrying soil ({hon_left_tot} patches left, {hon_top_tot} of them on the "
+          f"unseeable top face)")
+    print(f"  sabotaged cleanings CAUGHT  : {sab_caught}/{n}   <- the one that matters")
+    print(f"  residue on the TOP face     : {top_left} of {all_left} patches "
+          f"({top_left/max(all_left,1)*100:.1f}%) -- the face V5-C cleans worst")
+    print(f"  units that could ESCAPE      : {len(blind)}/{n} "
+          f"(all residue on one face)")
+    print("\n  WHY THERE ARE TWO CAMERAS. The triage camera sits at z = 0.400 and the")
+    print("  device top face at z = 0.450 -- below the plane of that face, so it can never")
+    print("  see the top, and `face_regions` returns the four VERTICAL faces only. V5-C")
+    print("  wipes five faces and counts five. Verified through that camera alone, this")
+    print("  test scored a perfect 10/10 sabotage-caught while letting 9 of 10 honestly-")
+    print("  cleaned-but-still-dirty units PASS, because the face cleaning misses and the")
+    print("  face the camera cannot see are the SAME face. `verify_top` was added for that")
+    print("  reason and is a hardware requirement, not a rendering convenience.")
+    print("\n  A CHECK THAT CANNOT FAIL IS NOT EVIDENCE -- and n/n on the sabotage arm")
+    print("  alone would have been exactly that. Read the FALSE VERIFY line first.")
+    st = {"n": n, "honest_verified": hon_ok, "false_verify": false_verify,
+          "honest_residual": hon_left_tot, "honest_residual_on_top": hon_top_tot,
+          "sabotage_caught": sab_caught,
+          "residual_total": all_left, "residual_on_top": top_left,
+          "would_escape": len(blind), "rows": rows}
+    with open("stats_v5_verify.json", "w") as f:
+        json.dump(st, f, indent=2)
+    print("\nwrote stats_v5_verify.json")
+    return st
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", type=int)
     ap.add_argument("--eval", type=int)
+    ap.add_argument("--sabotage", type=int,
+                    help="V5-D paired falsification test: N units, honest and sabotaged")
     # 900, not 800: a bare --eval should reproduce the PUBLISHED number, not a seed range
     # the ledger records as spent on development. 800-807 were used to diagnose against
     # the old 64.7%, so defaulting there quietly reproduced a development figure.
     ap.add_argument("--seed0", type=int, default=900)
     a = ap.parse_args()
-    if a.run is not None:
+    if a.sabotage:
+        falsify(a.sabotage, a.seed0)
+    elif a.run is not None:
         c = Cell()
         r = c.run(a.run, verbose=True)
         print(r)

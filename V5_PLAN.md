@@ -719,3 +719,78 @@ termination in place gives 100% coverage on both seed ranges — bought by press
 every point, with peak 326 N and 74.8% in band. Coverage paid for in force-seconds a real
 cell would not spend is exactly the kind of number this project distrusts, so the stall
 detector ships and the 94.6% is the honest figure.
+
+---
+
+## V5-D RESULT — the verification, and what it says about V5-C
+
+`v5_clean.py --sabotage N`. Each seed is run **twice** — once cleaned honestly, once with
+soil removal withheld while the arm still moves, still presses and still logs contact.
+Paired, so the two arms differ in exactly one thing.
+
+The check re-inspects the unit **just cleaned** (the live model, not a fresh spawn) and
+reuses `v5_triage`'s own `face_regions` and `image_features` rather than a second
+implementation — so the verifier and the grader cannot drift apart. That was v4's exact
+failure: its first sabotage test wrongly passed 2 of 5 dirty parts because verification
+looked through one camera view while the inspection it checked used two.
+
+### The first run passed the exit criterion and was worthless
+
+Seeds 1000–1009, verifier using the triage camera alone:
+
+| | |
+|---|---|
+| honest cleanings verified | **10/10** ✅ |
+| sabotaged cleanings caught | **10/10** ✅ |
+| **false verifies** | **9/10** ❌ |
+| where that residue sat | **12 of 12 patches on the top face** |
+
+V5_PLAN's stated exit criterion — *honest verified, sabotaged caught, n/n* — was met
+**exactly**, by a check that was letting nine out of ten dirty units through.
+
+**Why: the two blind spots are the same face.** The triage camera sits at z = 0.400 and
+the device's top face at z = 0.450 — *below* the plane of that face, cos(normal, view)
+= +0.076 — so `face_regions` returns the four **vertical** faces only. And the top face is
+where V5-C cleans worst (29.2% exact-normal reachability; it was the pass that never
+reached its planned pose). **The station fails precisely where it cannot check.**
+
+### The fix is a second camera, and it is a hardware requirement
+
+`verify_top` — mounted on the −Y side above the top plane, clear of the arm's working
+volume over the device. Deliberately *not* added to `face_regions`: V5-B's triage result is
+frozen at 97.5% and grades the four vertical faces from `inspect`; this is the **cleaning**
+station's extra eye. Same projection, same hull-mask format, same feature extractor.
+
+Same seeds, before and after:
+
+| seeds 1000–1009 | 4-face verifier | 5-face verifier |
+|---|---|---|
+| false verifies | **9/10** | **0/10** |
+| honest verified | 10/10 | **1/10** |
+| sabotaged caught | 10/10 | 10/10 |
+
+Honest verification *fell* — which is the check becoming honest, not regressing. Those
+nine units were always dirty; only now does anything say so.
+
+### The number — seeds 1100–1109, fresh, looked at once
+
+| | |
+|---|---|
+| **sabotaged cleanings caught** | **10/10** |
+| **false verifies** | **0/10** |
+| honest cleanings verified | **6/10** |
+| residue on the top face | 24 of 179 patches (13.4%) |
+
+### What this does to V5-C's headline
+
+**94.6% coverage is 60% under DrinkPrime's own acceptance criterion.** Stage 3 asks to
+*"check for any missed spots"* — that is **binary per unit**, not a mean over patches. Four
+of ten units still carry soil, all of it on the top face. The mean flatters a station that
+fails 40% of the time on the customer's own test.
+
+So V5-C is **not done**, and V5-D is what proves it. The open force item and this are the
+same defect wearing two hats: the top face never reaches its planned pose, so it presses
+longest, hardest and least effectively.
+
+**Seeds consumed:** 1000–1009 (verifier development and the before/after) and 1100–1109
+(the held-out headline). Start at 1200.

@@ -81,6 +81,19 @@
          roughly y = +0.26, well inside its +/-0.46 half-width. Offset in -Y to clear the
          arm, which sits at the origin. fovy 48 frames the 450 mm device
          at this range with margin. -->
+    <!-- V5-D TOP-FACE VERIFICATION CAMERA. A hardware requirement discovered by the
+         falsification test, not a nicety. The `inspect` camera sits at z = 0.400 and the
+         device top face at z = 0.450 -- i.e. BELOW the plane of that face -- so it can
+         never see the top. V5-C wipes five faces and counts five; without this camera the
+         cleaning check saw four, and every unit that failed did so on the top face. The
+         first falsification run scored a perfect 10/10 caught while quietly letting 9 of
+         10 dirty units pass, because cleaning misses and camera blindness landed on the
+         SAME face. Mounted on the -Y side, above the top plane and clear of the arm's
+         working volume over the device. -->
+    <camera name="verify_top" fovy="40"
+            pos="0.3000 -0.3000 1.0500"
+            xyaxes="0.7311 -0.6823 0.0000 0.5601 0.6002 0.5710"/>
+
     <camera name="inspect" fovy="48"
             pos="0.1000 -0.4500 0.4000"
             xyaxes="0.6839 -0.7295 0.0000 0.1775 0.1664 0.9700"/>
