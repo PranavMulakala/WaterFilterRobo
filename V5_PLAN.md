@@ -1089,20 +1089,48 @@ Across both corrected route runs, right-route is **53/56 (94.6%)**, still consis
 *(The earlier first look at 1500–1511 gave "12/12" under the broken metric. It is not
 re-scored here — those rows were not kept — so it should not be quoted at all.)*
 
-### The bug worth keeping — two stations, two different worlds
+### The bug worth keeping — reading a model before the kinematics have run
+
+> **CORRECTED 2026-08-05.** This section originally said `v5_triage.load_scene()` computes
+> `CAB_TOP = 0.220` and that the frozen triage thresholds were calibrated against a
+> half-face region — describing two internally-consistent conventions that were merely
+> "not interchangeable". **Both claims are false and the explanation was inverted.**
+> `load_scene()` calls `mj_forward` and returns **0.46**, v5_triage's module-level defaults
+> are *already* `(0.58, 0.0) / (0.09, 0.125) / 0.010 / 0.46`, and the thresholds are
+> therefore calibrated against the **full** face. The corrected account follows.
 
 Seed 1500 graded **truth EASY → predicted HARD**, a two-class jump the published confusion
 matrix says never happens. The counts were identical on both paths; only the *prediction*
-differed. Cause: `v5_triage.load_scene()` computes `CAB_TOP = 0.220` while
-`v5_clean._sync_triage_globals()` computes **0.460** from the live model — and **the frozen
-triage thresholds were calibrated against 0.220**, i.e. against per-face search quads
-covering roughly the lower half of each face. Grading the full face with half-face
-thresholds reads far more defect area and grades harder.
+differed. Cause: `v5_triage`'s face-projection constants are **module-level globals**, and
+`v5_clean._sync_triage_globals()` writes them from `self.d.geom_xpos`. Called before
+`mj_forward` has run, that array is **all zeros**:
 
-Both are internally consistent. They are simply **not interchangeable**, and nothing said
-so until one process tried to run both stations. `RouteCell` now captures v5_triage's own
+| | `CFG_CAB_XY` | `CAB_BASE` | `CAB_TOP` | |
+|---|---|---|---|---|
+| `load_scene()` | (0.58, 0.0) | 0.010 | **0.46** | correct |
+| `_sync` on **unforwarded** data | (0.00, 0.0) | −0.220 | **0.22** | garbage |
+| `_sync` after `mj_forward` | (0.58, 0.0) | 0.010 | **0.46** | correct |
+
+**The tell is `BASE == −TOP`.** With every position still at the origin, each geom spans
+0 ± its own half-extent, so "the cabinet" becomes a box centred on the world origin whose
+height is just the largest half-size (`cab_body`, 0.22). The device also lands at x = 0 —
+the more damaging half — so the projected face quads miss the part and the grader returns
+**HARD for every unit**. Measured: 4 of 7 sampled seeds flip, seed 1500 among them.
+
+There are **not** two valid conventions here; there is one correct value and one
+uninitialised read. `RouteCell` captures v5_triage's own
 globals at construction and restores them before every grade; grading went 1 wrong in 1 to
 **0 wrong in 12**.
+
+**What that guard is worth today, stated honestly.** `verify()` is the only caller of
+`_sync_triage_globals()`, and in the current cycle it always runs *after* `mj_forward` —
+where it writes values **identical** to the captured ones at every indexer angle
+(0/90/180/270/360 all checked). So the restore is currently a **no-op**: insurance against
+call ordering, not a live fix. The root cause is that `v5_clean.Cell.__init__` never
+forwards its `MjData`. Correcting *that* is a controller change requiring a full re-eval,
+so it is deliberately not done. **The reusable lesson is the one the wrong story obscured:
+reading `geom_xpos` before `mj_forward` does not fail loudly — it returns a coherent-looking
+model centred on the origin.**
 
 **Seeds consumed:** 1500–1511 (first look) and 1512–1539 (the retracted run), plus
 **1700–1727 (the corrected headline, 2026-08-05)**. Also burned: **1604 and 1607**, the

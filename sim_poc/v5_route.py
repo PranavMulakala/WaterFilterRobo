@@ -67,21 +67,40 @@ class RouteCell(MB.MemCell):
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
-        # CAPTURE v5_triage's OWN face-projection globals, and restore them before every
-        # grade. This is not tidiness -- it is the difference between 97.5% and nonsense.
+        # PIN v5_triage's face-projection globals, and restore them before every grade.
         #
-        # v5_clean._sync_triage_globals() recomputes CAB_TOP from the LIVE model and gets
-        # 0.460 (the true top of the device). v5_triage.load_scene() computes 0.220 from a
-        # freshly-loaded MjData, and THE TRIAGE THRESHOLDS WERE FROZEN AGAINST THAT -- so
-        # its per-face search quads cover roughly the lower half of each face. Grading the
-        # full face with thresholds calibrated on the half-face reads far more defect area
-        # and grades harder: seed 1500 went truth EASY -> predicted HARD, a two-class jump
-        # the published confusion matrix says never happens.
+        # CFG_CAB_XY / CAB_HALF_XY / CAB_BASE / CAB_TOP are MODULE-LEVEL state in
+        # v5_triage, and v5_clean.verify() writes to them through _sync_triage_globals().
+        # Any caller that writes them BEFORE mj_forward has run is reading all-zero
+        # geom_xpos, and gets garbage that still looks like plausible geometry:
         #
-        # The station that must not move is V5-B (97.5%, frozen thresholds), so the
-        # cleaning station's sync is the one that gets isolated here. Both are internally
-        # consistent; they are simply not interchangeable, and nothing said so until a
-        # cell tried to run both in one process.
+        #   load_scene()              XY (0.58, 0.0)  BASE  0.010  TOP 0.46   correct
+        #   _sync on UNFORWARDED data XY (0.00, 0.0)  BASE -0.220  TOP 0.22   garbage
+        #   _sync AFTER mj_forward    XY (0.58, 0.0)  BASE  0.010  TOP 0.46   correct
+        #
+        # The tell is BASE == -TOP. With every geom_xpos still at the origin each geom
+        # spans 0 +/- its own half-extent, so "the cabinet" becomes a box centred on the
+        # world origin whose height is just the largest half-size (cab_body, 0.22). The
+        # device also lands at x = 0, which is the more damaging half: the projected face
+        # quads miss the part entirely and the grader returns HARD for EVERY unit.
+        # Measured -- 4 of 7 sampled seeds flip, and seed 1500 goes truth EASY -> HARD,
+        # the two-class jump the published confusion matrix says never happens.
+        #
+        # CORRECTION, 2026-08-05. This comment used to say load_scene() computes
+        # CAB_TOP = 0.220 and that the frozen triage thresholds were calibrated against a
+        # half-face region. BOTH ARE FALSE and the story was inverted. load_scene() calls
+        # mj_forward and returns 0.46; v5_triage's module-level defaults are ALREADY
+        # (0.58, 0.0) / (0.09, 0.125) / 0.010 / 0.46; the thresholds are therefore
+        # calibrated against the FULL face. There are not two internally-consistent
+        # conventions here -- there is one correct value and one uninitialised read.
+        #
+        # WHAT THIS GUARD IS ACTUALLY WORTH, stated honestly: verify() is the only caller
+        # of _sync_triage_globals(), and in the current cycle it always runs after
+        # mj_forward, where it writes values IDENTICAL to these at every indexer angle
+        # (0/90/180/270/360 all checked). So today the restore is a NO-OP -- insurance
+        # against call ordering, not a live fix. The root cause is that Cell.__init__
+        # never forwards its MjData; correcting that is a controller change and needs a
+        # full re-eval, so it is deliberately not done here.
         _m, _d, _p = TR.load_scene()
         self._tr_globals = (TR.CFG_CAB_XY, TR.CAB_HALF_XY, TR.CAB_BASE, TR.CAB_TOP)
 
