@@ -15,11 +15,13 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — threaded cap stalls on torque, median **9.68 turns** @ 6.00 N·m, 333 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (1400–1409) |
 | V5-F route wiring | **DONE** — routing compliance **28/28**, end-to-end **28/28**, false-easy **0**, missed-hard **0** (1512–1539). HARD stops at a human scrap-approval gate |
-| V5-G video | not started |
+| V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4` |
 
-**Immediate next task: V5-G video** — no v5 station renders footage; `--render` exists nowhere. V5-C and V5-D
-are both closed. Cleaning is 100% coverage on 8 units and zero residue on 10 more, force
-99.1% in band; the falsification test catches 10/10 sabotaged units with 0 false verifies.
+**All v5 phases are DONE (V5-0 through V5-G).** The two things now worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
+
+**Every station's number is in the phase table above and reproduces from its own
+`--eval`.** The rest of this section is the reusable engineering lessons, kept because
+each one cost real time to learn.
 
 **The lesson from closing them, and it is the reusable one.** Both the coverage gap AND the
 unclosed force band were ONE defect: a 7-DoF arm has many configurations for the same pose,

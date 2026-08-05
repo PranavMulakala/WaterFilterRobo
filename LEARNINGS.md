@@ -660,3 +660,36 @@ number can never beat the grader feeding it. We report it that way.
 
 **Why it matters:** a pipeline's honest score is the weakest link's score, and its honest
 scope stops where its knowledge does.
+
+## 2026-08-04 — The camera is part of the experiment
+
+**What we built:** the video. A full cycle — grade the unit, clean it, check the clean,
+rebuild the membrane, pressurise, dip, watch for bubbles — with a readout on screen showing
+the real measurements as they happen.
+
+**Every station puts its own caveat on the frame.** When the dip is on screen, the frame
+says *bubbles are modelled from torque, not a fluid simulation*. When cleaning is on screen
+it says no detergent is simulated. When the grader is on screen it says the class names are
+the customer's but the boundaries are ours. If a caption would need a spoken footnote in the
+room, it belongs printed on the picture instead.
+
+**We wrote the video last on purpose.** No part of this cell could be filmed until it had
+been measured. A video is a claim, and the evidence should exist before the claim does.
+
+**Then the video nearly broke the thing it was filming.** The first dip shot was badly
+framed, so we swung the camera round for a better angle. The next render failed a filter
+housing that we had *just* watched tighten correctly and seal — a false failure, on a test
+that had reported none all day.
+
+The reason is worth keeping: **that camera isn't scenery, it's the measuring instrument.**
+The bubble test works by counting bright pixels in a window projected from that exact
+viewpoint. Move the camera and the window lands somewhere else — in our case on bright
+water and a bin edge, which it dutifully counted as bubbles.
+
+So the fix wasn't to re-tune anything. It was to give the video **its own camera**, and put
+the measuring one back exactly where it was.
+
+**Why it matters:** we already knew a vision result is only as good as the rig presenting
+the part — that lesson cost us 37 points of accuracy earlier in the project. This is the
+same lesson from the other end. If a number depends on a camera, that camera is apparatus.
+Compose your shot with a different one.

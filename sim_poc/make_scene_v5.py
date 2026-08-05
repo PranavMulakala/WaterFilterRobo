@@ -338,6 +338,18 @@ def build(seed=SEED, cab_x=CAB_X):
             pos="{_cam((BIN_XY[0] - 0.26, BIN_XY[1] - 0.20, 0.34), (BIN_XY[0], BIN_XY[1], 0.13))[0]}"
             xyaxes="{_cam((BIN_XY[0] - 0.26, BIN_XY[1] - 0.20, 0.34), (BIN_XY[0], BIN_XY[1], 0.13))[1]}"/>
 
+    <!-- DEMO camera for the V5-G video. SEPARATE FROM verify_dip ON PURPOSE.
+         verify_dip is a MEASUREMENT fixture: the bubble threshold is frozen against its
+         exact pose, and the ROI is projected from it. Re-aiming it for nicer framing
+         moved bright water and bin edge into the ROI and turned a sealed unit
+         (6.00 Nm, stalled) into 17835 bubble px and a FALSE FAIL -- against a station
+         that had just published 0/10 false fails. "A vision result is only as valid as
+         the fixture that presents the part" applies to the CAMERA too. Compose the demo
+         shot here; never touch the one a number depends on. -->
+    <camera name="demo_dip" fovy="34"
+            pos="{_cam((BIN_XY[0] - 0.17, BIN_XY[1] - 0.19, 0.40), (BIN_XY[0], BIN_XY[1], 0.115))[0]}"
+            xyaxes="{_cam((BIN_XY[0] - 0.17, BIN_XY[1] - 0.19, 0.40), (BIN_XY[0], BIN_XY[1], 0.115))[1]}"/>
+
     <camera name="inspect" fovy="48"
             pos="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[0]}"
             xyaxes="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[1]}"/>
