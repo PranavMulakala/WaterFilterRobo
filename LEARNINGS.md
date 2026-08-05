@@ -636,7 +636,11 @@ real bit believable.
 
 **What we built:** the full loop. A used unit is graded, and its grade picks its route:
 a light clean, or a clean plus a membrane rebuild, or out of the line entirely. Twenty-eight
-fresh units, every one routed correctly and completed.
+fresh units, every one executing its route without a mechanical failure.
+
+> **Corrected 2026-08-05.** This entry originally said *"every one routed correctly and
+> completed."* That was false: one of the 28 was graded wrong, and the metric could not
+> see it. The real figures are below, in *"The score that was grading its own homework."*
 
 **The interesting part is the route we deliberately don't finish.** DrinkPrime's own chart
 splits the worst grade in two: units worth repairing, and units to scrap — decided on
@@ -654,9 +658,9 @@ condemned a spotless unit as scrap. The clue was that both paths agreed exactly 
 unit really was, and disagreed on the verdict — when the inputs match and the answers don't,
 the difference is hidden state nobody passed in.
 
-**What 28 out of 28 does not mean.** Our grader is 97.5% accurate, so in forty units you'd
-expect about one mistake, and seeing none is ordinary luck rather than proof. The end-to-end
-number can never beat the grader feeding it. We report it that way.
+**What that score does not mean.** Our grader is 97.5% accurate, so in forty units you'd
+expect about one mistake. The end-to-end number can never beat the grader feeding it. We
+report it that way.
 
 **Why it matters:** a pipeline's honest score is the weakest link's score, and its honest
 scope stops where its knowledge does.
@@ -693,3 +697,19 @@ the measuring one back exactly where it was.
 the part — that lesson cost us 37 points of accuracy earlier in the project. This is the
 same lesson from the other end. If a number depends on a camera, that camera is apparatus.
 Compose your shot with a different one.
+
+## 2026-08-05 — The score that was grading its own homework
+
+**What we built:** a fix to how the cell scores itself — its end-to-end number now checks
+the unit went down the *right* route, not merely that it finished the route it chose.
+
+**The concept: a test must compare against something the system does not control.** The cell
+graded each unit, picked a route from that grade, then scored itself on "did I do every step
+of the route I picked?" — marking its own paper against its own answer key. A misgraded unit
+sailed through: wrong route, every step perfect, full marks. The missing comparison is the
+unit's *actual* condition, which the cell does not choose. Adding it turned a published
+28/28 into 27/28; 28 fresh units give 26/28, both misses cautious ones (sent to a human).
+
+**Why it matters:** the same trap is everywhere on real hardware. "The gripper reached its
+target" is not "the gripper reached the part." Any number where the robot supplies both the
+question and the answer is a number that cannot fail.

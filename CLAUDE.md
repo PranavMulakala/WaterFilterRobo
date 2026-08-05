@@ -14,7 +14,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — threaded cap stalls on torque, median **9.68 turns** @ 6.00 N·m, 333 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (1400–1409) |
-| V5-F route wiring | **DONE** — routing compliance **28/28**, end-to-end **28/28**, false-easy **0**, missed-hard **0** (1512–1539). HARD stops at a human scrap-approval gate |
+| V5-F route wiring | **DONE** — route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0**, missed-hard **0** (1700–1727). HARD stops at a human scrap-approval gate. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
 | V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4` |
 
 **All v5 phases are DONE (V5-0 through V5-G).** The two things now worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
@@ -22,6 +22,23 @@ Instructions for Claude Code / any AI agent working in this repo.
 **Every station's number is in the phase table above and reproduces from its own
 `--eval`.** The rest of this section is the reusable engineering lessons, kept because
 each one cost real time to learn.
+
+**V5-F's end-to-end figure was RETRACTED on 2026-08-05, and the lesson is about metrics,
+not motion.** `v5_route.run_route()` picked the route plan from the **predicted** grade and
+then scored compliance as *"steps_done == plan"* — so it asked only whether the cell
+executed the plan its own prediction chose, never whether that prediction was right. A
+misgraded unit that completed its **wrong** route counted as a full end-to-end success. The
+published words were *"right route AND every step of it succeeded"*; the code checked the
+second half only. Published 28/28 → **actually 27/28** on that run (seed 1517, truth EASY →
+graded MEDIUM, is in the committed artifact). Re-measured after the fix on fresh seeds
+1700–1727: **route-plan compliance 28/28, right-route 26/28, end-to-end 26/28.**
+**A METRIC THAT SCORES A PREDICTION AGAINST ITSELF MEASURES NOTHING.** `grade_correct` is
+now required for `end_to_end` and is written to the stats file so the artifact is
+self-auditing. Route-plan compliance is KEPT as a separate metric — it is a real thing to
+measure and it is honestly 28/28 — but it must never again be reported as end-to-end.
+Corollary worth keeping: the classifier was not touched, and 26/28 is **consistent** with
+triage's 97.5% (P(≥2 errors in 28) ≈ 0.15). The old 27/28 was never evidence routing beat
+triage, and the new 26/28 is not evidence it regressed.
 
 **The lesson from closing them, and it is the reusable one.** Both the coverage gap AND the
 unclosed force band were ONE defect: a 7-DoF arm has many configurations for the same pose,
@@ -84,8 +101,15 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 700–819 (triage), 1000–1009 + 1100–1109 (V5-D), 800–807 (cleaning; re-used for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
 needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
-so start at 1600 — 1000–1309 went to V5-D and Gate 1, 1400–1409 to V5-E, 1500–1539 to V5-F.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
-to 900 so a bare `--eval 8` reproduces the published number rather than a spent range.
+so start at 1728 — 1000–1309 went to V5-D and Gate 1, 1400–1409 to V5-E, 1500–1539 to V5-F,
+1700–1727 to the V5-F metric re-measure (2026-08-05).** Use it once and look at it once.
+**1604 and 1607 are BURNED for evaluation** — they are the V5-G demo seeds, rendered and
+watched frame by frame, so their outcomes are known and they can never be a held-out set
+again. *(An earlier note here said "start at 1600" and V5_PLAN said "rendering consumes no
+evaluation seeds". Rendering consumes no seeds only in the sense that it writes no stats
+file; a seed you have LOOKED AT is spent regardless of what wrote it.)* Note each v5
+script's `--seed0` default reproduces its published number rather than a spent range:
+`v5_clean.py` defaults to 900, `v5_route.py` to 1700.
 
 ## First steps every session
 1. Read `V5_PLAN.md` (plan + all v5 results), `CELL_SPEC.md` (the real-cell build doc),

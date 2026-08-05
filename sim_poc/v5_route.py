@@ -1,7 +1,7 @@
 """V5-F -- route wiring: the triage grade selects the route, end to end.
 
-    ../venv/bin/python v5_route.py --eval 12        held-out; --seed0 defaults to 1500
-    ../venv/bin/python v5_route.py --run 1500       one unit, verbose
+    ../venv/bin/python v5_route.py --eval 28        held-out; --seed0 defaults to 1700
+    ../venv/bin/python v5_route.py --run 1700       one unit, verbose
 
 WHAT THIS IS. The three v5 stations exist and are measured independently. This wires them
 into DrinkPrime's own routing, taken from `dp_process.V5_ROUTES` rather than invented:
@@ -23,13 +23,27 @@ routing it out of the line" -- and for the rectifiable half it is the honest ans
 the unit is presented to a person, who decides. Routing a HARD unit CORRECTLY therefore
 means "delivered to the approval gate", not "repaired".
 
-WHAT COUNTS AS SUCCESS, and it is judged on the workpiece:
-  * routing compliance -- did the cell execute the route its own grade selected?
-  * per-step success   -- cleaning verified with zero residue; cap stalled on torque and
-                          the leak check passed
-  * end-to-end         -- right route AND every step of it succeeded
+WHAT COUNTS AS SUCCESS, and it is judged on the workpiece. THREE DISTINCT METRICS, and
+keeping them distinct is the point -- the first two answer different questions and only
+the third is the headline:
+  * route-plan compliance -- did the cell execute the plan its own PREDICTION selected?
+                             This says nothing about whether that prediction was right.
+  * right-route accuracy  -- did the predicted grade match the unit's TRUTH? This is the
+                             route the unit actually needed, and it is capped by triage.
+  * per-step success      -- cleaning verified with zero residue; cap stalled on torque
+                             and the leak check passed.
+  * end-to-end            -- RIGHT ROUTE **and** every step of it succeeded. It requires
+                             all three of the above.
   * the dangerous error is still FALSE-EASY: a unit needing deep work sent down the
     cosmetic path. It is reported separately, as it has been since v4's false-clean.
+
+RETRACTION, 2026-08-05. This module previously computed end-to-end as
+`routing_ok and clean_ok and leak_ok`, with `plan` selected from the PREDICTED grade -- so
+a misgraded unit that completed its wrong route scored as a full end-to-end success, and
+the published "28/28 (right route AND every step of it succeeded)" asserted something the
+code never checked. Seed 1517 (truth easy -> graded medium) was such a unit. That figure is
+RETRACTED; `grade_correct` is now required for `end_to_end`. Route-plan compliance was and
+remains a real, separate measurement -- it is not deleted and it is not merged in.
 """
 import argparse
 import json
@@ -139,17 +153,24 @@ class RouteCell(MB.MemCell):
                           f"leak_ok {out['leak_ok']}")
             steps_done.append("PASS")
 
-        # --- routing compliance: did we execute the route the grade selected?
+        # --- route-plan compliance: did we execute the plan the PREDICTION selected?
+        # This is a real measurement of the wiring -- "the cell did what it decided to do"
+        # -- and it is deliberately NOT the same question as whether the decision was
+        # right. `plan` comes from the predicted grade, so a misgraded unit can comply
+        # perfectly. Kept separate for exactly that reason.
         out["steps_done"] = steps_done
         out["routing_ok"] = bool(steps_done == list(plan))
-        # --- end to end: right route AND every step of it worked
+        # --- right route: did the prediction match the unit's truth? Capped by triage.
+        out["grade_correct"] = bool(grade == truth)
+        # --- end to end: RIGHT route AND every step of it worked. Without grade_correct
+        # this would score a wrong-route unit as a success (seed 1517 did exactly that).
         if route == "hard_non_rectifiable":
-            out["end_to_end"] = out["routing_ok"]
+            steps_ok = True
         elif route == "easy":
-            out["end_to_end"] = bool(out["routing_ok"] and out["clean_ok"])
+            steps_ok = bool(out["clean_ok"])
         else:
-            out["end_to_end"] = bool(out["routing_ok"] and out["clean_ok"]
-                                     and out["leak_ok"])
+            steps_ok = bool(out["clean_ok"] and out["leak_ok"])
+        out["end_to_end"] = bool(out["grade_correct"] and out["routing_ok"] and steps_ok)
         # --- the dangerous error, carried through from triage
         out["false_easy"] = bool(truth != "easy" and grade == "easy")
         out["missed_hard"] = bool(truth == "hard" and grade != "hard")
@@ -159,16 +180,28 @@ class RouteCell(MB.MemCell):
 def report(rows):
     n = len(rows)
     comply = sum(r["routing_ok"] for r in rows)
+    right = sum(r["grade_correct"] for r in rows)
     e2e = sum(r["end_to_end"] for r in rows)
     fe = sum(r["false_easy"] for r in rows)
     mh = sum(r["missed_hard"] for r in rows)
     print(f"\nV5-F ROUTE WIRING: {n} units, held out")
-    print(f"  routing compliance : {comply}/{n} ({comply/n*100:.1f}%)   "
-          f"(cell executed the route its own grade selected)")
-    print(f"  END-TO-END         : {e2e}/{n} ({e2e/n*100:.1f}%)   "
-          f"(right route AND every step of it succeeded)")
-    print(f"  FALSE-EASY         : {fe}/{n} ({fe/n*100:.1f}%)   <- the dangerous error")
-    print(f"  missed-hard        : {mh}/{n} ({mh/n*100:.1f}%)")
+    print(f"  route-plan compliance : {comply}/{n} ({comply/n*100:.1f}%)   "
+          f"(cell executed the plan its own PREDICTION selected --")
+    print(f"  {'':<22}  says nothing about whether that prediction was right)")
+    print(f"  RIGHT ROUTE           : {right}/{n} ({right/n*100:.1f}%)   "
+          f"(predicted grade == truth; capped by triage)")
+    print(f"  END-TO-END            : {e2e}/{n} ({e2e/n*100:.1f}%)   "
+          f"(RIGHT route AND every step of it succeeded)")
+    print(f"  FALSE-EASY            : {fe}/{n} ({fe/n*100:.1f}%)   <- the dangerous error")
+    print(f"  missed-hard           : {mh}/{n} ({mh/n*100:.1f}%)")
+    wrong = [r for r in rows if not r["grade_correct"]]
+    if wrong:
+        print(f"\n  misgraded (wrong route, so NOT end-to-end successes even where every")
+        print(f"  step of the wrong route completed):")
+        for r in wrong:
+            print(f"    seed {r['seed']}: truth {r['truth']:<6} -> graded "
+                  f"{r['grade']:<6} route {r['route']:<21} "
+                  f"plan-compliant={'Y' if r['routing_ok'] else 'N'}")
     print(f"\n  by route:")
     for rt in ("easy", "medium", "hard_non_rectifiable"):
         sel = [r for r in rows if r["route"] == rt]
@@ -193,7 +226,9 @@ def report(rows):
     print("  stops there. Routing a HARD unit CORRECTLY means 'delivered to the gate',")
     print("  not 'repaired'. Asking what defines that fork is on the open-ask list.")
     print("  Easy/Medium/Hard class NAMES are DrinkPrime's; the BOUNDARIES are ours.")
-    st = {"n": n, "routing_compliance": comply / n, "end_to_end": e2e / n,
+    st = {"n": n, "routing_compliance": comply / n, "right_route": right / n,
+          "end_to_end": e2e / n,
+          "routing_compliance_n": comply, "right_route_n": right, "end_to_end_n": e2e,
           "false_easy": fe / n, "missed_hard": mh / n,
           "clean_verified": int(sum(r["clean_ok"] for r in cl)), "clean_n": len(cl),
           "leak_passed": int(sum(r["leak_ok"] for r in lk)), "leak_n": len(lk),
@@ -208,7 +243,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", type=int)
     ap.add_argument("--eval", type=int)
-    ap.add_argument("--seed0", type=int, default=1500)
+    # 1700 is the range that reproduces the PUBLISHED result. A bare --eval must
+    # reproduce, never replace: 1500-1539 are spent development seeds.
+    ap.add_argument("--seed0", type=int, default=1700)
     a = ap.parse_args()
     if a.run is not None:
         c = RouteCell()
@@ -221,6 +258,7 @@ if __name__ == "__main__":
             rows.append(r)
             print(f"  seed {a.seed0+k}: truth {r['truth']:<6} -> {r['grade']:<6} "
                   f"route {r['route']:<21} comply={'Y' if r['routing_ok'] else 'N'} "
+                  f"right={'Y' if r['grade_correct'] else 'N'} "
                   f"e2e={'Y' if r['end_to_end'] else 'N'}")
         report(rows)
     else:
