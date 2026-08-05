@@ -1035,28 +1035,59 @@ which is exactly what `V5_ROUTES['hard_non_rectifiable']` already says we do. **
 HARD unit correctly means "delivered to the gate", not "repaired."** That the fork is
 undecidable from the documents joins the open-ask list.
 
-### The number — fresh seeds 1512–1539, looked at once
+### RETRACTION, 2026-08-05 — the first published end-to-end figure was wrong
+
+**"end-to-end 28/28" is retracted. The correct figure for that run was 27/28**, and the
+metric that produced it has been fixed. `run_route()` selected `plan` from the **predicted**
+grade and then defined `routing_ok = (steps_done == plan)`, so it only ever asked *"did the
+cell execute the plan its own prediction chose?"* — never whether that prediction matched
+the unit's truth. `end_to_end` was built on it, so a misgraded unit that completed its
+**wrong** route scored as a full end-to-end success. The published wording —
+*"right route AND every step of it succeeded"* — asserted a check the code did not perform.
+Seed 1517 (truth EASY → graded MEDIUM) is the counterexample, and it is in the committed
+artifact of the original run.
+
+`grade_correct` is now a field, is **required** for `end_to_end`, and is in the stats file
+so the artifact audits itself. Route-plan compliance survives as its own metric: *"the cell
+did what it decided to do"* is real and worth measuring, it was genuinely 28/28, and it is
+neither deleted nor merged into end-to-end. Nothing else changed — not the classifier, not
+its thresholds, not the routes, not a success criterion.
+
+### The number — fresh seeds 1700–1727, looked at once
+
+Re-measured after the fix, on seeds never previously run. *(Not 1600–1607: 1604 and 1607
+are the V5-G demo seeds and were watched frame by frame, so they are burned.)*
 
 | | |
 |---|---|
-| routing compliance | **28/28 (100%)** |
-| **end-to-end** | **28/28 (100%)** |
+| route-plan compliance | **28/28 (100%)** — executed the plan its prediction selected |
+| right route (grade == truth) | **26/28 (92.9%)** — capped by triage |
+| **end-to-end** | **26/28 (92.9%)** — right route AND every step succeeded |
 | false-easy | **0/28** |
 | missed-hard | **0/28** |
-| easy route | 11/11 |
+| easy route | 12/12 |
 | medium route | 10/10 |
-| hard → scrap-approval gate | 7/7 |
-| CLEAN + VERIFY_CLEAN | **21/21** verified with zero residue |
-| CAP_TIGHTEN + VERIFY_LEAK | **10/10** passed, turns median 9.62, leak false-pass **0** |
+| hard → scrap-approval gate | 4/6 *(6 units routed there; 2 of them were truth MEDIUM)* |
+| CLEAN + VERIFY_CLEAN | **22/22** verified with zero residue |
+| CAP_TIGHTEN + VERIFY_LEAK | **10/10** passed, turns median 9.31, leak false-pass **0** |
 
-A first look at seeds 1500–1511 gave 12/12 on the same metrics; the 28 above are disjoint
-and are the headline.
+**Both misgrades are seeds 1701 and 1715, truth MEDIUM → graded HARD.** Every mechanical
+step still ran correctly; the two failures are triage errors propagating, which is exactly
+what end-to-end is supposed to expose and what the old metric hid. Both are in the
+**over-treatment** direction — a repairable unit sent to the human scrap-approval gate. That
+is wasteful, not unsafe, and a person at that gate sees the unit before anything is scrapped.
+**false-easy is 0/28**, and that remains the error that would matter.
 
-**What 0/28 does and does not establish.** Triage is 97.5%, so ~1 error in 40 units is
-expected; seeing none across 40 (12 + 28) has probability ≈ 0.36 under that rate — entirely
-consistent, and **not evidence that routing is more accurate than triage.** End-to-end is
-capped by triage and always will be: every wiring error this test can show is a triage
-error propagating. Measuring a 2.5% rate properly needs a few hundred units, not forty.
+**What 26/28 does and does not establish.** Triage is 97.5%, so ~0.7 errors in 28 units are
+expected and **P(≥2 errors) ≈ 0.15** — 2 errors is entirely ordinary, **not** evidence that
+routing has regressed or that triage is worse than published. Read the other direction too:
+the earlier 27/28 was **not** evidence routing beats triage. End-to-end is capped by triage
+and always will be — every wiring error this test can show is a triage error propagating.
+Across both corrected route runs, right-route is **53/56 (94.6%)**, still consistent with
+97.5%. Measuring a 2.5% rate properly needs a few hundred units, not fifty-six.
+
+*(The earlier first look at 1500–1511 gave "12/12" under the broken metric. It is not
+re-scored here — those rows were not kept — so it should not be quoted at all.)*
 
 ### The bug worth keeping — two stations, two different worlds
 
@@ -1073,7 +1104,9 @@ so until one process tried to run both stations. `RouteCell` now captures v5_tri
 globals at construction and restores them before every grade; grading went 1 wrong in 1 to
 **0 wrong in 12**.
 
-**Seeds consumed:** 1500–1511 (first look) and 1512–1539 (headline). Start at 1600.
+**Seeds consumed:** 1500–1511 (first look) and 1512–1539 (the retracted run), plus
+**1700–1727 (the corrected headline, 2026-08-05)**. Also burned: **1604 and 1607**, the
+V5-G demo seeds — rendered and watched, so never held-out again. **Start at 1728.**
 
 ---
 
@@ -1118,4 +1151,8 @@ at its calibrated pose and **V5-E reproduces exactly**: median 9.68 turns, 10/10
 pass, 0 false fail, 10/10 sabotage caught, 0 false pass, `stats_v5_membrane.json`
 byte-identical.
 
-**Demo seeds:** 1607 (medium), 1604 (hard). Rendering consumes no evaluation seeds.
+**Demo seeds:** 1607 (medium), 1604 (hard). **Both are now BURNED for evaluation.**
+*(This line previously read "rendering consumes no evaluation seeds." That is true only in
+the sense that rendering writes no stats file. These two seeds were rendered and watched
+frame by frame, so their outcomes are known — they can never serve as held-out units again,
+and the ledger in `CLAUDE.md` now says so.)*

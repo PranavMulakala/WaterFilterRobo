@@ -825,3 +825,27 @@ what we now understand.
   valid as the fixture that presents the part" applies to the CAMERA, not just the part.
   Cameras a number depends on are part of the apparatus -- give the video its own, and if a
   measurement camera ever must move, the threshold is re-frozen and the eval re-run
+- 2026-08-05 | **A published headline number was scoring a prediction against itself, and
+  nothing in the repo could have caught it.** An external audit found V5-F's
+  "end-to-end 28/28" was really 27/28. `v5_route.run_route()` selected the route `plan`
+  from the PREDICTED grade and then scored `routing_ok = (steps_done == plan)` -- so it
+  only ever asked "did the cell execute the plan its own prediction chose?", which is
+  nearly always yes. `end_to_end` was built on that, so a misgraded unit that completed its
+  WRONG route scored as a full end-to-end success. Seed 1517 (truth EASY -> graded MEDIUM)
+  was sitting in the committed `stats_v5_route.json` the whole time, with
+  `routing_ok: true, end_to_end: true` next to `truth != grade` -- the artifact contained
+  its own refutation and nobody diffed those two fields against each other. The published
+  wording, "right route AND every step of it succeeded", described a check the code did not
+  perform; the docstring and `report()` both said it, which made it read as verified.
+  Fixed by adding `grade_correct` and REQUIRING it for `end_to_end`; route-plan compliance
+  kept as its own metric (it is a real measurement and it is honestly 28/28). Re-measured
+  on fresh 1700-1727: compliance 28/28, right-route 26/28, end-to-end 26/28, false-easy
+  0/28. | ~1 h, plus a ~50 min re-eval | **WRITE THE ASSERTION THAT THE PROSE IMPLIES.**
+  Every claim of the form "X AND Y" should have a line of code containing both terms; here
+  "right route" appeared in three human-readable strings and zero expressions. Two cheap
+  habits would have caught it: (1) when a metric is derived from a prediction, ask what
+  independent value it is compared against -- if the answer is "nothing", it cannot fail;
+  (2) a stats artifact that carries both `truth` and `grade` should assert their agreement
+  rate itself, so the file audits its own headline. Also note the failure was invisible to
+  every existing guard: the gates passed, all five baselines were byte-identical, and the
+  eval reproduced exactly. A reproducible wrong number is still a wrong number
