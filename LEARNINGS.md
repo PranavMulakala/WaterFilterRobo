@@ -631,3 +631,32 @@ says this on screen.
 **Why it matters:** the honest version of a demo is often "this bit is real, that bit is a
 stand-in, here's the line between them." Drawing that line explicitly is what makes the
 real bit believable.
+
+## 2026-08-04 — Wiring the three stations together, and the decision we refused to make
+
+**What we built:** the full loop. A used unit is graded, and its grade picks its route:
+a light clean, or a clean plus a membrane rebuild, or out of the line entirely. Twenty-eight
+fresh units, every one routed correctly and completed.
+
+**The interesting part is the route we deliberately don't finish.** DrinkPrime's own chart
+splits the worst grade in two: units worth repairing, and units to scrap — decided on
+whether the repair would cost more than about 80–90%. Of what, none of their documents say.
+We have no cost model, no price list, no labour rate. So the cell **doesn't decide**. It
+delivers those units to a human approval gate and stops, and "routed correctly" for them
+means *delivered to the gate*, not *repaired*. Building a robot that guesses at a scrap
+decision would be worse than building one that hands it over.
+
+**A subtle failure when two stations met.** Each station had been quietly keeping its own
+idea of where the top of the device is — one said 0.22 m, the other 0.46 m. Alone, each was
+fine and internally consistent. Run in the same program, the inspection station started
+reading the *whole* device with thresholds tuned on the *lower half*, and immediately
+condemned a spotless unit as scrap. The clue was that both paths agreed exactly on what the
+unit really was, and disagreed on the verdict — when the inputs match and the answers don't,
+the difference is hidden state nobody passed in.
+
+**What 28 out of 28 does not mean.** Our grader is 97.5% accurate, so in forty units you'd
+expect about one mistake, and seeing none is ordinary luck rather than proof. The end-to-end
+number can never beat the grader feeding it. We report it that way.
+
+**Why it matters:** a pipeline's honest score is the weakest link's score, and its honest
+scope stops where its knowledge does.

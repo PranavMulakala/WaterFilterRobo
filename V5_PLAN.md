@@ -1013,3 +1013,64 @@ and the 0.854 surface probe. Fixed by varying what actually differs between real
 assemblies: **O-ring friction and squeeze, and the angle the cap is presented engaged at.**
 
 **Seeds consumed:** 1400–1409. Start at 1500.
+
+---
+
+## V5-F RESULT — route wiring, end to end
+
+`sim_poc/v5_route.py`. `RouteCell` subclasses `MemCell` → `Cell`, so triage, cleaning,
+verification and the membrane station are the ones already measured, not reimplementations.
+The routes come from `dp_process.V5_ROUTES` — **theirs, not invented**.
+
+### The fork this cell refuses to decide
+
+Their chart splits HARD into **RECTIFIABLE** and **NON RECTIFIABLE** on whether
+rectification cost exceeds **80–90% — of what, no document in the set says.** Our
+classifier outputs three grades and has no cost model, no price list and no labour figure,
+so it **cannot** make that call, and a cell that guessed would be scrapping units on a
+number it invented.
+
+So HARD routes to **SCRAP_APPROVAL**, a *human decision gate*, and the cycle stops there —
+which is exactly what `V5_ROUTES['hard_non_rectifiable']` already says we do. **Routing a
+HARD unit correctly means "delivered to the gate", not "repaired."** That the fork is
+undecidable from the documents joins the open-ask list.
+
+### The number — fresh seeds 1512–1539, looked at once
+
+| | |
+|---|---|
+| routing compliance | **28/28 (100%)** |
+| **end-to-end** | **28/28 (100%)** |
+| false-easy | **0/28** |
+| missed-hard | **0/28** |
+| easy route | 11/11 |
+| medium route | 10/10 |
+| hard → scrap-approval gate | 7/7 |
+| CLEAN + VERIFY_CLEAN | **21/21** verified with zero residue |
+| CAP_TIGHTEN + VERIFY_LEAK | **10/10** passed, turns median 9.62, leak false-pass **0** |
+
+A first look at seeds 1500–1511 gave 12/12 on the same metrics; the 28 above are disjoint
+and are the headline.
+
+**What 0/28 does and does not establish.** Triage is 97.5%, so ~1 error in 40 units is
+expected; seeing none across 40 (12 + 28) has probability ≈ 0.36 under that rate — entirely
+consistent, and **not evidence that routing is more accurate than triage.** End-to-end is
+capped by triage and always will be: every wiring error this test can show is a triage
+error propagating. Measuring a 2.5% rate properly needs a few hundred units, not forty.
+
+### The bug worth keeping — two stations, two different worlds
+
+Seed 1500 graded **truth EASY → predicted HARD**, a two-class jump the published confusion
+matrix says never happens. The counts were identical on both paths; only the *prediction*
+differed. Cause: `v5_triage.load_scene()` computes `CAB_TOP = 0.220` while
+`v5_clean._sync_triage_globals()` computes **0.460** from the live model — and **the frozen
+triage thresholds were calibrated against 0.220**, i.e. against per-face search quads
+covering roughly the lower half of each face. Grading the full face with half-face
+thresholds reads far more defect area and grades harder.
+
+Both are internally consistent. They are simply **not interchangeable**, and nothing said
+so until one process tried to run both stations. `RouteCell` now captures v5_triage's own
+globals at construction and restores them before every grade; grading went 1 wrong in 1 to
+**0 wrong in 12**.
+
+**Seeds consumed:** 1500–1511 (first look) and 1512–1539 (headline). Start at 1600.
