@@ -1,18 +1,18 @@
 {
   "n": 8,
   "picked": 8,
-  "coverage_mean": 0.9458536255411256,
-  "coverage_worst": 0.8571428571428571,
-  "missed": 8,
+  "coverage_mean": 1.0,
+  "coverage_worst": 1.0,
+  "missed": 0,
   "soil": 129,
-  "f_max": 271.2296039795668,
-  "in_band": 0.8813945141302705,
-  "contact_run": 0.7752498810090434,
-  "contact_planned": 0.7752498810090434,
+  "f_max": 111.24278173059258,
+  "in_band": 0.9907534470365288,
+  "contact_run": 0.9341578356204522,
+  "contact_planned": 0.9341578356204522,
   "raster_planned": 3744,
   "raster_skipped": 0,
   "raster_infeasible": 0,
-  "tilt_mean_deg": 7.414529914529915,
+  "tilt_mean_deg": 18.205128205128204,
   "tilt_max_deg": 30.0,
-  "exact_normal_frac": 0.42735042735042733
+  "exact_normal_frac": 0.0876068376068376
 }

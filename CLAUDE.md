@@ -11,27 +11,32 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE on coverage — 94.6%** held out (900–907); **NOT closed on force**: 88.1% in band, 271 N peak — outside the range our contact model is validated over |
-| V5-D verification + sabotage test | **DONE** — sabotage caught **10/10**, false verifies **0/10**; needed a 2nd camera. Honest units verify only **6/10** — see below |
+| V5-C cleaning | **DONE — 100%** coverage (8/8 units, 900–907), 0 missed of 129; force **99.1%** in band, peak 111 N |
+| V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | not started |
 | V5-F route wiring (triage grade selects the route, end-to-end eval) | not started |
 | V5-G video | not started |
 
-**Immediate next task: reopen V5-C on the TOP FACE.** V5-D is done and it says V5-C is
-not. Under DrinkPrime's own acceptance criterion — Stage 3's *"check for any missed
-spots"*, which is **binary per unit** — the cleaning station passes **6 of 10 units**, not
-94.6%. Every failure is top-face residue, and the open force defect is the same face. Fix
-the top-face pass and both numbers move together.
+**Immediate next task: V5-E (membrane, Stage 10), then V5-F route wiring.** V5-C and V5-D
+are both closed. Cleaning is 100% coverage on 8 units and zero residue on 10 more, force
+99.1% in band; the falsification test catches 10/10 sabotaged units with 0 false verifies.
 
-**V5-D's own lesson, which is the reusable one:** its first run met the stated exit
-criterion (*honest verified n/n, sabotaged caught n/n*) with a check that was passing 9 of
-10 dirty units. The triage camera sits at z = 0.400, the top face at z = 0.450 — below the
-plane — so it graded four faces while cleaning covered five, **and the face it could not
-see is the face cleaning misses.** A `verify_top` camera fixed it and is now a CELL_SPEC
-hardware requirement. Always report the FALSE-VERIFY rate next to the sabotage rate; the
-sabotage arm alone cannot detect a blind verifier.
+**The lesson from closing them, and it is the reusable one.** Both the coverage gap AND the
+unclosed force band were ONE defect: a 7-DoF arm has many configurations for the same pose,
+and the planner took the first it found, so raster points 27 mm apart landed in different
+IK branches — up to **5.78 rad of joint motion for a 37 mm step**. The executor cannot
+cover that in its budget, and on the way it sweeps the pad across the device. Face 180 had
+zero jumps and was the only pass that ever behaved; that contrast is what located it.
+`plan_pad` now prefers the solution nearest the previous configuration
+(`max_joint_jump = 0.35` rad). **Cost, and quote it with the tilt figure:** exact-normal
+presses fell 42.7% → 8.8%, mean tilt 7.4° → 18.2°, still inside the 30° cone.
 
-*(Superseded next task: V5-D verification + sabotage test.)* V5-C's five fixes are
+**And V5-D's lesson:** its first run met the stated exit criterion (*honest verified n/n,
+sabotaged caught n/n*) with a check passing 9 of 10 dirty units — the triage camera sits at
+z = 0.400, the top face at z = 0.450, so it graded four faces while cleaning covered five,
+**and the face it could not see was the face cleaning missed.** A `verify_top` camera fixed
+it and is a CELL_SPEC hardware requirement. Always report the FALSE-VERIFY rate next to the
+sabotage rate; a sabotage arm alone cannot detect a blind verifier. V5-C's five fixes are
 landed; see V5_PLAN "V5-C DIAGNOSIS" and "V5-C RESULT". Coverage **64.7% → 94.6%** held
 out (seeds 900–907), 0 raster points skipped, tool drift 0.03 mm. None of it came from
 tuning — it was four bugs in the motion layer plus two more that fell out of fixing them:
@@ -78,7 +83,7 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 700–819 (triage), 1000–1009 + 1100–1109 (V5-D), 800–807 (cleaning; re-used for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
 needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
-so start at 1200 — 1000–1009 and 1100–1109 went to V5-D.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
+so start at 1300 — 1000–1009, 1100–1109 and 1200–1209 went to V5-D.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
 to 900 so a bare `--eval 8` reproduces the published number rather than a spent range.
 
 ## First steps every session

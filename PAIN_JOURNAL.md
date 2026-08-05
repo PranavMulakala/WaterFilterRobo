@@ -707,3 +707,21 @@ what we now understand.
   faces. Criteria written before the thing they measure cannot anticipate where it will
   be blind. | ~0 | when a criterion is met on the first attempt, that is a reason to
   distrust it, not to celebrate. Ask what a broken version of the system would score
+- 2026-08-04 | **The coverage gap and the force spike were ONE defect, and it was the IK
+  picking a different arm every 27 mm.** V5-C's top face left residue and V5-C's force band
+  would not close; both were chased separately for hours. Root cause: a 7-DoF arm has many
+  joint configurations for the same tool pose, `plan_pad` returned the FIRST feasible one,
+  and adjacent raster points therefore landed in different branches. Measured joint-space
+  step between neighbouring points: **5.78 rad for a 37 mm move** on the top face, 32 of 90
+  points above 0.5 rad on face 90, 32 of 120 on face 0 -- and **0 of 120 on face 180**,
+  which was the only pass that had ever behaved. The executor interpolates at 0.02 rad/step
+  inside a 2.5 s budget, so a branch jump cannot finish; on the way it swept the pad in a
+  wide arc, measured 257 mm off target and 37 mm past the face edge, which is also where
+  every force spike came from. Fix: prefer the solution nearest the previous configuration
+  (0.35 rad/joint, against a 0.11-0.19 rad median that the geometry needs). Coverage
+  94.6 -> 100%, in-band force 88.1 -> 99.1%, peak 271 -> 111 N, all from one change.
+  | ~2 h | the tell was there the whole time and I had already printed it: ONE pass with
+  zero jumps and four with dozens. When one instance of a repeated thing works and the
+  others do not, diff the instances before diffing the theory. Also: a median that looks
+  healthy (-2.4 mm) beside a min that does not (-233 mm) means outliers, not bias -- read
+  both before reaching for a systematic explanation
