@@ -55,8 +55,10 @@ closer to the funding bar's wording than v5's dry cabinet wipe. See the videos b
 ## The demos
 
 **[media/v5_cell_reel.mp4](media/v5_cell_reel.mp4)** — **the one to send people (2:24).**
-All three routes end to end at a labelled 4×, then a stats card, then a card listing
-everything that *isn't* real. **Each clip is a unit from the published eval set** — seeds
+All three routes end to end at a labelled **1.5×** (slow enough to dissect), then a stats
+card, then a card listing everything that *isn't* real. **Read
+[media/REEL_WALKTHROUGH.md](media/REEL_WALKTHROUGH.md) alongside it** — chapter times, what
+happens at each station, and which parts the arm actually performs (it is two of them). **Each clip is a unit from the published eval set** — seeds
 1700 / 1704 / 1702 are rows in `stats_v5_route.json`, so every number on screen can be
 checked against the committed artifact. Rebuild with `v5_video.py --reel`.
 

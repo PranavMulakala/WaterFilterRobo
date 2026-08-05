@@ -34,16 +34,16 @@ from sim_poc4 import _font, FPS
 W, H = 1280, 720
 
 CAVEAT = {
-    "TRIAGE": "Easy/Medium/Hard: the class NAMES are DrinkPrime's, the BOUNDARIES are ours "
-              "-- no document in their set defines them.",
+    "TRIAGE": "NO ARM MOTION HERE -- the arm parks clear, the turntable is stepped to each "
+              "face and a FIXED camera grades pixels. NAMES theirs, BOUNDARIES ours.",
     "CLEAN": "No cream, detergent or chemistry is simulated. What is verified is that the "
              "soil the camera could see is gone.",
-    "VERIFY": "Re-inspected through a SECOND camera: the triage camera cannot see the top "
-              "face, and that is the face cleaning misses.",
-    "MEMBRANE": "Arm REALLY inserts the element into an OPEN bowl. The CAP IS PRESENTED "
-                "BY A FIXTURE -- that is NOT a robot motion. Geometry is PLACEHOLDER.",
-    "DIP": "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. No fluid or gas is simulated "
-           "anywhere; the camera still has to see them to fail the part.",
+    "VERIFY": "NO ARM MOTION -- cameras only. Re-inspected through a SECOND camera: the "
+              "triage camera cannot see the top face, and that is the face cleaning misses.",
+    "MEMBRANE": "The ARM really inserts the element. The CAP IS NOT TURNED BY THE ARM -- a "
+                "station driver spins it, and the fixture presents it. Geometry PLACEHOLDER.",
+    "DIP": "THE ARM DOES NOT CARRY THIS -- the assembly is TELEPORTED into the bin. "
+           "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. The camera must still see them.",
     "SCRAP": "NO MOTION DELIVERS THE UNIT ANYWHERE -- this is a SOFTWARE decision only. "
              "HARD forks into RECTIFIABLE / NON-RECTIFIABLE on rectification cost. We have "
              "no cost model, so this goes to a HUMAN approval gate.",
@@ -62,8 +62,11 @@ class Recorder:
         self.frames = []
         self.speed = speed
         self.info = {}
+        self.marks = []          # (frame index, station) each time the station changes
 
     def grab(self, d, station, cam="main", inset=None):
+        if not self.marks or self.marks[-1][1] != station:
+            self.marks.append((len(self.frames), station))
         self.main.update_scene(d, camera=cam)
         img = self.Image.fromarray(self.main.render())
         draw = self.ImageDraw.Draw(img, "RGBA")
@@ -128,10 +131,10 @@ def _wrap(s, n):
     return out[:2]
 
 
-def render_unit(seed, speed=1, out=None):
+def render_unit(seed, speed=1.0, out=None):
     c = RT.RouteCell()
     rec = Recorder(c.m, speed)
-    every = max(1, int(round(1.0 / FPS / c.dt)) * speed)
+    every = max(1, int(round(speed / (FPS * c.dt))))
 
     # ---------------- TRIAGE
     row = c.grade(seed)
@@ -243,7 +246,7 @@ def render_unit(seed, speed=1, out=None):
 
     out = out or f"v5_cell_{seed}.mp4"
     rec.write(out)
-    return out
+    return out, [(i / FPS, st) for i, st in rec.marks], len(rec.frames) / FPS
 
 
 # --------------------------------------------------------------- the full reel
@@ -270,7 +273,7 @@ def _card(lines, fname, secs, accent=(41, 121, 255)):
                     codec="libx264", quality=8, pixelformat="yuv420p")
 
 
-def make_reel(speed=4, out="media/v5_cell_reel.mp4"):
+def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
     """Every route end to end, with the numbers and the caveats on the same reel.
 
     The end card carries FULLY BACKED (22/28), not end-to-end (26/28), because the HARD
@@ -294,9 +297,13 @@ def make_reel(speed=4, out="media/v5_cell_reel.mp4"):
            ("seeds 1700 / 1704 / 1702 are rows in stats_v5_route.json", 22, False, A)],
           "card_v5_title.mp4", 5.0)
     parts = ["card_v5_title.mp4"]
+    chapters, clock = [(0.0, "TITLE CARD")], 5.0
     for seed, label in REEL:
         f = f"reel_{seed}.mp4"
-        render_unit(seed, speed, f)
+        _, marks, dur = render_unit(seed, speed, f)
+        chapters.append((clock, f"--- {label} route, seed {seed} ---"))
+        chapters += [(clock + t, f"    {st}") for t, st in marks]
+        clock += dur
         parts.append(f)
     _card([("WHAT THIS RUN MEASURED", 46, True, W_),
            ("", 10, False, (0, 0, 0)),
@@ -329,7 +336,15 @@ def make_reel(speed=4, out="media/v5_cell_reel.mp4"):
             f.write(f"file '{p}'\n")
     subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", "concat_v5.txt",
                     "-c", "copy", out], check=True, capture_output=True)
-    print(f"wrote {out}  ({len(parts)} parts)")
+    chapters.append((clock, "STATS CARD")); clock += 8.0
+    chapters.append((clock, "CAVEATS CARD")); clock += 9.0
+    print(f"wrote {out}  ({len(parts)} parts, {int(clock)//60}:{clock%60:04.1f})")
+    print("\nCHAPTERS")
+    for t, name in chapters:
+        print(f"  {int(t)//60}:{t%60:04.1f}  {name}")
+    with open("reel_chapters.txt", "w") as fh:
+        for t, name in chapters:
+            fh.write(f"{int(t)//60}:{t%60:04.1f}  {name}\n")
     return out
 
 
@@ -338,11 +353,12 @@ if __name__ == "__main__":
     ap.add_argument("--render", type=int, help="seed to render")
     ap.add_argument("--reel", action="store_true",
                     help="title + one clip per route + stats + caveats -> one file")
-    ap.add_argument("--speed", type=int, default=1, help="frame decimation; stamped on frame")
+    ap.add_argument("--speed", type=float, default=1.0,
+                    help="playback speed-up; stamped on frame. 1.5 = slow enough to dissect")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     if a.reel:
-        make_reel(a.speed if a.speed > 1 else 4, a.out or "../media/v5_cell_reel.mp4")
+        make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
         render_unit(a.render, a.speed, a.out)
     else:

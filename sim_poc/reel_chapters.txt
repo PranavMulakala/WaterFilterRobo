@@ -1,0 +1,16 @@
+0:00.0  TITLE CARD
+0:05.0  --- EASY route, seed 1700 ---
+0:05.0      TRIAGE
+0:05.8      CLEAN
+2:40.5      VERIFY
+2:42.5  --- MEDIUM route, seed 1704 ---
+2:42.5      TRIAGE
+2:43.3      CLEAN
+5:18.1      VERIFY
+5:20.1      MEMBRANE
+5:33.9      DIP
+5:36.9  --- HARD route, seed 1702 ---
+5:36.9      TRIAGE
+5:37.7      SCRAP
+5:40.2  STATS CARD
+5:48.2  CAVEATS CARD
