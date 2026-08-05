@@ -887,6 +887,21 @@ The curve **breaks between 60 and 80 N** — an 18 mm jump to twice the pad's ow
 half-thickness, non-monotonic above that. So 60 N is a **model-validity ceiling**, and no
 amount of sweeping makes it higher.
 
+> ### ⚠️ CORRECTED during V5-E — the ceiling is **45 N**, not 60
+> The table above is itself a **coarse-grid artifact**. It samples 0/5/10/20/40/60 and
+> never tries 50 — where the contact solver goes unstable (**11.6 mm** of penetration on a
+> 10 mm pad). Swept finely the curve is clean and repeatable to **45 N** and
+> *intermittently* unstable above: **50 breaks, 55 is fine, 60 breaks, 65 is fine.** That
+> is the solver, not the pad, so "breaks between 60 and 80" was the wrong shape of claim.
+>
+> **Not a regression from V5-E.** Verified against the committed pre-V5-E scene, which
+> breaks at 50 N identically — the instability was always there and the grid hid it.
+>
+> Gate 1's *conclusion* is unchanged and better supported: cleaning peaks at **34.5 N**,
+> and 30/35/40/45 N all read a clean 2.13–2.19 mm. `force_hi` is now **45 N**, the gate
+> sweeps a fine grid inside it, and the beyond-validity probe prints 50/55/60/80/120 so
+> the non-monotonic shape is on the page rather than inferred.
+
 **Justifying the peak was tempting and wrong.** The 111 N was a genuine transient — 0.012%
 of contact samples, 0.04 s of 307 s, at 3.70 mm penetration where the model still behaves.
 But "rarely in the broken region" is not "outside the broken region", and a founder video

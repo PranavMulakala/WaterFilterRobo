@@ -72,6 +72,25 @@ CAB_WIDTH = 0.25      # Y extent
 CAB_HEIGHT = 0.45     # Z extent, standing on the bench at z = 0
 
 TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
+# ---------------------------------------------------------------- V5-E, Stage 10
+# *** EVERY MEMBRANE DIMENSION BELOW IS INVENTED. *** No source document gives a bowl,
+# cap, O-ring or membrane size (dp_process.MISSING). The ask is out to the customer for
+# STL/STEP against the only three part numbers in the entire 13-document set --
+#   100059 MEMBRANE BOWL | 100031 MEMBRANE CAP | 100099 MEMBRANE O-RING  (Stage 10)
+# -- and THIS BLOCK IS THE SWAP-IN POINT. Replace the numbers here, re-run the gates, and
+# nothing downstream should need touching. They are a plausible domestic RO housing.
+MEM_XY = (0.34, 0.30)         # membrane station: bowl fixture
+BIN_XY = (0.52, 0.26)         # water bin for the Stage-10 bubble test
+MEM_BOWL_R = 0.032            # bowl outer radius
+MEM_BOWL_H = 0.115            # bowl height
+MEM_CAP_R = 0.034             # cap outer radius
+MEM_THREAD_PITCH = 0.002      # m of axial travel per turn -- a coarse housing thread
+MEM_TURNS_MAX = 4.0           # driver stroke, turns
+MEM_ORING_R = 0.028           # O-ring mean radius, sits on the bowl rim
+# Torque at which the driver stalls and stops. THIS IS OUR NUMBER, not theirs: Stage 10
+# says only "Ensure the cap is tightened properly with the spanner" -- a qualitative
+# criterion with no figure anywhere in the corpus. Anything quoting it says so.
+MEM_TORQUE_NM = 6.0
 BACKDROP_X = 0.86             # matte panel behind the device, from the arm's viewpoint
 TT_RISE = 0.010               # rotary indexer disc height above the bench
 # The arm's kinematic root sits 120 mm above the bench top -- an offset inherited from
@@ -224,6 +243,16 @@ def build(seed=SEED, cab_x=CAB_X):
     <!-- cabinet: light warm grey plastic, like the real appliance -->
     <material name="cabmat" rgba="0.88 0.89 0.90 1" reflectance="0.12"/>
     <material name="faciamat" rgba="0.16 0.5 0.82 1" reflectance="0.2"/>
+    <!-- V5-E membrane station -->
+    <material name="bowlmat"  rgba="0.86 0.87 0.89 1" reflectance="0.12"/>
+    <material name="capmat"   rgba="0.24 0.45 0.62 1" reflectance="0.18"/>
+    <material name="oringmat" rgba="0.10 0.10 0.12 1" reflectance="0.05"/>
+    <material name="elemmat"  rgba="0.93 0.93 0.90 1" reflectance="0.04"/>
+    <material name="binmat"   rgba="0.55 0.58 0.62 1" reflectance="0.10"/>
+    <material name="watermat" rgba="0.35 0.62 0.78 0.45" reflectance="0.30"/>
+    <!-- BUBBLES. Emissive so they read against the water even at low light. Revealed only
+         as a modelled consequence of under-tightening -- see the membrane station block. -->
+    <material name="bubblemat" rgba="0.95 0.98 1.0 0.75" reflectance="0.5" emission="0.35"/>
     <material name="panelmat" rgba="0.80 0.81 0.83 1" reflectance="0.08"/>
     <!-- the three condition classes. Deliberately NOT flat recolours of the body: the
          classifier has to measure coverage and texture, not read back a value we set. -->
@@ -560,7 +589,119 @@ def build(seed=SEED, cab_x=CAB_X):
     <geom name="post_base" type="cylinder" size="0.055 0.010" pos="{tx:.3f} {ty:.3f} 0.010"
           material="postmat"/>
     <site name="post_pt" pos="{tx:.3f} {ty:.3f} 0.30" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- ===================== MEMBRANE STATION (Stage 10) =====================
+         PLACEHOLDER GEOMETRY. See MEM_* at the top of this file for the swap-in point
+         and the three part numbers the CAD ask names.
+
+         WHAT IS MODELLED AND WHAT IS NOT, stated here so it cannot drift:
+         * The cap is THREADED and multi-turn, terminated by a TORQUE criterion. It is a
+           hinge + slide coupled by an equality into a screw of {MEM_THREAD_PITCH*1000:.0f} mm pitch,
+           driven by a force-limited actuator that STALLS -- which is what a torque-limited
+           driver does. It is NOT our v2/v3/v4 55-degree indexed bayonet, and the two must
+           never be called equivalent: same task class, different motion.
+         * The cap is presented ENGAGED ON THE FIRST THREAD, as a human would start it.
+           Thread-starting is its own research problem and is de-scoped, like the elbows.
+         * The O-ring is REAL: a soft geom the cap compresses. Stage 10's material table
+           lists it, and a joint with no seal is not a seal test.
+         * Plug, ball valve and 80-90 PSI are LOGGED STATE, not gas physics.
+         * BUBBLES ARE A PROXY. They are revealed as a modelled consequence of
+           under-tightening, NOT computed from fluid dynamics. There is no fluid
+           simulation anywhere in this repo. The camera still has to SEE them, so the
+           pass/fail is caused rather than asserted. -->
+    <body name="mem_fixture" pos="{MEM_XY[0]:.3f} {MEM_XY[1]:.3f} 0">
+      <geom name="mem_post" type="cylinder" size="0.045 0.020" pos="0 0 0.020"
+            material="postmat"/>
+    </body>
+
+    <body name="mem_bowl" pos="{MEM_XY[0]:.3f} {MEM_XY[1]:.3f} 0.040">
+      <freejoint name="bowl_free"/>
+      <!-- bowl wall as a ring of segments: MuJoCo has no open cylinder primitive, and a
+           solid one would leave nowhere to put the membrane -->
+      <geom name="mem_bowl_base" type="cylinder" size="{MEM_BOWL_R:.4f} 0.006"
+            pos="0 0 0.006" material="bowlmat" mass="0.18"/>
+      {"".join(f"""<geom name="mem_wall{i}" type="box" size="0.005 0.0085 {MEM_BOWL_H/2:.4f}"
+            pos="{MEM_BOWL_R*0.86*np.cos(i*np.pi/4):.4f} {MEM_BOWL_R*0.86*np.sin(i*np.pi/4):.4f} {MEM_BOWL_H/2:.4f}"
+            euler="0 0 {i*np.pi/4:.5f}" material="bowlmat" mass="0.018"/>
+      """ for i in range(8))}
+      <!-- O-RING on the rim. Soft, and its own contact priority for the same reason the
+           wiping pad has one: MuJoCo averages solref between geoms otherwise, and the
+           compliance that sets the torque curve would silently become someone else's. -->
+      {"".join(f"""<geom name="mem_oring{i}" type="sphere" size="0.0030"
+            pos="{MEM_ORING_R*np.cos(i*np.pi/6):.4f} {MEM_ORING_R*np.sin(i*np.pi/6):.4f} {MEM_BOWL_H + 0.0030:.4f}"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      """ for i in range(12))}
+      {"".join(f"""<geom name="mem_rim{i}" type="sphere" size="0.0035"
+            pos="{(MEM_BOWL_R-0.002)*np.cos(i*np.pi/4):.4f} {(MEM_BOWL_R-0.002)*np.sin(i*np.pi/4):.4f} {MEM_BOWL_H - 0.0005:.4f}"
+            material="bowlmat" mass="0.001"/>
+      """ for i in range(8))}
+      <site name="mem_seal" pos="0 0 {MEM_BOWL_H:.4f}" size="0.004" rgba="0 0 0 0"/>
+      <!-- BUBBLE GEOMS. Alpha 0 until revealed. THEY ARE A PROXY: revealed as a modelled
+           consequence of an under-tightened cap, NOT computed from any fluid or gas
+           simulation -- there is none anywhere in this repo. What stays real is that the
+           camera has to SEE them, so the pass/fail is caused by the torque outcome rather
+           than read from a variable. Every artifact showing this says so on the HUD. -->
+      {"".join(f"""<geom name="bubble{i}" type="sphere" size="{0.0035 + 0.0016*((i*7)%5):.4f}"
+            pos="{MEM_ORING_R*1.03*np.cos(i*np.pi/5):.4f} {MEM_ORING_R*1.03*np.sin(i*np.pi/5):.4f} {MEM_BOWL_H + 0.010 + 0.011*((i*3)%4):.4f}"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      """ for i in range(10))}
+
+      <body name="mem_cap" pos="0 0 {MEM_BOWL_H + 0.020:.4f}">
+        <!-- THE SCREW. cap_z is tied to cap_rot by an equality below; together they are a
+             single helical degree of freedom. Driven by `capdrv`, whose forcerange IS the
+             torque limit -- the driver stalls instead of stripping the thread. -->
+        <joint name="cap_rot" type="hinge" axis="0 0 1" damping="0.05" armature="0.002"/>
+        <joint name="cap_z" type="slide" axis="0 0 1" damping="2.0" range="-0.030 0.001"/>
+        <geom name="mem_cap_body" type="cylinder" size="{MEM_CAP_R:.4f} 0.010"
+              pos="0 0 0.010" material="capmat" mass="0.09"/>
+        <!-- flats for the spanner/driver head, and so the cap's rotation is VISIBLE -->
+        <geom name="mem_cap_flat" type="box" size="{MEM_CAP_R*0.92:.4f} 0.006 0.007"
+              pos="0 0 0.024" material="stemmat" mass="0.02"/>
+        <site name="cap_top" pos="0 0 0.031" size="0.004" rgba="0 0 0 0"/>
+      </body>
+    </body>
+
+    <!-- the membrane element the arm inserts into the bowl before capping -->
+    <body name="mem_elem" pos="{MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.072">
+      <freejoint name="elem_free"/>
+      <geom name="mem_elem_body" type="cylinder" size="0.021 0.036" pos="0 0 0"
+            material="elemmat" mass="0.10" friction="0.9 0.01 0.001"/>
+    </body>
+    <geom name="mem_elem_nest" type="cylinder" size="0.040 0.018"
+          pos="{MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.018" material="postmat"/>
+
+    <!-- ===================== WATER BIN (Stage 10 dip) =====================
+         The dip is a BUBBLE TEST on a pressurised subassembly (3.6 -> 3.7), not a wash.
+         No fluid is simulated: the "water" geom has contype 0 and exists so the render
+         reads as a dip. -->
+    <body name="waterbin" pos="{BIN_XY[0]:.3f} {BIN_XY[1]:.3f} 0">
+      {"".join(f"""<geom name="bin_w{i}" type="box" size="{0.006 if i < 2 else 0.075} {0.075 if i < 2 else 0.006} 0.055"
+            pos="{(0.075 if i == 0 else -0.075 if i == 1 else 0):.3f} {(0 if i < 2 else 0.075 if i == 2 else -0.075):.3f} 0.055"
+            material="binmat"/>
+      """ for i in range(4))}
+      <geom name="bin_floor" type="box" size="0.075 0.075 0.005" pos="0 0 0.005"
+            material="binmat"/>
+      <geom name="bin_water" type="box" size="0.070 0.070 0.036" pos="0 0 0.046"
+            material="watermat" contype="0" conaffinity="0"/>
+      <site name="bin_centre" pos="0 0 0.070" size="0.005" rgba="0 0 0 0"/>
+    </body>
   </worldbody>
+
+  <!-- THE CAP MUST BE TOLD TO TOUCH ITS OWN O-RING. `mem_cap` is a CHILD body of
+       `mem_bowl` joined by the thread, and MuJoCo excludes contacts between bodies
+       connected by a joint -- so the cap wound 49 mm down through the seal without ever
+       loading it, and the driver never stalled. Explicit pairs override that filtering.
+       This is the seal that makes the torque criterion mean anything. -->
+  <contact>
+    {"".join(f"""<pair geom1="mem_cap_body" geom2="mem_oring{i}" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    """ for i in range(12))}
+    {"".join(f"""<pair geom1="mem_cap_body" geom2="mem_rim{i}" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    """ for i in range(8))}
+  </contact>
 
   <equality>
     <!-- ================= POSITIVE TOOL COUPLING (V5-C) =================
@@ -585,6 +726,16 @@ def build(seed=SEED, cab_x=CAB_X):
          conservative direction. -->
     <weld name="toollock" body1="xarm_gripper_base_link" body2="padtool"
           active="false" solref="0.004 1" torquescale="1"/>
+    <!-- THE THREAD. MuJoCo has no screw joint, so one is built from a hinge and a slide
+         tied together: cap_z = -(pitch / 2pi) * cap_rot. That single line is what makes
+         the cap MULTI-TURN and axially advancing rather than our fixed-angle bayonet.
+         pitch = {MEM_THREAD_PITCH*1000:.0f} mm/turn, so {MEM_TURNS_MAX:.0f} turns of driver stroke is
+         {MEM_TURNS_MAX*MEM_THREAD_PITCH*1000:.0f} mm of travel. -->
+    <joint name="capthread" joint1="cap_z" joint2="cap_rot"
+           polycoef="0 {-MEM_THREAD_PITCH/(2*np.pi):.8f} 0 0 0"
+           solref="0.001 1" solimp="0.99 0.999 0.0001"/>
+    <weld name="partlock" body1="xarm_gripper_base_link" body2="mem_bowl"
+          active="false" solref="0.004 1" torquescale="1"/>
   </equality>
 
   <actuator>
@@ -601,6 +752,14 @@ def build(seed=SEED, cab_x=CAB_X):
          continuously; specify one that does. -->
     <position name="tt" joint="tt_rot" kp="120" kv="18" ctrlrange="-6.2832 6.2832"
               forcerange="-40 40"/>
+    <!-- THE TORQUE-LIMITED DRIVER. A velocity actuator whose FORCERANGE IS THE TORQUE
+         LIMIT: it winds the cap down until the O-ring load makes it stall, which is
+         precisely how a real nutrunner terminates. Achieved turns and the torque at
+         cutoff are what get reported -- never a commanded angle.
+         {MEM_TORQUE_NM:.1f} N.m is OUR number. Stage 10 says only "Ensure the cap is tightened
+         properly with the spanner"; no torque figure exists anywhere in the corpus. -->
+    <velocity name="capdrv" joint="cap_rot" kv="3.0" ctrlrange="-6 6"
+              forcerange="{-MEM_TORQUE_NM:.2f} {MEM_TORQUE_NM:.2f}"/>
   </actuator>
 
   <keyframe>
@@ -619,12 +778,22 @@ def build(seed=SEED, cab_x=CAB_X):
          without touching three validated cells. Hence a second, complete keyframe.
          `v5_check_scene.py` asserts this one is correct and that index 0 is NOT used.
 
-         qpos layout (22): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         AND IT HAPPENED AGAIN IN V5-E. Adding the membrane bowl and element free joints
+         plus the two cap joints silently extended nq from 22 to 38, and the old 22-value
+         key zero-filled the rest -- putting the bowl AND the membrane element at the world
+         origin, i.e. inside the arm riser: 174 contacts at spawn, and a screw that could
+         not load because the parts it screws onto were somewhere else. If you add a joint
+         to this scene, THIS STRING IS PART OF THE CHANGE.
+
+         qpos layout (38): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
-         ctrl layout  (9): 7 arm | 1 gripper | 1 tt -->
+                         | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
+         ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
     <key name="v5home"
-         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0  0"
-         ctrl="0 -.247 0 .909 0 1.15644 0 0 0"/>
+         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0  0
+               {MEM_XY[0]:.3f} {MEM_XY[1]:.3f} 0.040 1 0 0 0  0 0
+               {MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.072 1 0 0 0"
+         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0"/>
   </keyframe>
 </mujoco>
 ''')
