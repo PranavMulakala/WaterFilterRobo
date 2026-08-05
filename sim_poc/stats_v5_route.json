@@ -1,0 +1,869 @@
+{
+  "n": 28,
+  "routing_compliance": 1.0,
+  "end_to_end": 1.0,
+  "false_easy": 0.0,
+  "missed_hard": 0.0,
+  "clean_verified": 21,
+  "clean_n": 21,
+  "leak_passed": 10,
+  "leak_n": 10,
+  "rows": [
+    {
+      "seed": 1512,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1513,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.798585042365035,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1514,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.739579371178628,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1515,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.318140907859158,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1516,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1517,
+      "truth": "easy",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.246115853394912,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1518,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1519,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1520,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1521,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.643362075143301,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1522,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1523,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.553471761995784,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1524,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.977087032603563,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1525,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.59683188669919,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1526,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1527,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1528,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1529,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1530,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1531,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1532,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1533,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1534,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1535,
+      "truth": "hard",
+      "grade": "hard",
+      "route": "hard_non_rectifiable",
+      "plan": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "clean_ok": null,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": null,
+      "scrap_gate": true,
+      "steps_done": [
+        "TRIAGE",
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1536,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.19154444010774,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1537,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1538,
+      "truth": "easy",
+      "grade": "easy",
+      "route": "easy",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": null,
+      "turns": null,
+      "torque_nm": null,
+      "residue": 0,
+      "coverage": 1.0,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    },
+    {
+      "seed": 1539,
+      "truth": "medium",
+      "grade": "medium",
+      "route": "medium",
+      "plan": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "clean_ok": true,
+      "leak_ok": true,
+      "turns": 9.903465992268425,
+      "torque_nm": 6.0,
+      "residue": 0,
+      "coverage": 1.0,
+      "bubble_px": 0,
+      "leak_false_pass": false,
+      "steps_done": [
+        "TRIAGE",
+        "CLEAN_CABINET",
+        "VERIFY_CLEAN",
+        "MEMBRANE_INSERT",
+        "CAP_TIGHTEN",
+        "LEAK_DIP",
+        "VERIFY_LEAK",
+        "PASS"
+      ],
+      "routing_ok": true,
+      "end_to_end": true,
+      "false_easy": false,
+      "missed_hard": false
+    }
+  ]
+}

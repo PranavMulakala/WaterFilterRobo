@@ -798,3 +798,19 @@ what we now understand.
   | ~1.5 h | every one of these is the physics engine's contact model, not the controller.
   Probe the mechanism in isolation BEFORE wiring a cycle around it -- the screw test that
   found three of them is fifteen lines
+- 2026-08-04 | **Two stations computed the same global differently, and wiring them
+  together silently broke the classifier.** V5-F's first route run graded seed 1500 truth
+  EASY -> predicted HARD, a two-class jump the published confusion matrix says never
+  happens. Ground-truth counts were identical on both paths; only the prediction differed.
+  Cause: `v5_triage.load_scene()` sets `CAB_TOP = 0.220` from a freshly-loaded MjData while
+  `v5_clean._sync_triage_globals()` computes **0.460** from the live model -- and the
+  FROZEN TRIAGE THRESHOLDS WERE CALIBRATED AGAINST 0.220, so its per-face search quads
+  cover about the lower half of each face. Grading the full face with half-face thresholds
+  reads far more defect area and grades harder. Both are self-consistent; they are not
+  interchangeable. Fixed by capturing v5_triage's own globals at construction and restoring
+  them before every grade: 1 wrong in 1 became 0 wrong in 12. | ~35 min | MODULE-LEVEL
+  GLOBALS SET BY A LOADER ARE SHARED STATE, and two stations in one process will fight over
+  them. The tell was that the truth counts matched exactly while the verdict did not --
+  when inputs agree and outputs do not, the difference is in state neither call passed
+  explicitly. Also worth noting the calibrated region is HALF the face: that is not wrong
+  (the thresholds were frozen against it and hold out at 97.5%), but nobody knew it
