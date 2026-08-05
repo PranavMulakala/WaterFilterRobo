@@ -13,11 +13,11 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
 | V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
-| V5-E membrane (Stage 10) | not started |
+| V5-E membrane (Stage 10) | **DONE** — threaded cap stalls on torque, median **9.68 turns** @ 6.00 N·m, 333 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (1400–1409) |
 | V5-F route wiring (triage grade selects the route, end-to-end eval) | not started |
 | V5-G video | not started |
 
-**Immediate next task: V5-E (membrane, Stage 10), then V5-F route wiring.** V5-C and V5-D
+**Immediate next task: V5-F route wiring (triage grade selects the route, end-to-end eval).** V5-C and V5-D
 are both closed. Cleaning is 100% coverage on 8 units and zero residue on 10 more, force
 99.1% in band; the falsification test catches 10/10 sabotaged units with 0 false verifies.
 
@@ -82,7 +82,7 @@ force and press depth; see PAIN_JOURNAL 2026-08-04.
 700–819 (triage), 1000–1009 + 1100–1109 (V5-D), 800–807 (cleaning; re-used for DIAGNOSIS only, against the
 already-published number). Calibration lives at 9000+. **The next cleaning evaluation
 needs a fresh range — **900–907 are now SPENT too** (they produced the published 94.6%),
-so start at 1400 — 1000–1009, 1100–1109, 1200–1209 and 1300–1309 went to V5-D and Gate 1.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
+so start at 1500 — 1000–1309 went to V5-D and Gate 1, 1400–1409 to V5-E.** Use it once and look at it once. Note `v5_clean.py --seed0` defaults
 to 900 so a bare `--eval 8` reproduces the published number rather than a spent range.
 
 ## First steps every session

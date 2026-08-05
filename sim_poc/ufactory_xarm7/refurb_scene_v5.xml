@@ -104,6 +104,14 @@
             pos="0.3000 -0.3000 1.0500"
             xyaxes="0.7311 -0.6823 0.0000 0.5601 0.6002 0.5710"/>
 
+    <!-- V5-E DIP CAMERA. The bubble test is graded through this one. verify_top is aimed
+         at the device's top face and the water bin is a third of a metre away, so grading
+         the dip through it counted backdrop: the ROI was pixel-identical with bubbles on
+         and off. A station that watches for bubbles needs a camera pointed at the water. -->
+    <camera name="verify_dip" fovy="42"
+            pos="0.2400 0.1700 0.3400"
+            xyaxes="0.6097 -0.7926 0.0000 0.4274 0.3287 0.8422"/>
+
     <camera name="inspect" fovy="48"
             pos="0.1000 -0.4500 0.4000"
             xyaxes="0.6839 -0.7295 0.0000 0.1775 0.1664 0.9700"/>
@@ -622,25 +630,25 @@
          The dip is a BUBBLE TEST on a pressurised subassembly (3.6 -> 3.7), not a wash.
          No fluid is simulated: the "water" geom has contype 0 and exists so the render
          reads as a dip. -->
-    <body name="waterbin" pos="0.520 0.260 0">
-      <geom name="bin_w0" type="box" size="0.006 0.075 0.055"
-            pos="0.075 0.000 0.055"
+    <body name="waterbin" pos="0.500 0.370 0">
+      <geom name="bin_w0" type="box" size="0.006 0.085 0.105"
+            pos="0.085 0.000 0.105"
             material="binmat"/>
-      <geom name="bin_w1" type="box" size="0.006 0.075 0.055"
-            pos="-0.075 0.000 0.055"
+      <geom name="bin_w1" type="box" size="0.006 0.085 0.105"
+            pos="-0.085 0.000 0.105"
             material="binmat"/>
-      <geom name="bin_w2" type="box" size="0.075 0.006 0.055"
-            pos="0.000 0.075 0.055"
+      <geom name="bin_w2" type="box" size="0.085 0.006 0.105"
+            pos="0.000 0.085 0.105"
             material="binmat"/>
-      <geom name="bin_w3" type="box" size="0.075 0.006 0.055"
-            pos="0.000 -0.075 0.055"
+      <geom name="bin_w3" type="box" size="0.085 0.006 0.105"
+            pos="0.000 -0.085 0.105"
             material="binmat"/>
       
-      <geom name="bin_floor" type="box" size="0.075 0.075 0.005" pos="0 0 0.005"
+      <geom name="bin_floor" type="box" size="0.085 0.085 0.005" pos="0 0 0.005"
             material="binmat"/>
-      <geom name="bin_water" type="box" size="0.070 0.070 0.036" pos="0 0 0.046"
+      <geom name="bin_water" type="box" size="0.080 0.080 0.088" pos="0 0 0.098"
             material="watermat" contype="0" conaffinity="0"/>
-      <site name="bin_centre" pos="0 0 0.070" size="0.005" rgba="0 0 0 0"/>
+      <site name="bin_centre" pos="0 0 0.020" size="0.005" rgba="0 0 0 0"/>
     </body>
   </worldbody>
 
