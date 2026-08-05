@@ -4,12 +4,25 @@
     ../venv/bin/python v5_route.py --run 1700       one unit, verbose
 
 WHAT THIS IS. The three v5 stations exist and are measured independently. This wires them
-into DrinkPrime's own routing, taken from `dp_process.V5_ROUTES` rather than invented:
+together along `dp_process.V5_ROUTES`.
+
+  A CORRECTION TO HOW THAT USED TO BE PHRASED (2026-08-05). This module and V5_PLAN said
+  the routes were "theirs, not invented". Overstated. The three-way EASY/MEDIUM/HARD
+  fan-out and the HARD fork are DrinkPrime's, but `dp_process.V5_ROUTES` itself says it
+  "describes what OUR CELL does -- a deliberate subset". The step SEQUENCES are ours,
+  assembled from their stages. Their vocabulary, our composition.
 
     easy                 TRIAGE -> CLEAN_CABINET -> VERIFY_CLEAN -> PASS
     medium               ... -> MEMBRANE_INSERT -> CAP_TIGHTEN -> LEAK_DIP -> VERIFY_LEAK
     hard_rectifiable     same line as medium  (their chart rejoins it)
     hard_non_rectifiable TRIAGE -> ROUTE_TO_SCRAP_APPROVAL
+
+AND A SECOND ONE, WHICH MATTERS MORE. Two of those step names have NO MOTION BEHIND THEM
+(see STEP_EVIDENCE below): nothing picks, aligns or inserts the membrane element, and
+nothing physically delivers a unit to the scrap gate. Route-plan compliance compares
+`steps_done` to `plan`, so those steps pass BY BEING NAMED. Every run now prints which
+steps are MEASURED, which are a PROXY and which are UNBACKED. Do not quote compliance --
+or end-to-end, which inherits it -- as "every named action was performed".
 
 THE FORK WE CANNOT DECIDE, AND DO NOT PRETEND TO. Their chart splits HARD into
 RECTIFIABLE and NON RECTIFIABLE on whether rectification cost exceeds 80-90% -- of what,
@@ -21,7 +34,8 @@ So HARD routes to **SCRAP_APPROVAL**, which is a HUMAN DECISION GATE, and the cy
 there. That is exactly what `V5_ROUTES['hard_non_rectifiable']` says we do -- "We stop at
 routing it out of the line" -- and for the rectifiable half it is the honest answer too:
 the unit is presented to a person, who decides. Routing a HARD unit CORRECTLY therefore
-means "delivered to the approval gate", not "repaired".
+means "delivered to the approval gate", not "repaired" -- and note "delivered" is a
+SOFTWARE DECISION, not motion: nothing physically moves the unit (STEP_EVIDENCE).
 
 WHAT COUNTS AS SUCCESS, and it is judged on the workpiece. THREE DISTINCT METRICS, and
 keeping them distinct is the point -- the first two answer different questions and only
@@ -57,6 +71,36 @@ import v5_triage as TR
 import v5_membrane as MB
 
 GRADE_ROUTE = {"easy": "easy", "medium": "medium", "hard": "hard_non_rectifiable"}
+
+# WHAT ACTUALLY BACKS EACH STEP NAME. A route step is a STRING appended to `steps_done`,
+# and route-plan compliance is `steps_done == plan` -- so a step with no motion behind it
+# passes by being named. That is not a hypothetical: two of these are exactly that, and
+# hiding it inside a 28/28 would be the same class of error as the retracted end-to-end.
+#
+#   MEASURED   a physical quantity from the sim decides pass/fail (force, torque, pixels)
+#   PROXY      the motion is real but the CONSEQUENCE is modelled, not computed
+#   UNBACKED   no motion and no measurement -- the string is the whole of it
+STEP_EVIDENCE = {
+    "TRIAGE":                 ("MEASURED", "camera grades the unit; 97.5% held out"),
+    "CLEAN_CABINET":          ("MEASURED", "pad rasters 5 faces; coverage, force, tilt logged"),
+    "VERIFY_CLEAN":           ("MEASURED", "2nd camera re-inspects; residue counted"),
+    "MEMBRANE_INSERT":        ("UNBACKED", "NO pick, align or insert exists. reset_mem() "
+                                           "jitters the loose element on its nest by ~4 mm "
+                                           "and nothing else ever moves it"),
+    "CAP_TIGHTEN":            ("MEASURED", "cap driven multi-turn, stalls on torque"),
+    "LEAK_DIP":               ("PROXY",    "dip motion is real; BUBBLES ARE MODELLED FROM "
+                                           "TORQUE, no fluid or gas is simulated"),
+    "VERIFY_LEAK":            ("MEASURED", "camera must actually SEE bubbles to fail it"),
+    "ROUTE_TO_SCRAP_APPROVAL":("UNBACKED", "a software decision. NO robot or indexer motion "
+                                           "delivers the unit anywhere"),
+    "PASS":                   ("UNBACKED", "bookkeeping terminator"),
+}
+
+
+def route_evidence(plan):
+    """(measured, proxy, unbacked) step counts for a route plan."""
+    kinds = [STEP_EVIDENCE.get(s, ("UNBACKED", "unknown step"))[0] for s in plan]
+    return (kinds.count("MEASURED"), kinds.count("PROXY"), kinds.count("UNBACKED"))
 
 
 class RouteCell(MB.MemCell):
@@ -146,6 +190,15 @@ class RouteCell(MB.MemCell):
             out["clean_ok"] = bool(v["verified"] and v["soil_left_truth"] == 0)
             out["residue"] = int(v["soil_left_truth"])
             out["coverage"] = float(cr["coverage"])
+            # MARGINS, not just the rate -- the binding rule. A composed system must not
+            # throw away the evidence that made its components credible, so the cleaning
+            # station's physical margins travel into the route row.
+            out["f_max"] = float(cr["f_max"])
+            out["in_band"] = float(cr["in_band"])
+            out["tilt_max_deg"] = float(cr["tilt_max"])
+            out["raster_skipped"] = int(cr["raster_skipped"])
+            out["raster_infeasible"] = int(cr["raster_infeasible"])
+            out["coupling_drift_mm"] = float(cr["coupling_drift_mm"])
             if verbose:
                 print(f"    CLEAN: coverage {cr['coverage']*100:.1f}%, residue "
                       f"{v['soil_left_truth']}, verified {v['verified']}")
@@ -161,6 +214,12 @@ class RouteCell(MB.MemCell):
                 out["turns"] = tg["turns"]
                 out["torque_nm"] = tg["torque_nm"]
                 out["bubble_px"] = px
+                # membrane margins, same rule
+                out["peak_torque_nm"] = float(tg["peak_torque_nm"])
+                out["seal_n"] = float(tg["seal_n"])
+                out["peak_seal_n"] = float(tg["peak_seal_n"])
+                out["stalled"] = bool(tg["stalled"])
+                out["cap_z_mm"] = float(tg["cap_z_mm"])
                 out["leak_ok"] = bool(px <= self.mcfg.bubble_px_max
                                       and tg["stalled"]
                                       and tg["torque_nm"] >= self.mcfg.torque_pass_nm)
@@ -179,6 +238,11 @@ class RouteCell(MB.MemCell):
         # perfectly. Kept separate for exactly that reason.
         out["steps_done"] = steps_done
         out["routing_ok"] = bool(steps_done == list(plan))
+        # how much of that compliance is actually backed by physics
+        meas, proxy, unb = route_evidence(plan)
+        out["steps_measured"], out["steps_proxy"], out["steps_unbacked"] = meas, proxy, unb
+        out["unbacked_steps"] = [s for s in plan
+                                 if STEP_EVIDENCE.get(s, ("UNBACKED",))[0] == "UNBACKED"]
         # --- right route: did the prediction match the unit's truth? Capped by triage.
         out["grade_correct"] = bool(grade == truth)
         # --- end to end: RIGHT route AND every step of it worked. Without grade_correct
@@ -228,6 +292,21 @@ def report(rows):
             continue
         ok = sum(r["end_to_end"] for r in sel)
         print(f"    {rt:<22} n={len(sel):<3} end-to-end {ok}/{len(sel)}")
+    # ---- WHAT THE COMPLIANCE NUMBER IS AND IS NOT MADE OF
+    print("\n  ROUTE-PLAN COMPLIANCE COUNTS STEP NAMES, AND TWO OF THOSE NAMES HAVE NO")
+    print("  MOTION BEHIND THEM. Per step, what actually decides it:")
+    for s, (kind, why) in STEP_EVIDENCE.items():
+        used = sum(s in r["plan"] for r in rows)
+        if not used:
+            continue
+        mark = "  " if kind == "MEASURED" else ("~ " if kind == "PROXY" else "!!")
+        print(f"   {mark}{kind:<9} {s:<24} n={used:<3} {why}")
+    unb = sorted({s for r in rows for s in r["unbacked_steps"]} - {"PASS"})
+    print(f"\n  => {', '.join(unb)} pass by BEING NAMED. No element pick/align/insert")
+    print("     exists, and nothing physically delivers a unit to the scrap gate. Read")
+    print("     compliance as 'the cell ran the sequence it chose', NOT as 'every named")
+    print("     action was performed'. END-TO-END INHERITS THIS CAVEAT.")
+
     cl = [r for r in rows if r["clean_ok"] is not None]
     lk = [r for r in rows if r["leak_ok"] is not None]
     if cl:
@@ -238,11 +317,41 @@ def report(rows):
         print(f"  CAP_TIGHTEN + VERIFY_LEAK    : {sum(r['leak_ok'] for r in lk)}"
               f"/{len(lk)} passed; turns median {np.median(t):.2f}; "
               f"leak false-pass {sum(r.get('leak_false_pass', False) for r in lk)}")
+    # ---- MARGINS, not just rates. The rule that caught a systemic defect once already.
+    if cl:
+        fm = np.array([r["f_max"] for r in cl])
+        tl = np.array([r["tilt_max_deg"] for r in cl])
+        ib = np.array([r["in_band"] for r in cl])
+        sk = sum(r["raster_skipped"] for r in cl)
+        inf = sum(r["raster_infeasible"] for r in cl)
+        dr = np.array([r["coupling_drift_mm"] for r in cl])
+        print(f"\n  MARGINS (cleaning, n={len(cl)}):")
+        print(f"    peak force      {fm.max():6.2f} N   vs 45 N model-validity ceiling"
+              f"   -> {'OK' if fm.max() <= 45 else 'OVER'}")
+        print(f"    in-band frac    {ib.min()*100:6.1f}%  worst unit")
+        print(f"    peak tilt       {tl.max():6.2f} deg vs 30 deg cone"
+              f"              -> {'OK' if tl.max() <= 30.001 else 'OVER'}")
+        print(f"    raster skipped  {sk:6d}     infeasible {inf}")
+        print(f"    tool drift      {dr.max():6.3f} mm  worst unit")
+    if lk:
+        pt = np.array([r["peak_torque_nm"] for r in lk])
+        sn = np.array([r["seal_n"] for r in lk])
+        sp = np.array([r["peak_seal_n"] for r in lk])
+        print(f"  MARGINS (membrane, n={len(lk)}):")
+        print(f"    peak torque     {pt.min():6.2f}-{pt.max():.2f} N.m   stalled "
+              f"{sum(r['stalled'] for r in lk)}/{len(lk)}")
+        # BOTH, deliberately: V5-E publishes the PEAK (341 N). Printing only the settled
+        # figure would read as contradicting it. The gap is elastic relaxation after the
+        # drive stops, not a disagreement between stations.
+        print(f"    seal preload    {sp.min():6.0f}-{sp.max():.0f} N peak, "
+              f"{sn.min():.0f}-{sn.max():.0f} N settled after the drive releases")
+    print("\n  The cleaning trajectory is OPEN-LOOP and seed-independent: force, tilt and")
+    print("  raster figures do not vary with the seed and must not be quoted as a spread.")
     print("\n  THE HARD FORK IS NOT DECIDED BY THIS CELL. DrinkPrime's chart splits HARD")
     print("  into RECTIFIABLE and NON RECTIFIABLE on whether rectification cost exceeds")
     print("  80-90% -- of what, no document in the set says. We have no cost model, so a")
     print("  HARD unit is routed to SCRAP_APPROVAL, a human decision gate, and the cycle")
-    print("  stops there. Routing a HARD unit CORRECTLY means 'delivered to the gate',")
+    print("  stops there. Routing a HARD unit CORRECTLY means 'handed off in software',")
     print("  not 'repaired'. Asking what defines that fork is on the open-ask list.")
     print("  Easy/Medium/Hard class NAMES are DrinkPrime's; the BOUNDARIES are ours.")
     st = {"n": n, "routing_compliance": comply / n, "right_route": right / n,

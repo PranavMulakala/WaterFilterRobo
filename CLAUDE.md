@@ -14,10 +14,22 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — threaded cap stalls on torque, median **9.68 turns** @ 6.00 N·m, 333 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (1400–1409) |
-| V5-F route wiring | **DONE** — route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0**, missed-hard **0** (1700–1727). HARD stops at a human scrap-approval gate. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
+| V5-F route wiring | **DONE, with a named caveat** — route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0**, missed-hard **0** (1700–1727). **`MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL` are UNBACKED steps — no motion implements them, they pass by being named.** HARD stops at a human scrap-approval gate (a software decision, not a delivery). **The earlier "end-to-end 28/28" is RETRACTED** — see below |
 | V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4` |
 
-**All v5 phases are DONE (V5-0 through V5-G).** The two things now worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
+**All v5 phases are DONE (V5-0 through V5-G) — but "done" is not "physically complete".**
+An external audit (`codex-review` branch, `REVIEW_V5_E_F_G_END_TO_END.md`) raised ~17
+findings. Two P0s are now fixed (the V5-F end-to-end metric; the 1604/1607 ledger half) and
+one P0 is **acknowledged but NOT closed**: `MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL`
+are route steps with **no motion behind them** — nothing picks, aligns or inserts the
+membrane element, and nothing physically delivers a unit to the scrap gate. They are now
+declared `UNBACKED` in `v5_route.STEP_EVIDENCE` and printed on every run, but **declaring a
+gap is not filling it**. Before quoting v5 as a complete cell, either implement those two
+motions or narrow the claim. Still open from that audit: V5-E's 1400–1409 were tuning seeds
+reused for the headline; V5-G has no DR envelope; CELL_SPEC gaps; three over-length
+LEARNINGS entries.
+
+The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
 **Every station's number is in the phase table above and reproduces from its own
 `--eval`.** The rest of this section is the reusable engineering lessons, kept because

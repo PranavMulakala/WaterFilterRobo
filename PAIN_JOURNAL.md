@@ -876,3 +876,24 @@ what we now understand.
   always runs after mj_forward, writing identical values at every indexer angle). It is
   insurance against call ordering, not a live fix, and saying so is more useful than
   letting it look load-bearing
+- 2026-08-05 | **Fixed the metric, shipped it, and only then read the audit that generated
+  the task -- which had 16 more findings, three of them inside the code I had just edited.**
+  The V5-F end-to-end retraction was handed to me as a single defect. It was actually
+  finding #1 of ~17 in `REVIEW_V5_E_F_G_END_TO_END.md`, sitting in a git worktree
+  (`~/WaterFilterRobo-codex`, branch `codex-review`) on the same machine the whole time. I
+  found it only when asked to check that branch for merge conflicts. The worst of the ones
+  I had walked past: `MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL` are route steps with NO
+  MOTION BEHIND THEM -- route-plan compliance is `steps_done == plan`, so they pass by being
+  named -- which means the replacement "end-to-end 26/28" I had just published still counted
+  steps nothing implements. Verified independently: `elem_q` is written in exactly one place,
+  a 4 mm jitter in `reset_mem()`, and nothing else ever moves the element. I had also
+  re-stated a claim the audit flags as overstated ("the routes are theirs, not invented" --
+  `dp_process` itself calls V5_ROUTES a deliberate subset of OUR cell). | ~30 min to find,
+  ~1 h to fix | **READ THE WHOLE AUDIT BEFORE FIXING ITEM ONE OF IT.** A scoped task that
+  originates from a review is not scoped by the reviewer -- it was scoped by whoever
+  forwarded it, and they may have forwarded only the headline. Two concrete habits: run
+  `git worktree list` and `git branch -a` at the START of any session that mentions "an
+  audit found", because the audit is often already checked out; and when handed one finding
+  from a document, ask for the document. Second lesson, cheaper: fixing a metric so it
+  measures the right thing does NOT make the thing it measures real. Both defects lived in
+  the same six lines

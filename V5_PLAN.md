@@ -1020,7 +1020,23 @@ assemblies: **O-ring friction and squeeze, and the angle the cap is presented en
 
 `sim_poc/v5_route.py`. `RouteCell` subclasses `MemCell` → `Cell`, so triage, cleaning,
 verification and the membrane station are the ones already measured, not reimplementations.
-The routes come from `dp_process.V5_ROUTES` — **theirs, not invented**.
+
+> **Two corrections to this section's framing, 2026-08-05.**
+>
+> **1. "The routes come from `dp_process.V5_ROUTES` — theirs, not invented" was overstated.**
+> The three-way EASY/MEDIUM/HARD fan-out and the HARD fork *are* DrinkPrime's, but
+> `dp_process.V5_ROUTES` says of itself that it "describes what OUR CELL does — a deliberate
+> subset". The step **sequences** are ours, assembled from their stages. Their vocabulary,
+> our composition.
+>
+> **2. Two step names have no motion behind them, and compliance counts them anyway.**
+> Nothing picks, aligns or inserts the membrane element — `reset_mem()` jitters the loose
+> element on its nest by ~4 mm and nothing else ever moves it — and nothing physically
+> delivers a unit to the scrap gate. Route-plan compliance is `steps_done == plan`, so
+> `MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL` **pass by being named**. `STEP_EVIDENCE`
+> in `v5_route.py` now classifies every step MEASURED / PROXY / UNBACKED and `report()`
+> prints it on every run. **End-to-end inherits this caveat**, so read 28/28 compliance as
+> *"the cell ran the sequence it chose"*, never as *"every named action was performed"*.
 
 ### The fork this cell refuses to decide
 
@@ -1032,7 +1048,9 @@ number it invented.
 
 So HARD routes to **SCRAP_APPROVAL**, a *human decision gate*, and the cycle stops there —
 which is exactly what `V5_ROUTES['hard_non_rectifiable']` already says we do. **Routing a
-HARD unit correctly means "delivered to the gate", not "repaired."** That the fork is
+HARD unit correctly means "delivered to the gate", not "repaired."** *(And "delivered"
+is itself a software decision — no robot or indexer motion moves the unit anywhere; see
+the UNBACKED note above.)* That the fork is
 undecidable from the documents joins the open-ask list.
 
 ### RETRACTION, 2026-08-05 — the first published end-to-end figure was wrong
