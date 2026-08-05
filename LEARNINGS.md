@@ -766,3 +766,19 @@ do. Related: our seating test allowed 6 mm of error in a hole with 1.5 mm of roo
 **Why it matters:** a demo lies in two ways — showing what didn't happen, and passing a test
 that could not fail. Both were live here, and both were invisible from the output, which
 looked flawless.
+
+## 2026-08-05 — The robot was cleaning everything twice
+
+**What we built:** a cleaning pass a third faster — 4 min 15 s to 3 min 7 s per unit — at
+the same 100% coverage and slightly *lower* contact force.
+
+**The concept: measure where the time goes before you make anything faster.** The obvious
+suspects were the fiddly bits — swapping tools, turning the table, moving between faces.
+Timing showed those are **7%**; the pad on the surface is **91%**. So all that matters is
+how many places it stops. The pad cleans a 60 mm circle but the robot stepped only 28.5 mm
+— covering every spot about **twice**. Widening the step to what the geometry needs removed
+a third of the stops. We then tried *moving the arm faster* and it barely helped: each stop
+must hold still briefly to confirm the pad is pressing, so a faster arm just waits.
+
+**Why it matters:** the instinct is to speed up the moving. The time was in *how many
+times it stopped* — a number nobody had questioned since it was written.

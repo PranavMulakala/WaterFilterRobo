@@ -63,10 +63,22 @@ class Recorder:
         self.speed = speed
         self.info = {}
         self.marks = []          # (frame index, station) each time the station changes
+        # TRUE simulated elapsed time. d.time is ZEROED by reset()/reset_mem() partway
+        # through a cycle, so a naive read of it loses everything before the reset.
+        self._t_base = 0.0
+        self._t_last = 0.0
 
     def grab(self, d, station, cam="main", inset=None):
+        now = float(d.time)
+        if now < self._t_last:          # the clock was reset -- bank what came before
+            self._t_base += self._t_last
+        self._t_last = now
         if not self.marks or self.marks[-1][1] != station:
-            self.marks.append((len(self.frames), station))
+            # TRUE simulated clock, not frame index: frames are not grabbed at a uniform
+            # sim cadence and some phases (TRIAGE, VERIFY) are pure rendering that costs
+            # ZERO motion time but still occupies frames. A frame-derived split invents
+            # seconds for them and steals seconds from CLEAN.
+            self.marks.append((self._t_base + now, station))
         self.main.update_scene(d, camera=cam)
         img = self.Image.fromarray(self.main.render())
         draw = self.ImageDraw.Draw(img, "RGBA")
@@ -245,8 +257,13 @@ def render_unit(seed, speed=1.0, out=None):
                 rec.grab(c.d, "DIP", cam="demo_dip")
 
     out = out or f"v5_cell_{seed}.mp4"
+    sim_s = rec._t_base + rec._t_last
     rec.write(out)
-    return out, [(i / FPS, st) for i, st in rec.marks], len(rec.frames) / FPS
+    # Chapter times and duration are expressed against the TRUE simulated clock, not the
+    # frame count. Frames are only grabbed inside motion loops, so a frame-count duration
+    # understated this cycle by 15% -- fatal for a video whose whole point is "how long
+    # does a unit take".
+    return out, list(rec.marks), sim_s
 
 
 # --------------------------------------------------------------- the full reel
@@ -348,16 +365,104 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
     return out
 
 
+def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4"):
+    """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
+
+    Deliberately not a reel and deliberately not sped up: the question this answers is
+    "how long does a unit take", and any speed multiplier -- however honestly stamped --
+    makes a viewer do arithmetic to find out.
+    """
+    import subprocess, imageio_ffmpeg
+    W_, G, B, A = (235, 240, 245), (150, 160, 175), (120, 200, 255), (255, 180, 90)
+    clip = f"rt_{seed}.mp4"
+    raw = f"rt_raw_{seed}.mp4"
+    _, marks, dur = render_unit(seed, 1.0, raw)
+    # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
+    #
+    # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
+    # without invoking the frame callback at all -- so playing the frames at a fixed 30 fps
+    # ran 15% FAST (196 s of video for a 231 s cycle). That flatters us, on the one clip
+    # whose entire purpose is duration.
+    #
+    # Stretch with setpts and re-emit at a UNIFORM 30 fps (ffmpeg duplicates frames to
+    # fill). Uniform is the honest approximation available: the total is exact, and no
+    # phase can be individually corrected without knowing where each dropped frame was.
+    # Do NOT do this by setting an input -r and concatenating -- mismatched framerates
+    # between the cards and the clip corrupt the timestamps (a 3:51 clip came out 55:23).
+    import subprocess as _sp, imageio_ffmpeg as _iff, re as _re
+    _ff = _iff.get_ffmpeg_exe()
+    probe = _sp.run([_ff, "-i", raw], capture_output=True, text=True).stderr
+    m_ = _re.search(r"Duration: (\d+):(\d+):([\d.]+)", probe)
+    raw_s = int(m_.group(1)) * 3600 + int(m_.group(2)) * 60 + float(m_.group(3))
+    k = dur / raw_s
+    _sp.run([_ff, "-y", "-i", raw, "-vf", f"setpts={k:.6f}*PTS", "-r", "30",
+             "-c:v", "libx264", "-crf", "26", "-preset", "veryfast",
+             "-pix_fmt", "yuv420p", clip], check=True, capture_output=True)
+    print(f"  re-timed x{k:.3f}: {raw_s:.1f}s of frames -> {dur:.1f}s real cycle")
+    # phase breakdown, from the station marks (already scaled to the true clock)
+    seg = [(marks[i][1], (marks[i + 1][0] if i + 1 < len(marks) else dur) - marks[i][0])
+           for i in range(len(marks))]
+    merged = {}
+    for name, d in seg:
+        merged[name] = merged.get(name, 0.0) + d
+    mm, ss = int(dur) // 60, dur % 60
+
+    _card([("ONE UNIT, START TO FINISH", 54, True, W_),
+           ("", 12, False, (0, 0, 0)),
+           ("REAL TIME  --  NOT SPED UP", 40, True, A),
+           ("the length of this clip IS the cycle time", 26, False, G),
+           ("", 14, False, (0, 0, 0)),
+           ("MEDIUM route (the longest): clean + new membrane + leak test", 26, False, W_),
+           (f"{mm} min {ss:04.1f} s per unit", 44, True, B)],
+          "card_rt_a.mp4", 6.0)
+    lines = [("WHERE THE TIME GOES", 46, True, W_), ("", 10, False, (0, 0, 0))]
+    # Only stations that actually consume motion time get a row. TRIAGE and VERIFY are
+    # pure camera work and cost ZERO; the dip's ~1.2 s lands inside MEMBRANE because its
+    # station marker is set after dip_and_grade has already run. Printing them as
+    # "0.0 s" would read as "the dip is free", which is not the same statement.
+    shown = [(k, v) for k, v in sorted(merged.items(), key=lambda kv: -kv[1]) if v > 0.05]
+    for name, d in shown:
+        label = "MEMBRANE + DIP" if name == "MEMBRANE" else name
+        lines.append((f"{label:<15} {d:6.1f} s   {d/dur*100:4.1f}%", 30, False, W_))
+    lines.append(("", 8, False, (0, 0, 0)))
+    lines.append(("TRIAGE and VERIFY cost NO motion time -- they are camera work.",
+                  22, False, G))
+    lines += [("", 14, False, (0, 0, 0)),
+              (f"TOTAL  {mm} min {ss:04.1f} s", 34, True, B),
+              ("", 10, False, (0, 0, 0)),
+              ("HARD route stops at a person in about 3 seconds.", 22, False, G),
+              ("How long this takes a person today: WE DO NOT KNOW -- it is not in the", 22, False, A),
+              ("13 process documents, and we have asked. Without it there is no comparison.", 22, False, A)]
+    _card(lines, "card_rt_b.mp4", 11.0)
+
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    with open("concat_rt.txt", "w") as f:
+        for q in ("card_rt_a.mp4", clip, "card_rt_b.mp4"):
+            f.write(f"file '{q}'\n")
+    subprocess.run([ff, "-y", "-f", "concat", "-safe", "0", "-i", "concat_rt.txt",
+                    "-c:v", "libx264", "-crf", "26", "-preset", "slow",
+                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", out],
+                   check=True, capture_output=True)
+    print(f"\nwrote {out}   cycle {mm}:{ss:04.1f} at TRUE 1x")
+    for name, d in sorted(merged.items(), key=lambda kv: -kv[1]):
+        print(f"    {name:<10} {d:7.1f} s  {d/dur*100:5.1f}%")
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--render", type=int, help="seed to render")
+    ap.add_argument("--realtime", type=int, nargs="?", const=1704, metavar="SEED",
+                    help="one full cycle at TRUE 1x + timing cards")
     ap.add_argument("--reel", action="store_true",
                     help="title + one clip per route + stats + caveats -> one file")
     ap.add_argument("--speed", type=float, default=1.0,
                     help="playback speed-up; stamped on frame. 1.5 = slow enough to dissect")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    if a.reel:
+    if a.realtime is not None:
+        make_realtime(a.realtime, a.out or "../media/v5_cell_realtime.mp4")
+    elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
         render_unit(a.render, a.speed, a.out)

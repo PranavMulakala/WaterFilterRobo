@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **32.9 N** inside the **45 N** model-validity ceiling. **V6: 254.7 s → 186.8 s/unit (1.36×)** — see below |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
 | V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
@@ -37,6 +37,46 @@ gaps; three over-length LEARNINGS entries; the leak result is a measured image o
 falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
+
+**V6 — CYCLE TIME. The diagnosis was that the cycle IS the raster, and the raster
+oversampled by 2.2×.** `v5_clean.py --budget SEED` prints where the seconds go. On the old
+config: **STROKE 91.3%, all overhead 7.2%** (tool changer + five turntable rotations +
+every retract and approach). Optimising the sequencing that took four bugs to get right
+would have bought nothing.
+
+Per-point cost is **fixed, not travel-proportional** — 0.38–0.85 s, unchanged when the
+stride grew 37% — because each wipe point is floored by **two 0.20 s `wipe_stall_s`
+windows**. So cycle time tracks POINT COUNT, and only point count.
+
+On a square lattice the worst uncovered point is a cell centre at `step/√2`, so coverage
+needs `step ≤ R√2 = 1.414 R`. `step_frac` was **0.95 R** — 2.2× the points for no coverage
+benefit. Swept on fresh 1810–1817, confirmed held-out 1830–1837:
+
+| step_frac | cycle | pts | coverage | missed |
+|---|---|---|---|---|
+| 0.95 (was) | 254.7 s | 468 | 100% | 0 |
+| **1.20 (now)** | **186.8 s** | **323** | **100%** | **0** |
+| 1.30 | 163.8 s | 272 | 100% | 0 |
+| 1.414 | 141.5 s | 224 | **97.4%** | **4** |
+
+**1.30 is faster and passed 16 units — and was NOT taken.** Coverage failure is a RARE
+EVENT (a spot is missed only if soil lands in a cell-centre gap), so 16 units × ~18 patches
+cannot prove a 2.4 mm gap band is closed. 1.414 is a cliff; 1.30 sits 8% from it, 1.20 has
+18% margin.
+
+**FEED RATE IS A DEAD LEVER — DO NOT RAISE `speed`.** Swept at step_frac 1.20 on 1820–1827:
+best case 186.8 → 168.8 s (**9.6%**), because points are stall-window-bound not travel-bound.
+Worse, `speed` 1.5 and 2.0 produced **108 N against the 45 N ceiling** with coverage at 75%
+on the worst unit, while 3.0 and 4.0 were clean again — **non-monotonic in both force and
+time**, the same signature CLAUDE already records for this contact model above 45 N. Almost
+certainly solver instability, NOT diagnosed to the bottom. Either way the lever is not worth
+9.6%.
+
+**TRUE MEDIUM CYCLE: 230.96 s (3 min 51 s)** — CLEAN 186.8, insert 25.6, tighten 17.4, dip
+1.2. **TRIAGE and VERIFY cost ZERO simulated seconds** (pure rendering), so a real cell is
+slightly slower than this, not faster. `v5_video.py --realtime` renders one cycle whose
+RUNTIME EQUALS the cycle time — frame-count timing understated it by 15.1% and had to be
+re-timed against the simulated clock.
 
 **Every station's number is in the phase table above and reproduces from its own
 `--eval`.** The rest of this section is the reusable engineering lessons, kept because
@@ -140,7 +180,7 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E published headline (2026-08-05)**. Next free block: **1810+**.
+**1800–1809 the V5-E published headline (2026-08-05)**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 held-out stride validation**. Next free block: **1840+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of

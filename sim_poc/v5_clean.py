@@ -77,7 +77,28 @@ class CleanConfig:
     # step <= radius guarantees the worst-case in-plane gap (step/sqrt(2) for a square
     # grid) stays inside the wipe radius. At 1.30 it did not, and coverage depended on
     # where the soil happened to land between passes.
-    step_frac: float = 0.95         # raster step, in pad RADII
+    # V6, 2026-08-05: 0.95 -> 1.20. THIS IS A DIAGNOSIS, NOT A TUNING KNOB.
+    #
+    # The budget showed STROKE is 91.3% of the cycle and all overhead is 7.2%, so the
+    # cycle IS the raster and the only thing that matters is POINT COUNT. Per-point cost
+    # is essentially FIXED (0.38-0.85 s, unchanged when the stride grows 37%) because each
+    # wipe point is floored by two 0.20 s stall windows -- it is not travel-bound.
+    #
+    # On a square lattice the worst-case uncovered point is a cell CENTRE at step/sqrt(2),
+    # so full coverage needs step <= R*sqrt(2) = 1.414 R. The old 0.95 R oversampled by
+    # 2.2x in point count for no coverage benefit. Measured sweep (fresh 1810-1817,
+    # confirmed held-out 1830-1837):
+    #
+    #   0.95  254.7 s  468 pts  100% cov  0 missed      <- was here
+    #   1.20  186.8 s  323 pts  100% cov  0 missed      <- HERE. 18% geometric margin
+    #   1.30  163.8 s  272 pts  100% cov  0 missed         8% margin -- available, not taken
+    #   1.414 141.5 s  224 pts  97.4% cov 4 missed      <- the cliff, 0% margin
+    #
+    # 1.30 is faster and passed 16 units, but coverage failure is a RARE EVENT -- a spot is
+    # only missed if soil lands in a cell-centre gap -- so 16 units x ~18 patches does not
+    # prove a 2.4 mm gap band is closed, only that it is rarely hit. 1.414 is a cliff and
+    # 1.30 sits 8% from it. Real surface variation, pad wear or fixture error would eat that.
+    step_frac: float = 1.20         # raster step, in pad RADII
     # 3 mm, not 6. The pad gives 1.4-4.6 mm over 0-60 N, so 6 mm of commanded
     # over-travel sat high on that curve and the resulting friction tore the tool out of
     # the grip. 3 mm lands around 10 N -- enough to wipe, not enough to strip.
@@ -283,6 +304,9 @@ class Cell:
         # it simply stops REMOVING soil. Sabotaging the outcome rather than the motion is
         # what makes the falsification test about the verifier instead of about the arm.
         self.sabotage = False
+        # V6: opt-in cycle-time accounting. None = off, and OFF IS THE DEFAULT so the
+        # published baselines cannot move. Set by `--budget`; see time_budget().
+        self.budget = None
 
     # ------------------------------------------------------- tool changer
     def couple(self):
@@ -679,6 +703,13 @@ class Cell:
         return None
 
     # ---------------------------------------------------------------- motion
+    def _charge(self, tag, secs):
+        """Bill simulated seconds to a phase tag. No-op unless --budget is on."""
+        if self.budget is not None:
+            b = self.budget
+            b["t"][tag] = b["t"].get(tag, 0.0) + secs
+            b["n"][tag] = b["n"].get(tag, 0) + 1
+
     def step_to(self, tgt, mat, grip, index_deg=0.0, frames=None, tag=""):
         """One control step toward a Cartesian target. Returns TCP position error."""
         m, d = self.m, self.d
@@ -686,6 +717,7 @@ class Cell:
         self.ik.qpos[self.qadr] = self.q_des
         mujoco.mj_kinematics(m, self.ik)
         mujoco.mj_comPos(m, self.ik)
+        self._charge(tag, self.dt)
         dq, err = ik_step(m, self.ik, self.site, tgt, mat, self.dof)
         mx = np.max(np.abs(dq))
         lim = 0.02 * self.cfg.speed
@@ -781,6 +813,11 @@ class Cell:
                     break
             else:
                 settle = 0.0
+        if self.budget is not None:
+            self._charge(tag, t)
+            self.budget["dur"].setdefault(tag, []).append(t)
+            if t >= t_max - 1e-9:
+                self.budget["timeout"][tag] = self.budget["timeout"].get(tag, 0) + 1
         return cleaned
 
     def dwell(self, s, mat, tgt, grip, index_deg=0.0, frames=None, tag=""):
@@ -1255,6 +1292,99 @@ def falsify(n, seed0):
     return st
 
 
+# ============================================================ V6: cycle time
+#
+# WHY THIS EXISTS. "Make cleaning faster" is a tuning instruction, and this project's own
+# rule is diagnose first. The budget answered it in one run: STROKE is 91.3% of the cycle
+# and ALL the overhead -- tool changer, five turntable rotations, every retract and
+# approach -- is 7.2%. Optimising the sequencing that took four bugs to get right would
+# have bought nothing. The cycle IS the raster.
+#
+# The cleaning trajectory is open-loop and seed-independent, so ONE unit gives the exact
+# budget rather than a sample of it. Only coverage and missed spots vary with the seed.
+STROKE_TAGS = ("WIPE",)
+OVERHEAD_TAGS = ("SAFE", "TO FACE", "TO TOP", "SETTLE", "RETRACT", "TOP CLEAR", "INDEX")
+LATCH_TAGS = ("APPROACH", "COUPLE", "LIFT", "RETURN", "PLACE", "UNLATCH", "CLEAR")
+
+
+def time_budget(seed, cfg=CFG):
+    """Where the clean cycle's seconds go. Measures; changes nothing."""
+    c = Cell(cfg)
+    c.budget = {"t": {}, "n": {}, "dur": {}, "timeout": {}}
+    r = c.run(seed)
+    T = c.budget["t"]
+    total = sum(T.values())
+    pick = lambda pres: {k: v for k, v in T.items() if any(k.startswith(p) for p in pres)}
+    stroke, over, latch = pick(STROKE_TAGS), pick(OVERHEAD_TAGS), pick(LATCH_TAGS)
+    pts = [d for k, v in c.budget["dur"].items() if k.startswith("WIPE") for d in v]
+    tmo = sum(v for k, v in c.budget["timeout"].items() if k.startswith("WIPE"))
+    print(f"\nCLEAN CYCLE TIME BUDGET -- seed {seed}, step_frac {cfg.step_frac}, "
+          f"speed {cfg.speed}")
+    print(f"  simulated cycle {total:.2f} s | coverage {r['coverage']*100:.1f}% | "
+          f"raster {r['raster_planned']} planned, {r['raster_skipped']} skipped")
+    for name, grp in (("STROKE (pad on surface)", stroke),
+                      ("retract/rotate/approach", over),
+                      ("tool latch/unlatch", latch)):
+        t = sum(grp.values())
+        print(f"    {name:<26} {t:8.2f} s  {t/total*100:5.1f}%")
+    print(f"  raster points executed {len(pts)}  median {np.median(pts):.3f} s  "
+          f"mean {np.mean(pts):.3f} s  hit t_max {tmo}/{len(pts)}")
+    print(f"  per face: " + "  ".join(f"{k.split()[-1]}={v:.1f}s"
+                                      for k, v in sorted(stroke.items())))
+    # per-point cost per face -- if one face is dearer PER POINT, the cause is pose, not
+    # distance, and a bigger stride will not help it as much as the geometry predicts
+    print(f"  s/point : " + "  ".join(
+        f"{k.split()[-1]}={np.mean(c.budget['dur'][k]):.3f}"
+        for k in sorted(c.budget["dur"]) if k.startswith("WIPE")))
+    return {"seed": seed, "total_s": total, "stroke_s": sum(stroke.values()),
+            "overhead_s": sum(over.values()), "latch_s": sum(latch.values()),
+            "points": len(pts), "point_median_s": float(np.median(pts)),
+            "timeouts": tmo, "coverage": r["coverage"],
+            "per_face_s": stroke, "tilt_max": r["tilt_max"], "f_max": r["f_max"],
+            "in_band": r["in_band"]}
+
+
+def sweep(param, values, n, seed0, out, base=None):
+    """Vary ONE parameter and report cycle time against every quality metric it could cost.
+
+    A speedup that quietly drops coverage, leaves the force band, or exceeds the tilt cone
+    is not a speedup -- it is the same trade this project already refused once.
+    """
+    import dataclasses
+    base = base if base is not None else CFG
+    rows = []
+    for v in values:
+        cfg = dataclasses.replace(base, **{param: v})
+        c = Cell(cfg)
+        c.budget = {"t": {}, "n": {}, "dur": {}, "timeout": {}}
+        rs = [c.run(seed0 + k) for k in range(n)]
+        # budget accumulates across the n units; divide to get per-unit
+        total = sum(c.budget["t"].values()) / n
+        cov = np.array([r["coverage"] for r in rs])
+        row = {param: v, "cycle_s": total, "n": n,
+               "step_frac": cfg.step_frac, "speed": cfg.speed,
+               "cov_mean": float(cov.mean()), "cov_worst": float(cov.min()),
+               "missed": int(sum(r["missed"] for r in rs)),
+               "soil": int(sum(r["soil0"] for r in rs)),
+               "f_max": float(max(r["f_max"] for r in rs)),
+               "in_band_worst": float(min(r["in_band"] for r in rs)),
+               "tilt_max": float(max(r["tilt_max"] for r in rs)),
+               "raster": int(rs[0]["raster_planned"]),
+               "skipped": int(sum(r["raster_skipped"] for r in rs))}
+        rows.append(row)
+        print(f"  {param}={v:<6} cycle {total:7.2f}s  raster {row['raster']:4d}  "
+              f"cov {row['cov_mean']*100:5.1f}% (worst {row['cov_worst']*100:5.1f}%)  "
+              f"missed {row['missed']:3d}/{row['soil']:3d}  "
+              f"fmax {row['f_max']:5.2f}N  in-band {row['in_band_worst']*100:5.1f}%  "
+              f"tilt {row['tilt_max']:4.1f}deg")
+    with open(out, "w") as f:
+        json.dump({"param": param, "n": n, "seed0": seed0, "rows": rows}, f, indent=2)
+    print(f"\nwrote {out}")
+    print("  A row is only usable if coverage holds at 100%, missed = 0, peak force is")
+    print(f"  under the {CFG.force_hi:.0f} N model-validity ceiling and tilt is inside 30 deg.")
+    return rows
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", type=int)
@@ -1265,8 +1395,35 @@ if __name__ == "__main__":
     # the ledger records as spent on development. 800-807 were used to diagnose against
     # the old 64.7%, so defaulting there quietly reproduced a development figure.
     ap.add_argument("--seed0", type=int, default=900)
+    ap.add_argument("--budget", type=int, metavar="SEED",
+                    help="V6: where the cycle's seconds go. One unit; writes nothing.")
+    ap.add_argument("--stride-sweep", type=int, metavar="N", dest="stride_sweep",
+                    help="V6: sweep step_frac over N units each")
+    ap.add_argument("--feed-sweep", type=int, metavar="N", dest="feed_sweep",
+                    help="V6: sweep speed over N units each")
+    ap.add_argument("--at-stride", type=float, default=1.20, dest="at_stride",
+                    help="step_frac to hold fixed during --feed-sweep")
+    ap.add_argument("--validate", type=int, metavar="N", dest="validate",
+                    help="V6: run N units at each candidate stride on held-out seeds")
     a = ap.parse_args()
-    if a.sabotage:
+    if a.validate:
+        import dataclasses as _dc
+        for sf in (1.20, 1.30):
+            print(f"\n--- HELD-OUT VALIDATION, step_frac {sf}, seeds "
+                  f"{a.seed0}-{a.seed0+a.validate-1} ---")
+            sweep("step_frac", [sf], a.validate, a.seed0, f"validate_{sf}.json")
+    elif a.budget is not None:
+        time_budget(a.budget)
+    elif a.stride_sweep:
+        sweep("step_frac", [0.95, 1.10, 1.20, 1.30, 1.414], a.stride_sweep,
+              a.seed0, "sweep_stride.json")
+    elif a.feed_sweep:
+        # swept at the CHOSEN stride, not the old one: the two interact, and what we want
+        # to know is the feed curve of the config we would actually ship
+        import dataclasses as _dc
+        sweep("speed", [1.0, 1.5, 2.0, 3.0, 4.0], a.feed_sweep, a.seed0,
+              "sweep_feed.json", base=_dc.replace(CFG, step_frac=a.at_stride))
+    elif a.sabotage:
         falsify(a.sabotage, a.seed0)
     elif a.run is not None:
         c = Cell()

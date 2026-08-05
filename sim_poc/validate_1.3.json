@@ -1,0 +1,22 @@
+{
+  "param": "step_frac",
+  "n": 8,
+  "seed0": 1830,
+  "rows": [
+    {
+      "step_frac": 1.3,
+      "cycle_s": 163.79399999999987,
+      "n": 8,
+      "speed": 1.0,
+      "cov_mean": 1.0,
+      "cov_worst": 1.0,
+      "missed": 0,
+      "soil": 108,
+      "f_max": 32.520670875170794,
+      "in_band_worst": 1.0,
+      "tilt_max": 30.0,
+      "raster": 272,
+      "skipped": 0
+    }
+  ]
+}
