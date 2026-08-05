@@ -734,3 +734,19 @@ force, a modelled stand-in, or nothing. The headline numbers didn't move; the ho
 **Why it matters:** on real hardware the gap between *logged* and *happened* is where
 silent failures live. A log line is written by the code that intended the action — not by
 the world that received it.
+
+## 2026-08-05 — The step the robot could not have done
+
+**What we built:** the membrane insert, for real — the arm picks the filter element off its
+nest and places it in the housing, 10/10, aligned to a third of a millimetre.
+
+**The concept: check the part can physically get there before blaming the robot.** This step
+had been faked for weeks. Implementing it, we found the cap sits 20 mm above the housing
+mouth and covers it completely, while the element is 72 mm long — no path in at any accuracy.
+Lifting the cap clear doesn't help: the gripper needs that exact space. The fix was the order
+a person uses — housing open, element in, cap on after. What made the motion work: measure
+the PART not the wrist, and travel OVER a workstation rather than through it.
+
+**Why it matters:** "the robot can't do it" and "the world won't allow it" look identical in
+a failure log, and only one of them is fixed by better control. We burned two prototypes
+tuning a grip that was never going to fit.

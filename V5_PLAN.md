@@ -945,6 +945,56 @@ arm, so the soil was there).
 `sim_poc/v5_membrane.py`. Subclasses V5-C's `Cell`, so the planner and motion layer are
 inherited rather than re-derived — the same extends-by-import rule v4→v3→v2 followed.
 
+### 3.4 — the element insert became a REAL motion (2026-08-05)
+
+**It was not one before.** `v5_route` appended the string `MEMBRANE_INSERT` and compliance
+counted it done; nothing picked, aligned or inserted anything. It *could not* have:
+
+| | z |
+|---|---|
+| bowl rim | 0.155 |
+| cap underside (fitted) | 0.175 |
+| **gap the element must pass** | **0.020 m** |
+| element height × diameter | **0.072 × 0.042 m** |
+
+And retracting the cap up its thread does not help — **the gripper assembly spans
+tcp+0.005 … tcp+0.185 at radii to 99 mm and must occupy exactly the space the cap retracts
+into.** Every legal cap position is inside the gripper envelope. Measured, not argued.
+
+**The fix is the order the real process already uses: the bowl is OPEN.** The element goes
+in, and the cap is then *presented engaged on the first thread* — verbatim the de-scope this
+module has always declared ("thread-starting is its own research problem"). **Presenting the
+cap is a FIXTURE action, not a robot motion**, and every report says so. What the robot
+genuinely does is pick, align and place the element, judged on the element.
+
+| | fresh 1800–1809 |
+|---|---|
+| inserted | **10/10** |
+| alignment before release | median **0.30 mm**, worst 0.45 mm *(radial clearance 1.5 mm)* |
+| seated off-axis | median 1.31 mm, worst 1.54 mm |
+| base vs bowl floor | −0.11 mm |
+
+**Two things made it work, and both generalise.** *Align on the PART, not the wrist* — the
+finger pads are flat and close along Y, so in X the element rides on **friction alone** and
+slid ~19 mm in the jaws during a full-rate 130 mm carry, landed on the rim and was stripped
+out onto the post. Velocity-limiting the setpoint to 0.05 m/s and closing the loop on the
+element's own measured position fixed it. And *transit OVER a station, never through it* —
+the direct path from home swept the arm into the bowl and shoved it **53.7 mm** off its post.
+
+**The tightening physics is untouched, and that was checked rather than asserted.** Re-run
+on the SAME seeds (1400–1409) with the insert in place:
+
+| | before | after |
+|---|---|---|
+| turns, median | 9.68 | **9.75** |
+| seal preload, peak | 341 N | 345 N |
+| torque at cutoff | 6.00 | 6.00 |
+| stalled / sabotage caught / false pass | 10/10 / 10/10 / 0 | 10/10 / 10/10 / 0 |
+
+The headline below is the **fresh** 1800–1809 run. That also retires the audit finding that
+1400–1409 were tuning seeds reused as a headline: they are now the *paired diagnostic*, and
+the published number comes from seeds never previously run.
+
 ### The threaded cap is a real screw, and it stalls on torque
 
 MuJoCo has no screw joint, so one is built: a hinge and a slide tied by an equality,
@@ -1029,14 +1079,15 @@ verification and the membrane station are the ones already measured, not reimple
 > subset". The step **sequences** are ours, assembled from their stages. Their vocabulary,
 > our composition.
 >
-> **2. Two step names have no motion behind them, and compliance counts them anyway.**
-> Nothing picks, aligns or inserts the membrane element — `reset_mem()` jitters the loose
-> element on its nest by ~4 mm and nothing else ever moves it — and nothing physically
-> delivers a unit to the scrap gate. Route-plan compliance is `steps_done == plan`, so
-> `MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL` **pass by being named**. `STEP_EVIDENCE`
-> in `v5_route.py` now classifies every step MEASURED / PROXY / UNBACKED and `report()`
-> prints it on every run. **End-to-end inherits this caveat**, so read 28/28 compliance as
-> *"the cell ran the sequence it chose"*, never as *"every named action was performed"*.
+> **2. Step names with no motion behind them are counted by compliance anyway.**
+> Route-plan compliance is `steps_done == plan`, so such a step **passes by being named**.
+> Two did. **`MEMBRANE_INSERT` is now a real, MEASURED motion** (see the V5-E section) —
+> the arm picks the element and places it in the open bowl, judged on the element.
+> **`ROUTE_TO_SCRAP_APPROVAL` remains UNBACKED**: nothing physically delivers a unit
+> anywhere, it is a software decision. `STEP_EVIDENCE` in `v5_route.py` classifies every
+> step MEASURED / PROXY / UNBACKED and `report()` prints it every run. **End-to-end
+> inherits this caveat**, so read 28/28 compliance as *"the cell ran the sequence it
+> chose"*, never as *"every named action was performed"*.
 
 ### The fork this cell refuses to decide
 

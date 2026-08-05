@@ -897,3 +897,34 @@ what we now understand.
   from a document, ask for the document. Second lesson, cheaper: fixing a metric so it
   measures the right thing does NOT make the thing it measures real. Both defects lived in
   the same six lines
+- 2026-08-05 | **Spent two prototypes tuning a grasp for a motion the geometry forbade.**
+  Asked to implement the membrane insert (the UNBACKED step the audit found), I went
+  straight to the manipulation problem: grip height, pendulum swing, carry speed, closed-loop
+  alignment. All of it real work, and all of it downstream of a question I had not asked --
+  CAN THE PART GET THERE AT ALL? It could not. The cap sits 20 mm above a 155 mm bowl rim
+  and overhangs the entire bore at r=34 mm; the element is 72 x 42 mm. No path in, at any
+  accuracy. Worse, my own proposed fix (retract the cap up its thread) was self-defeating and
+  I recommended it to the user before checking: the gripper assembly spans tcp+0.005..tcp+0.185
+  at radii to 99 mm and must occupy exactly the space the cap retracts into, so EVERY legal
+  cap position is inside the gripper envelope. Four lines of geometry would have shown that
+  before I asked the user to choose. | ~2 h, one wrong recommendation, one reverted
+  scene change | **MEASURE THE ENVELOPE BEFORE DESIGNING THE MOTION.** For any insert, print
+  (a) the clear opening, (b) the part's bounding box, (c) the END EFFECTOR's swept volume at
+  the required pose, and check them against each other -- the third is the one I skipped and
+  it is the one that killed the design. "The robot can't do it" and "the world won't allow
+  it" produce identical failure logs, and only the first is fixed by better control. The
+  eventual answer was not cleverer control either: it was the ORDER a human uses -- bowl
+  open, element in, cap on afterwards -- which the module's own docstring had already
+  declared as a de-scope ("the cap is presented engaged on the first thread"). The
+  constraint that unblocked it was written down in the file months ago
+- 2026-08-05 | **Two throwaway diagnostics were worth more than the fix.** Chasing why the
+  element kept ending up on the post rather than in the bowl, two one-off prints did all the
+  work. First: logging the ELEMENT's xy against the bowl's at every phase showed the element
+  lagging the wrist by 19 mm -- the finger pads are flat and close along Y, so in X the part
+  rides on friction alone and slides under carry inertia; the wrist telemetry is clean the
+  whole time. Second: printing the BOWL's pose showed it 53.7 mm off its post before the
+  element had even been picked up, because the direct path from home sweeps the arm through
+  the membrane station. Neither is visible in any success/failure rate. | ~30 min | When a
+  placement fails, log the pose of EVERY body involved -- part, fixture and tool -- not just
+  the one you are commanding. Both bugs were invisible from the commanded trajectory and
+  obvious from three extra numbers

@@ -13,27 +13,45 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
 | V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
-| V5-E membrane (Stage 10) | **DONE** — threaded cap stalls on torque, median **9.68 turns** @ 6.00 N·m, 333 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (1400–1409) |
-| V5-F route wiring | **DONE, with a named caveat** — route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0**, missed-hard **0** (1700–1727). **`MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL` are UNBACKED steps — no motion implements them, they pass by being named.** HARD stops at a human scrap-approval gate (a software decision, not a delivery). **The earlier "end-to-end 28/28" is RETRACTED** — see below |
+| V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
+| V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
 | V5-G video | **DONE** — `v5_video.py --render SEED`; per-station on-frame caveats, `media/v5_cell_medium.mp4` + `v5_cell_hard.mp4` |
 
 **All v5 phases are DONE (V5-0 through V5-G) — but "done" is not "physically complete".**
 An external audit (`codex-review` branch, `REVIEW_V5_E_F_G_END_TO_END.md`) raised ~17
-findings. Two P0s are now fixed (the V5-F end-to-end metric; the 1604/1607 ledger half) and
-one P0 is **acknowledged but NOT closed**: `MEMBRANE_INSERT` and `ROUTE_TO_SCRAP_APPROVAL`
-are route steps with **no motion behind them** — nothing picks, aligns or inserts the
-membrane element, and nothing physically delivers a unit to the scrap gate. They are now
-declared `UNBACKED` in `v5_route.STEP_EVIDENCE` and printed on every run, but **declaring a
-gap is not filling it**. Before quoting v5 as a complete cell, either implement those two
-motions or narrow the claim. Still open from that audit: V5-E's 1400–1409 were tuning seeds
-reused for the headline; V5-G has no DR envelope; CELL_SPEC gaps; three over-length
-LEARNINGS entries.
+findings. Now fixed: the V5-F end-to-end metric (P0); the 1604/1607 ledger half (P0);
+**`MEMBRANE_INSERT`, which is a real measured motion as of 2026-08-05** (P0); the inverted
+CAB_TOP account (P1); V5-E re-measured on genuinely fresh seeds 1800–1809, which also
+retires the contaminated-1400s finding (P0); missing route margins (P1); the overstated
+"routes are theirs, not invented" (P1).
+
+**Still open, and `ROUTE_TO_SCRAP_APPROVAL` is the one that matters:** it remains an
+**UNBACKED** step — no robot or indexer motion delivers a unit to the scrap gate; it is a
+software decision. Declared in `v5_route.STEP_EVIDENCE` and printed every run, but declaring
+a gap is not filling it. Also open: V5-G has no DR envelope; CELL_SPEC gaps; three
+over-length LEARNINGS entries.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
 **Every station's number is in the phase table above and reproduces from its own
 `--eval`.** The rest of this section is the reusable engineering lessons, kept because
 each one cost real time to learn.
+
+**MEMBRANE_INSERT IS NOW A REAL MOTION (2026-08-05).** It used to be a bare string: the
+arm never touched the element. It *could not* have — the cap overhangs the whole bore
+(r=34 mm) 20 mm above a 155 mm rim, so a 72 x 42 mm element had no path in, and retracting
+the cap up its own thread does not help because **the gripper assembly (tcp+0.005..tcp+0.185,
+radii to 99 mm) must occupy exactly the space the cap retracts into.** Measured, not argued.
+The fix is the order the real process uses: the bowl is **OPEN** while the element goes in,
+and the cap is then *presented engaged on the first thread* — which is verbatim the
+de-scope `v5_membrane` has always declared. Presenting the cap is a **fixture action, not a
+robot motion**, and is labelled that way everywhere. Insertion is 10/10, aligned to 0.30 mm
+median against 1.5 mm radial clearance. **The tightening physics is untouched:** re-run on
+the SAME seeds (1400–1409) the turn median moved 9.68 → 9.75 and seal peak 341 → 345 N.
+Two things that made it work, both reusable: **align on the PART, not the wrist** (the flat
+pads constrain only Y, so the element rides on friction in X and slid 19 mm in the jaws
+during a fast carry), and **transit OVER the station** (the direct path from home shoved the
+bowl 53.7 mm off its post).
 
 **V5-F's end-to-end figure was RETRACTED on 2026-08-05, and the lesson is about metrics,
 not motion.** `v5_route.run_route()` picked the route plan from the **predicted** grade and
