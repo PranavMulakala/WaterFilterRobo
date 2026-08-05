@@ -802,18 +802,27 @@ what we now understand.
   together silently broke the classifier.** V5-F's first route run graded seed 1500 truth
   EASY -> predicted HARD, a two-class jump the published confusion matrix says never
   happens. Ground-truth counts were identical on both paths; only the prediction differed.
-  Cause: `v5_triage.load_scene()` sets `CAB_TOP = 0.220` from a freshly-loaded MjData while
-  `v5_clean._sync_triage_globals()` computes **0.460** from the live model -- and the
-  FROZEN TRIAGE THRESHOLDS WERE CALIBRATED AGAINST 0.220, so its per-face search quads
-  cover about the lower half of each face. Grading the full face with half-face thresholds
-  reads far more defect area and grades harder. Both are self-consistent; they are not
-  interchangeable. Fixed by capturing v5_triage's own globals at construction and restoring
-  them before every grade: 1 wrong in 1 became 0 wrong in 12. | ~35 min | MODULE-LEVEL
-  GLOBALS SET BY A LOADER ARE SHARED STATE, and two stations in one process will fight over
-  them. The tell was that the truth counts matched exactly while the verdict did not --
-  when inputs agree and outputs do not, the difference is in state neither call passed
-  explicitly. Also worth noting the calibrated region is HALF the face: that is not wrong
-  (the thresholds were frozen against it and hold out at 97.5%), but nobody knew it
+  **[CAUSE CORRECTED 2026-08-05 -- the original diagnosis recorded here was inverted. It
+  claimed `load_scene()` computes `CAB_TOP = 0.220` and that the frozen thresholds were
+  calibrated against a half-face. Both false: `load_scene()` calls `mj_forward` and returns
+  0.46, v5_triage's module-level defaults are already 0.46, and the thresholds are
+  full-face. Struck and replaced below.]** Real cause: v5_triage's face-projection
+  constants are MODULE-LEVEL globals and `v5_clean._sync_triage_globals()` writes them from
+  `self.d.geom_xpos`. Run before `mj_forward`, that array is ALL ZEROS, giving
+  XY (0.00, 0.0) / BASE -0.220 / TOP 0.22 against the correct (0.58, 0.0) / 0.010 / 0.46.
+  The tell is BASE == -TOP: with all positions at the origin each geom spans 0 +/- its own
+  half-extent, so the "cabinet" is a box centred on the world origin whose height is the
+  largest half-size (cab_body, 0.22). The device also lands at x = 0, so the projected face
+  quads miss the part and the grader returns HARD for EVERY unit -- 4 of 7 sampled seeds
+  flip. Fixed by capturing v5_triage's own globals at construction and restoring them
+  before every grade: 1 wrong in 1 became 0 wrong in 12. | ~35 min, plus ~40 min on
+  2026-08-05 to disprove the wrong story and correct it in three files | READING
+  `geom_xpos` BEFORE `mj_forward` DOES NOT FAIL LOUDLY -- it returns a coherent-looking
+  model centred on the origin, which is why this got a confident and completely wrong
+  explanation. The one-line check that would have settled it in seconds: print the value
+  both ways (`_sync` before vs after `mj_forward`) instead of reasoning about which module
+  "owns" the constant. Also: BASE == -TOP is a signature worth recognising -- symmetric
+  bounds about zero mean nothing has been positioned yet
 - 2026-08-04 | **Re-aimed a camera for nicer framing and broke a published result.** V5-G's
   first dip shot was badly composed, so I moved `verify_dip`. The next render showed
   **17835 bubble px -> FAIL on a unit that had just stalled at 6.00 Nm and was sealed** --
@@ -849,3 +858,21 @@ what we now understand.
   rate itself, so the file audits its own headline. Also note the failure was invisible to
   every existing guard: the gates passed, all five baselines were byte-identical, and the
   eval reproduced exactly. A reproducible wrong number is still a wrong number
+- 2026-08-05 | **A confident wrong diagnosis outlived the bug it explained, in three files
+  at once.** The V5-F session found a real defect, shipped a real fix that works, and then
+  wrote down a cause that was exactly backwards -- that `v5_triage.load_scene()` computes
+  `CAB_TOP = 0.220` and its thresholds were calibrated on a half-face. `load_scene()` calls
+  `mj_forward` and returns 0.46; the module-level defaults are already 0.46; the thresholds
+  are full-face. The false story propagated verbatim into `v5_route.py`'s comment,
+  `V5_PLAN.md` and `PAIN_JOURNAL.md`, and it was worse than a harmless error: it implied
+  the published 97.5% triage station was subtly miscalibrated against half of each face,
+  which would have been a genuine result if true. Disproved in about four lines -- call
+  `_sync_triage_globals()` before and after `mj_forward` and print both. | ~40 min | **A
+  FIX THAT WORKS IS NOT EVIDENCE THE EXPLANATION IS RIGHT.** The fix (pin the globals) is
+  correct under both stories, so it could not discriminate between them, and nobody
+  re-checked. When a diagnosis names a specific number, PRINT THAT NUMBER before writing it
+  down -- `load_scene()` was one call away the whole time. Second point, worth as much: the
+  guard turns out to be a NO-OP in the current cycle (verify() is its only caller and
+  always runs after mj_forward, writing identical values at every indexer angle). It is
+  insurance against call ordering, not a live fix, and saying so is more useful than
+  letting it look load-bearing

@@ -650,13 +650,17 @@ delivers those units to a human approval gate and stops, and "routed correctly" 
 means *delivered to the gate*, not *repaired*. Building a robot that guesses at a scrap
 decision would be worse than building one that hands it over.
 
-**A subtle failure when two stations met.** Each station had been quietly keeping its own
-idea of where the top of the device is — one said 0.22 m, the other 0.46 m. Alone, each was
-fine and internally consistent. Run in the same program, the inspection station started
-reading the *whole* device with thresholds tuned on the *lower half*, and immediately
-condemned a spotless unit as scrap. The clue was that both paths agreed exactly on what the
-unit really was, and disagreed on the verdict — when the inputs match and the answers don't,
-the difference is hidden state nobody passed in.
+**A subtle failure when two stations met.** One station asked the simulator where the
+device was *before* the simulator had worked out where anything is — so it got back a
+device sitting at the origin, half its real height. The inspection station then looked for
+the unit in the wrong place and condemned a spotless one as scrap. The clue was that both
+paths agreed exactly on what the unit really was and disagreed on the verdict — when the
+inputs match and the answers don't, the difference is hidden state nobody passed in.
+
+> **Corrected 2026-08-05.** This originally described two stations each keeping its own
+> "internally consistent" height, 0.22 m and 0.46 m, with thresholds tuned on half a face.
+> Backwards: there was only ever one correct height (0.46 m), 0.22 m was an **uninitialised
+> read**, and the thresholds were always full-face. Paragraph above is the corrected one.
 
 **What that score does not mean.** Our grader is 97.5% accurate, so in forty units you'd
 expect about one mistake. The end-to-end number can never beat the grader feeding it. We
