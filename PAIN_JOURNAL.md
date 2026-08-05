@@ -955,3 +955,28 @@ what we now understand.
   21.0 mm IS the bound; the criterion is now 1.5 + 0.3 mm settling, z within 4 mm, tilt
   within 2.6 deg. It still passes 10/10, which is the point -- tightening it cost nothing
   and the old number was unearned. If a threshold is 4x the physical limit it is not a test
+- 2026-08-05 | **A "real time" video ran 15% fast, and I nearly shipped it as the answer to
+  "how long does this take".** `v5_video` derived clip length from FRAMES GRABBED / 30 fps,
+  but frames are only captured inside motion loops -- simulated time passing anywhere else
+  contributes none. One full MEDIUM cycle rendered as 196.1 s when the simulated clock says
+  **230.96 s**. The error flatters us, and the whole point of the clip was that its runtime
+  IS the cycle time. Caught by measuring the cycle independently instead of trusting the
+  artifact. Fixed by re-timing: fps = frames / simulated_seconds, so runtime equals cycle
+  time exactly. | ~25 min | **A DERIVED DURATION IS NOT A MEASURED ONE.** If a video claims
+  to show elapsed time, its length must be set FROM the clock, never inferred from frame
+  count -- sampling is not uniform in sim time and nothing warns you. Second trap in the
+  same hour: `d.time` is ZEROED by reset()/reset_mem() partway through a route, so my first
+  attempt to measure the cycle produced a NEGATIVE phase duration (-161 s) and a total of
+  44 s. A clock that restarts mid-measurement is not a clock; accumulate across resets
+- 2026-08-05 | **Swept the feed rate and two of five settings blew the force ceiling --
+  non-monotonically.** At speed 1.5 and 2.0 the peak contact force hit **108 N against a
+  45 N model-validity ceiling** with coverage collapsing to 75% on the worst unit, while
+  1.0, 3.0 and 4.0 were all clean at ~32.9 N and 100%. Cycle time was also non-monotonic
+  (1.5 was SLOWER than 1.0). This is the same signature CLAUDE already records for this
+  contact model above 45 N -- "50 breaks, 55 is fine, 60 breaks". | ~10 min to find, NOT
+  diagnosed to the bottom | Recorded rather than chased, because the decision does not
+  depend on it: the lever is worth 9.6% at best, so it is not being used either way. But
+  **DO NOT raise `speed` without diagnosing this first** -- and note the sweep only found
+  it because it reported PEAK FORCE alongside cycle time. A sweep that plotted speed
+  against time alone would have shown a clean monotonic curve and hidden a 2.4x force
+  excursion

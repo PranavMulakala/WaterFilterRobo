@@ -1,0 +1,82 @@
+{
+  "param": "speed",
+  "n": 8,
+  "seed0": 1820,
+  "rows": [
+    {
+      "speed": 1.0,
+      "cycle_s": 186.82799999999997,
+      "n": 8,
+      "step_frac": 1.2,
+      "cov_mean": 1.0,
+      "cov_worst": 1.0,
+      "missed": 0,
+      "soil": 141,
+      "f_max": 32.93534793726221,
+      "in_band_worst": 1.0,
+      "tilt_max": 30.0,
+      "raster": 323,
+      "skipped": 0
+    },
+    {
+      "speed": 1.5,
+      "cycle_s": 194.2080000000028,
+      "n": 8,
+      "step_frac": 1.2,
+      "cov_mean": 0.9327419559314271,
+      "cov_worst": 0.75,
+      "missed": 7,
+      "soil": 141,
+      "f_max": 108.33689605735374,
+      "in_band_worst": 0.9558344552047596,
+      "tilt_max": 30.0,
+      "raster": 323,
+      "skipped": 0
+    },
+    {
+      "speed": 2.0,
+      "cycle_s": 193.72000000000276,
+      "n": 8,
+      "step_frac": 1.2,
+      "cov_mean": 0.9327419559314271,
+      "cov_worst": 0.75,
+      "missed": 7,
+      "soil": 141,
+      "f_max": 108.47977473584893,
+      "in_band_worst": 0.9557558080478284,
+      "tilt_max": 30.0,
+      "raster": 323,
+      "skipped": 0
+    },
+    {
+      "speed": 3.0,
+      "cycle_s": 168.81600000000003,
+      "n": 8,
+      "step_frac": 1.2,
+      "cov_mean": 1.0,
+      "cov_worst": 1.0,
+      "missed": 0,
+      "soil": 141,
+      "f_max": 32.54125039414571,
+      "in_band_worst": 1.0,
+      "tilt_max": 30.0,
+      "raster": 323,
+      "skipped": 0
+    },
+    {
+      "speed": 4.0,
+      "cycle_s": 169.02800000000008,
+      "n": 8,
+      "step_frac": 1.2,
+      "cov_mean": 1.0,
+      "cov_worst": 1.0,
+      "missed": 0,
+      "soil": 141,
+      "f_max": 32.56208511265349,
+      "in_band_worst": 1.0,
+      "tilt_max": 30.0,
+      "raster": 323,
+      "skipped": 0
+    }
+  ]
+}
