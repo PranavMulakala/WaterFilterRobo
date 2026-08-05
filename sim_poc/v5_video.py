@@ -39,11 +39,14 @@ CAVEAT = {
              "soil the camera could see is gone.",
     "VERIFY": "Re-inspected through a SECOND camera: the triage camera cannot see the top "
               "face, and that is the face cleaning misses.",
-    "MEMBRANE": "Threaded cap driven multi-turn to a TORQUE criterion -- not our bayonet. "
-                "Bowl/cap/O-ring geometry is PLACEHOLDER pending CAD.",
+    "MEMBRANE": "The arm REALLY inserts the element into an OPEN bowl. The CAP IS "
+                "PRESENTED BY THE FIXTURE, engaged on the first thread -- that is NOT a "
+                "robot motion. Threaded cap then driven multi-turn to a TORQUE criterion, "
+                "not our bayonet. Bowl/cap/O-ring geometry is PLACEHOLDER pending CAD.",
     "DIP": "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. No fluid or gas is simulated "
            "anywhere; the camera still has to see them to fail the part.",
-    "SCRAP": "HARD forks into RECTIFIABLE / NON-RECTIFIABLE on rectification cost. We have "
+    "SCRAP": "NO MOTION DELIVERS THE UNIT ANYWHERE -- this is a SOFTWARE decision only. "
+             "HARD forks into RECTIFIABLE / NON-RECTIFIABLE on rectification cost. We have "
              "no cost model, so this goes to a HUMAN approval gate.",
 }
 
@@ -171,9 +174,31 @@ def render_unit(seed, speed=1, out=None):
             rec.grab(c.d, "VERIFY", inset="verify_top")
 
         if route != "easy":
-            # ---------------- MEMBRANE: multi-turn to torque
+            # ---------------- MEMBRANE INSERT (3.4), then multi-turn to torque
             c.reset_mem(seed)
             mc = c.mcfg
+            # REGRESSION GUARD. reset_mem() leaves the bowl OPEN (cap absent) so the
+            # element can be inserted. Between 11f9ea9 and this commit the video called
+            # reset_mem() and then drove `capdrv` directly -- so it rendered a bowl with
+            # no element and tightened a cap that was invisible AND non-colliding, while
+            # the HUD printed STALLED unconditionally. A demo path that skips the
+            # evaluated controller stops being a picture of the evaluated system, which
+            # is the same lesson as V5-G's re-aimed camera. Use the real methods.
+            rec.info["STEP"] = "MEMBRANE_INSERT"
+            ins = c.insert_element(frames={
+                "f": rec.frames, "max": 10_000, "every": every,
+                "cb": lambda tag: (rec.info.__setitem__("STEP", tag),
+                                   rec.grab(c.d, "MEMBRANE", cam="main"))})
+            rec.info["INSERT"] = (
+                f"aligned {ins['align_mm']:.2f} mm -> seated {ins['seat_xy_mm']:.2f} mm "
+                f"off-axis, {'IN' if ins['inserted'] else 'NOT SEATED'}")
+            rec.info.pop("STEP", None)
+            # the cap is PRESENTED by the fixture, engaged on the first thread -- a
+            # declared de-scope, NOT a robot motion, and the frame says so
+            c.cap_present(True)
+            mujoco.mj_forward(c.m, c.d)
+            for _ in range(int(FPS * 1.2)):
+                rec.grab(c.d, "MEMBRANE", cam="main")
             t, held, hist = 0.0, 0.0, []
             win = max(int(0.1 / c.dt), 1)
             k = 0
@@ -199,8 +224,11 @@ def render_unit(seed, speed=1, out=None):
                         held = 0.0
             c.d.ctrl[c.capdrv] = 0.0
             tq = c.torque()
-            rec.info["TIGHTEN"] = (f"{c.turns():5.2f} turns  {tq:4.2f} Nm  STALLED "
-                                   f"(driver limit {mc.torque_target_nm:.1f})")
+            stalled = bool(held >= mc.stall_hold_s)
+            rec.info["TIGHTEN"] = (
+                f"{c.turns():5.2f} turns  {tq:4.2f} Nm  "
+                f"{'STALLED' if stalled else 'NO STALL'} "
+                f"(driver limit {mc.torque_target_nm:.1f})")
 
             # ---------------- 3.6 charge, then 3.7 dip
             chg = c.pressurise(tq)

@@ -87,8 +87,22 @@ class MemConfig:
     transit_z: float = 0.36           # go OVER the station, never through it: the direct
                                       # path from home swept the arm into the bowl and
                                       # shoved it 53.7 mm off its post.
-    seat_tol_m: float = 0.006
-    seat_z_max: float = 0.012
+    # SEATING CRITERION, DERIVED FROM GEOMETRY rather than picked. Bore inner radius is
+    # 22.5 mm and the element is 21.0 mm, so a part resting anywhere in the bore is up to
+    # RADIAL_CLEARANCE = 1.5 mm off-axis -- that is the part sitting where gravity and
+    # clearance put it, not an error. The bound is therefore clearance + a small settling
+    # allowance, and NOT the 6.0 mm it used to be.
+    #
+    # Why that mattered: at 6.0 mm the worst observed settled offset (1.537 mm) passed by
+    # a 4x margin while being quoted next to a "1.5 mm clearance" headline -- scoring the
+    # release against the clearance and the outcome against four times it. An audit called
+    # that flattering and was right.
+    seat_tol_m: float = 0.0018        # = 1.5 mm clearance + 0.3 mm settling allowance
+    seat_z_max: float = 0.004         # base within 4 mm of the bowl floor (was 12 mm)
+    seat_tilt_min: float = 0.999      # cos: <= 2.6 deg. The bore is 1.5 mm on the radius
+                                      # over a 72 mm part -- it PHYSICALLY cannot tilt more
+                                      # than ~2.4 deg while seated, so the old 0.95
+                                      # (18.2 deg) could not have failed anything.
 
     # --- sabotage: stop early so the seal is never preloaded
     sabotage_turns: float = 4.0
@@ -312,7 +326,8 @@ class MemCell(CL.Cell):
         dz = (p[2] - ELEM_HALF_H) - self.bowl_floor_z()
         xy = float(np.linalg.norm(p[:2] - self.bowl_axis_xy()))
         out.update(seat_xy_mm=xy * 1000, seat_dz_mm=dz * 1000, upright=up)
-        out["inserted"] = bool(xy < mc.seat_tol_m and abs(dz) < mc.seat_z_max and up > 0.95)
+        out["inserted"] = bool(xy < mc.seat_tol_m and abs(dz) < mc.seat_z_max
+                               and up > mc.seat_tilt_min)
         if verbose:
             print(f"    INSERT: aligned to {out['align_mm']:.2f} mm in "
                   f"{out['align_iters']} corrections -> seated xy {xy*1000:.2f} mm, "
@@ -597,7 +612,9 @@ if __name__ == "__main__":
     ap.add_argument("--eval", type=int)
     ap.add_argument("--sabotage", type=int,
                     help="paired: N honest and N deliberately under-tightened")
-    ap.add_argument("--seed0", type=int, default=1400)
+    # 1800 reproduces the PUBLISHED result. 1400-1409 are the paired diagnostic range and
+    # are permanently labelled development seeds -- a bare run must reproduce, not replace.
+    ap.add_argument("--seed0", type=int, default=1800)
     a = ap.parse_args()
     if a.run is not None:
         c = MemCell()

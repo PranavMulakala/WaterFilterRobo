@@ -3,9 +3,11 @@
   "routing_compliance": 1.0,
   "right_route": 0.9285714285714286,
   "end_to_end": 0.9285714285714286,
+  "fully_backed": 0.7857142857142857,
   "routing_compliance_n": 28,
   "right_route_n": 26,
   "end_to_end_n": 26,
+  "fully_backed_n": 22,
   "false_easy": 0.0,
   "missed_hard": 0.0,
   "clean_verified": 22,
@@ -45,10 +47,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -197,10 +197,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -256,10 +254,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -297,10 +293,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -387,10 +381,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -428,10 +420,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -487,10 +477,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -528,10 +516,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -587,10 +573,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -628,10 +612,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -669,10 +651,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -759,10 +739,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -800,10 +778,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -859,10 +835,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -918,10 +892,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -959,10 +931,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1018,10 +988,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1059,10 +1027,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1100,10 +1066,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1172,10 +1136,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1231,10 +1193,8 @@
       "routing_ok": true,
       "steps_measured": 6,
       "steps_proxy": 1,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -1272,10 +1232,8 @@
       "routing_ok": true,
       "steps_measured": 3,
       "steps_proxy": 0,
-      "steps_unbacked": 1,
-      "unbacked_steps": [
-        "PASS"
-      ],
+      "steps_unbacked": 0,
+      "unbacked_steps": [],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,

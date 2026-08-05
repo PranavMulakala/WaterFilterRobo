@@ -81,7 +81,8 @@ GRADE_ROUTE = {"easy": "easy", "medium": "medium", "hard": "hard_non_rectifiable
 #
 #   MEASURED   a physical quantity from the sim decides pass/fail (force, torque, pixels)
 #   PROXY      the motion is real but the CONSEQUENCE is modelled, not computed
-#   UNBACKED   no motion and no measurement -- the string is the whole of it
+#   UNBACKED   a CLAIMED ACTION with no motion and no measurement -- the string is all of it
+#   META       bookkeeping, claims no action at all
 STEP_EVIDENCE = {
     "TRIAGE":                 ("MEASURED", "camera grades the unit; 97.5% held out"),
     "CLEAN_CABINET":          ("MEASURED", "pad rasters 5 faces; coverage, force, tilt logged"),
@@ -96,7 +97,10 @@ STEP_EVIDENCE = {
     "VERIFY_LEAK":            ("MEASURED", "camera must actually SEE bubbles to fail it"),
     "ROUTE_TO_SCRAP_APPROVAL":("UNBACKED", "a software decision. NO robot or indexer motion "
                                            "delivers the unit anywhere"),
-    "PASS":                   ("UNBACKED", "bookkeeping terminator"),
+    # META, not UNBACKED: a terminator is not a CLAIMED ACTION, and lumping it in made
+    # every EASY/MEDIUM route look as though it contained unbacked work -- diluting
+    # attention from the one place that actually does (the HARD handoff).
+    "PASS":                   ("META",     "bookkeeping terminator, not a claimed action"),
 }
 
 
@@ -104,6 +108,16 @@ def route_evidence(plan):
     """(measured, proxy, unbacked) step counts for a route plan."""
     kinds = [STEP_EVIDENCE.get(s, ("UNBACKED", "unknown step"))[0] for s in plan]
     return (kinds.count("MEASURED"), kinds.count("PROXY"), kinds.count("UNBACKED"))
+
+
+def fully_backed(row):
+    """True when the route contains no CLAIMED ACTION that nothing implements.
+
+    This is the count to publish next to end-to-end. `end_to_end` is a SOFTWARE verdict:
+    for the HARD route `steps_ok` is unconditionally True, so a HARD unit scores an
+    end-to-end success on the strength of a correct grade and a matching trace alone.
+    """
+    return not row["unbacked_steps"]
 
 
 class RouteCell(MB.MemCell):
@@ -283,8 +297,15 @@ def report(rows):
     print(f"  {'':<22}  says nothing about whether that prediction was right)")
     print(f"  RIGHT ROUTE           : {right}/{n} ({right/n*100:.1f}%)   "
           f"(predicted grade == truth; capped by triage)")
-    print(f"  END-TO-END            : {e2e}/{n} ({e2e/n*100:.1f}%)   "
-          f"(RIGHT route AND every step of it succeeded)")
+    fb = sum(fully_backed(r) for r in rows)
+    fbe = sum(r["end_to_end"] and fully_backed(r) for r in rows)
+    print(f"  END-TO-END (software) : {e2e}/{n} ({e2e/n*100:.1f}%)   "
+          f"(right route AND every step its route DEFINES succeeded)")
+    print(f"  ...FULLY BACKED       : {fbe}/{n} ({fbe/n*100:.1f}%)   <- the honest headline:")
+    print(f"  {'':<22}  end-to-end AND no claimed action that nothing implements.")
+    print(f"  {'':<22}  {n-fb} of {n} routes here contain one. For HARD, `steps_ok`")
+    print(f"  {'':<22}  is UNCONDITIONALLY True -- a correct grade plus a matching")
+    print(f"  {'':<22}  trace is the whole of it, with no physical handoff.")
     print(f"  FALSE-EASY            : {fe}/{n} ({fe/n*100:.1f}%)   <- the dangerous error")
     print(f"  missed-hard           : {mh}/{n} ({mh/n*100:.1f}%)")
     wrong = [r for r in rows if not r["grade_correct"]]
@@ -303,13 +324,14 @@ def report(rows):
         ok = sum(r["end_to_end"] for r in sel)
         print(f"    {rt:<22} n={len(sel):<3} end-to-end {ok}/{len(sel)}")
     # ---- WHAT THE COMPLIANCE NUMBER IS AND IS NOT MADE OF
-    print("\n  ROUTE-PLAN COMPLIANCE COUNTS STEP NAMES, AND TWO OF THOSE NAMES HAVE NO")
-    print("  MOTION BEHIND THEM. Per step, what actually decides it:")
+    nun = len({s for r in rows for s in r["unbacked_steps"]})
+    print(f"\n  ROUTE-PLAN COMPLIANCE COUNTS STEP NAMES, AND {nun} OF THEM HAS NO MOTION")
+    print("  BEHIND IT. Per step, what actually decides it:")
     for s, (kind, why) in STEP_EVIDENCE.items():
         used = sum(s in r["plan"] for r in rows)
         if not used:
             continue
-        mark = "  " if kind == "MEASURED" else ("~ " if kind == "PROXY" else "!!")
+        mark = {"MEASURED": "  ", "PROXY": "~ ", "META": ". "}.get(kind, "!!")
         print(f"   {mark}{kind:<9} {s:<24} n={used:<3} {why}")
     unb = sorted({s for r in rows for s in r["unbacked_steps"]} - {"PASS"})
     print(f"\n  => {', '.join(unb)} still pass by BEING NAMED: nothing physically")
@@ -367,8 +389,9 @@ def report(rows):
     print("  not 'repaired'. Asking what defines that fork is on the open-ask list.")
     print("  Easy/Medium/Hard class NAMES are DrinkPrime's; the BOUNDARIES are ours.")
     st = {"n": n, "routing_compliance": comply / n, "right_route": right / n,
-          "end_to_end": e2e / n,
+          "end_to_end": e2e / n, "fully_backed": fbe / n,
           "routing_compliance_n": comply, "right_route_n": right, "end_to_end_n": e2e,
+          "fully_backed_n": fbe,
           "false_easy": fe / n, "missed_hard": mh / n,
           "clean_verified": int(sum(r["clean_ok"] for r in cl)), "clean_n": len(cl),
           "leak_passed": int(sum(r["leak_ok"] for r in lk)), "leak_n": len(lk),
