@@ -646,8 +646,9 @@ fresh units, every one executing its route without a mechanical failure.
 splits the worst grade in two: units worth repairing, and units to scrap — decided on
 whether the repair would cost more than about 80–90%. Of what, none of their documents say.
 We have no cost model, no price list, no labour rate. So the cell **doesn't decide**. It
-delivers those units to a human approval gate and stops, and "routed correctly" for them
-means *delivered to the gate*, not *repaired*. Building a robot that guesses at a scrap
+hands those units off to a human approval gate and stops, and "routed correctly" for them
+means *flagged for a person*, not *repaired*. (In the simulation that hand-off is a
+decision, not a movement — nothing physically carries the unit anywhere.) Building a robot that guesses at a scrap
 decision would be worse than building one that hands it over.
 
 **A subtle failure when two stations met.** One station asked the simulator where the
@@ -717,3 +718,19 @@ unit's *actual* condition, which the cell does not choose. Adding it turned a pu
 **Why it matters:** the same trap is everywhere on real hardware. "The gripper reached its
 target" is not "the gripper reached the part." Any number where the robot supplies both the
 question and the answer is a number that cannot fail.
+
+## 2026-08-05 — A step that passes by being named
+
+**What we built:** an evidence label on every step of the route — measured, proxy, or
+unbacked — printed on every run, so a step with no motion behind it can't hide in a 28/28.
+
+**The concept: naming an action is not performing it.** The cell records what it did as a
+list of words and scores itself by checking that list matches the plan. Two of those words
+have nothing behind them — nothing picks up or fits the membrane element, and nothing
+carries a reject unit anywhere. The robot writes "MEMBRANE_INSERT", and the evidence the
+step happened is that the word is there. Each step now declares what decides it: a measured
+force, a modelled stand-in, or nothing. The headline numbers didn't move; the honesty did.
+
+**Why it matters:** on real hardware the gap between *logged* and *happened* is where
+silent failures live. A log line is written by the code that intended the action — not by
+the world that received it.

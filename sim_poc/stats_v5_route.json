@@ -30,6 +30,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -37,6 +43,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -62,6 +74,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": false,
       "end_to_end": false,
       "false_easy": false,
@@ -87,6 +105,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -112,6 +136,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -138,7 +168,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 178.26552230119626,
+      "peak_seal_n": 333.9237220673466,
+      "stalled": true,
+      "cap_z_mm": -17.08670840078064,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -151,6 +192,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -177,7 +225,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 175.39490828217635,
+      "peak_seal_n": 331.23283502017125,
+      "stalled": true,
+      "cap_z_mm": -17.08673721873657,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -190,6 +249,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -212,6 +278,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -219,6 +291,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -244,6 +322,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -270,7 +354,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 177.08193547461318,
+      "peak_seal_n": 332.7938760754029,
+      "stalled": true,
+      "cap_z_mm": -17.08675160938769,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -283,6 +378,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -305,6 +407,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -312,6 +420,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -338,7 +452,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 168.83046301351956,
+      "peak_seal_n": 325.8953964716304,
+      "stalled": true,
+      "cap_z_mm": -17.08685094377911,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -351,6 +476,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -373,6 +505,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -380,6 +518,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -406,7 +550,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 171.662876564146,
+      "peak_seal_n": 328.12396337595396,
+      "stalled": true,
+      "cap_z_mm": -17.086887626242113,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -419,6 +574,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -441,6 +603,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -448,6 +616,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -470,6 +644,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -477,6 +657,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -502,6 +688,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": false,
       "end_to_end": false,
       "false_easy": false,
@@ -528,7 +720,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 180.33426641334253,
+      "peak_seal_n": 336.0197051371433,
+      "stalled": true,
+      "cap_z_mm": -17.08682062581257,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -541,6 +744,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -563,6 +773,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -570,6 +786,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -596,7 +818,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 175.2916704348975,
+      "peak_seal_n": 331.3814985749562,
+      "stalled": true,
+      "cap_z_mm": -17.08682487961674,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -609,6 +842,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -635,7 +875,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 179.28618690749488,
+      "peak_seal_n": 335.42285613079366,
+      "stalled": true,
+      "cap_z_mm": -17.0867342632297,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -648,6 +899,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -670,6 +928,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -677,6 +941,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -703,7 +973,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 173.34572656144985,
+      "peak_seal_n": 329.9042296045906,
+      "stalled": true,
+      "cap_z_mm": -17.086882208585642,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -716,6 +997,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -738,6 +1026,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -745,6 +1039,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -767,6 +1067,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -774,6 +1080,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -799,6 +1111,12 @@
         "ROUTE_TO_SCRAP_APPROVAL"
       ],
       "routing_ok": true,
+      "steps_measured": 1,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "ROUTE_TO_SCRAP_APPROVAL"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -821,6 +1139,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -828,6 +1152,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -854,7 +1184,18 @@
       "torque_nm": 6.0,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "bubble_px": 0,
+      "peak_torque_nm": 6.0,
+      "seal_n": 185.24661688813302,
+      "peak_seal_n": 340.8300487797943,
+      "stalled": true,
+      "cap_z_mm": -17.08665704533216,
       "leak_false_pass": false,
       "steps_done": [
         "TRIAGE",
@@ -867,6 +1208,13 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 5,
+      "steps_proxy": 1,
+      "steps_unbacked": 2,
+      "unbacked_steps": [
+        "MEMBRANE_INSERT",
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
@@ -889,6 +1237,12 @@
       "torque_nm": null,
       "residue": 0,
       "coverage": 1.0,
+      "f_max": 34.50846504503416,
+      "in_band": 1.0,
+      "tilt_max_deg": 30.0,
+      "raster_skipped": 0,
+      "raster_infeasible": 17,
+      "coupling_drift_mm": 0.02016345346192714,
       "steps_done": [
         "TRIAGE",
         "CLEAN_CABINET",
@@ -896,6 +1250,12 @@
         "PASS"
       ],
       "routing_ok": true,
+      "steps_measured": 3,
+      "steps_proxy": 0,
+      "steps_unbacked": 1,
+      "unbacked_steps": [
+        "PASS"
+      ],
       "grade_correct": true,
       "end_to_end": true,
       "false_easy": false,
