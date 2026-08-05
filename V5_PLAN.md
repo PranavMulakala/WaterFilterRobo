@@ -186,7 +186,7 @@ unverified assumption.
 | **V5-C** | CLEAN coverage pass: contact-band descent, raster, coverage metric | Coverage %, missed-spot count, force band adherence |
 | **V5-D** | Cleaning verification + **sabotage test** | Honest cleanings verified; sabotaged cleanings caught, n/n |
 | **V5-E** | MEMBRANE: threaded cap to torque, plug/valve, pressurise, bubble check | Turns + torque at cutoff; leak **false-pass** rate |
-| **V5-F** | Route wiring: triage grade selects the route; end-to-end eval | Routing compliance + end-to-end on held-out seeds |
+| **V5-F** | Route wiring: triage grade selects the route; end-to-end eval | **Three distinct** figures on held-out seeds: route-plan compliance, **right-route (grade == truth)**, and end-to-end = right route AND every step. *Compliance alone is not end-to-end — conflating them is what produced the retracted 28/28* |
 | **V5-G** | DR sweep on the new stations; video; docs | Envelope stated as a spec, as in v4 |
 
 Non-negotiable throughout: held-out seeds, margins reported alongside rates, asymmetric
