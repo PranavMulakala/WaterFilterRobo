@@ -538,3 +538,35 @@ per device. By that standard our cleaning station scores **6 out of 10**, not th
 of surface area we'd been quoting. A percentage averaged over a device can look excellent
 while the thing fails every other unit. And a test that has never failed is not a test
 you've passed — it's a test you haven't finished writing.
+
+## 2026-08-04 — The robot kept changing its mind about how to stand
+
+**What we built:** the fix that closed the cleaning station. Coverage went 94.6% → 100%,
+and the force problem we'd been treating as separate vanished at the same moment — because
+it was never separate.
+
+**A robot arm with seven joints can reach the same point in many different ways** — same
+hand position, same tool angle, elbow somewhere else entirely. Ours has seven. When we
+asked it to touch a spot, our planner solved the maths and took the first answer it found.
+
+**The trouble is we ask 400-odd times per device**, wiping in a grid 27 mm at a time. And
+each time it solved from scratch, so two neighbouring spots could get two completely
+different postures. Moving between them meant a huge contortion for a tiny step: at worst,
+**five and a half radians of joint rotation to move the pad 37 millimetres**. The arm
+couldn't finish that in the time allowed — and while attempting it, it dragged the pad in a
+wide arc across the device. That arc is what was slamming the pad into things and spiking
+the contact force.
+
+**The giveaway was sitting in a table we'd already printed.** Of the five wiping passes,
+one had *zero* of these jumps — and it was the only pass that had ever worked properly. Four
+had dozens. When one instance of a repeated thing works and the rest don't, compare the
+instances before theorising.
+
+**The fix is one sentence: prefer the posture closest to the one you're already in.** Only
+go looking further afield if there's no nearby answer. Everything moved at once — every
+patch cleaned, contact force in range 99% of the time, peak force down from 271 N to 111 N.
+
+**Why it matters:** we'd been treating "misses spots" and "presses too hard" as two
+problems and had a separate plan for each. They were one. That's worth remembering: when
+two symptoms resist separate fixes, check whether they share a cause before building two
+solutions.

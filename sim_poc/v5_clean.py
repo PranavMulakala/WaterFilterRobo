@@ -131,6 +131,10 @@ class CleanConfig:
     #     verification looked through one camera view while the inspection it was checking
     #     used two. A verifier that sees less than the process it verifies cannot fail.
     verify_soil_max: int = 0        # residual soil components tolerated, per unit
+    # Joint-space continuity between adjacent raster points. 0.35 rad is comfortably
+    # inside what the executor can cover in its 2.5 s budget at 0.02 rad/step, and well
+    # above the 0.11-0.18 rad median step the geometry actually requires.
+    max_joint_jump: float = 0.35    # rad, per joint, between consecutive raster poses
     wipe_stall_s: float = 0.20      # window over which progress is judged
     wipe_stall_m: float = 0.0005    # less closing than this, while in contact, is a stall
     # ...and 'in contact' has to mean SEATED, not grazing. contact_min_n is 0.5 N, which
@@ -537,13 +541,34 @@ class Cell:
         tilting the tool SWINGS THE TARGET. Solving a fixed TCP target and then tilting
         would land the pad somewhere else on the face -- which is the whole reason the
         tool's length matters to this station in the first place.
+
+        AND IT PREFERS THE SOLUTION NEAREST THE PREVIOUS ONE. A 7-DoF arm has many
+        configurations for the same pose, and taking the first one found let adjacent
+        raster points 27 mm apart land in different branches: measured 5.78 rad of joint
+        motion for a 37 mm step on the top face, 32 of 90 points above 0.5 rad on face 90.
+        The executor interpolates at 0.02 rad/step with a 2.5 s budget, so a branch jump
+        cannot complete -- and on the way it sweeps the pad in a wide arc across the
+        device, which is why the pad was measured 257 mm off target and 37 mm past the
+        face edge. Face 180 had ZERO jumps and was the only pass that behaved.
+
+        Smallest tilt still wins whenever continuity is acceptable, so the reported tilt
+        stays honest; only when the nearest-in-tilt answer would tear the arm across its
+        workspace does it keep looking for a closer one.
         """
+        best = None
         for mat, tilt in tilted_mats(base_mat):
             tgt = pad_pt - mat @ pad_rel
             q = self.solve_at(tgt, mat, q_seed)
-            if q is not None:
+            if q is None:
+                continue
+            jump = 0.0 if q_seed is None else float(np.max(np.abs(q - q_seed)))
+            if jump <= self.cfg.max_joint_jump:
                 return q, mat, tilt, tgt
-        return None
+            if best is None or jump < best[0]:
+                best = (jump, q, mat, tilt, tgt)
+        if best is None:
+            return None
+        return best[1], best[2], best[3], best[4]
 
     def _carry_tool(self):
         """Put the welded tool where the arm would actually carry it, in the PLAN copy.
@@ -875,6 +900,9 @@ class Cell:
                 self.face_unreachable[deg] = "approach"
                 continue
             q_ap, mat_ap, _ = pl
+            # start each face from its OWN approach pose, not from wherever the previous
+            # face's last raster point left the arm on the other side of the device
+            self.q_warm = q_ap
             self.move_planned(q_ap, approach, cfg.grip_open, index_deg=deg,
                               tol=0.006, t_max=10.0, tag="TO FACE", frames=frames)
             self.dwell(0.3, mat_ap, approach, cfg.grip_open, index_deg=deg,
@@ -972,6 +1000,7 @@ class Cell:
         appr = np.array([cx, cyy, ztop + 0.10])
         pl = self.plan_pose(appr, tmt, self.q_des)
         if pl is not None:
+            self.q_warm = pl[0]
             self.move_planned(pl[0], appr, cfg.grip_open, index_deg=top_deg,
                               tol=0.006, t_max=10.0, tag="TO TOP", frames=frames)
         self.dwell(0.3, tmt, appr, cfg.grip_open, index_deg=top_deg,

@@ -794,3 +794,78 @@ longest, hardest and least effectively.
 
 **Seeds consumed:** 1000–1009 (verifier development and the before/after) and 1100–1109
 (the held-out headline). Start at 1200.
+
+---
+
+## V5-C REOPENED — the top face, and it was one root cause all along
+
+V5-D said V5-C was not done. It was right, and the defect turned out to be the same one
+behind the unclosed force band.
+
+**The diagnosis.** The top-face pad was measured up to **257 mm off target** and sweeping
+**37 mm past the face edge** on one side while stopping **29 mm short** on the other. But
+the *median* error was only −2.4 mm — so it was not a systematic offset, it was a handful
+of catastrophic points. Measuring the joint-space step between adjacent raster points
+found them:
+
+| pass | points > 0.35 rad | worst |
+|---|---|---|
+| WIPE 0 | 32 of 120 | 5.10 rad for a 44 mm step |
+| WIPE 90 | 32 of 90 | 4.98 rad |
+| **WIPE 180** | **0 of 120** | 0.37 rad |
+| WIPE 270 | 22 of 90 | 2.39 rad |
+| WIPE top | 1 of 48 | **5.78 rad for a 37 mm step** |
+
+**A 7-DoF arm has many configurations for the same pose, and the planner was taking the
+first one it found.** Adjacent raster points 27 mm apart landed in different branches. The
+executor interpolates at 0.02 rad/step with a 2.5 s budget, so a 5.78 rad jump cannot
+complete — and on the way it sweeps the pad in a wide arc across the device, which is
+exactly the 257 mm excursion and exactly where the force spikes came from. Face 180 had
+**zero** jumps and was the only pass that ever behaved.
+
+**The fix: prefer the solution nearest the previous one.** `plan_pad` still tries smallest
+tilt first and returns immediately when continuity is acceptable (≤ 0.35 rad/joint, against
+a 0.11–0.19 rad median that the geometry actually requires); only when the nearest-in-tilt
+answer would tear the arm across its workspace does it keep looking. Plus the warm seed now
+resets to each face's own approach pose instead of carrying over from the far side of the
+device.
+
+### Same seeds as the published baseline (900–907)
+
+| | before | after |
+|---|---|---|
+| coverage | 94.6% | **100.0%** |
+| units at 100% | 3/8 | **8/8** |
+| missed spots | 8 of 129 | **0 of 129** |
+| in force band | 88.1% | **99.1%** |
+| peak force | 271 N | **111 N** |
+| contact during raster | 77.5% | **93.4%** |
+| raster skipped / infeasible | 0 / 0 | 0 / 0 |
+
+**The force band closed without being touched.** It was never a press-depth problem — it
+was the pad being dragged across the device by branch jumps.
+
+**The honest cost:** exact-normal presses fell from 42.7% to **8.8%**, mean tilt 7.4° →
+**18.2°**, max still 30° and inside the cone the gate allows. The planner now trades press
+angle for joint-space continuity, deliberately. That trade is real and should be quoted
+whenever the tilt figure is.
+
+### V5-D re-run, fresh seeds 1200–1209, looked at once
+
+| | |
+|---|---|
+| honest cleanings verified | **10/10** |
+| **soil actually left on honest units** | **0 patches** |
+| false verifies | **0/10** |
+| sabotaged cleanings caught | **10/10** |
+
+The paired design is what makes that trustworthy: on the *same* seeds the sabotaged arm
+leaves **170** patches, so the soil was there and was removed — this is not "nothing to
+clean". Under DrinkPrime's own binary per-unit criterion the station now passes **10/10**,
+against 6/10 before.
+
+**Sample size, stated plainly:** 8 units at 100% coverage plus 10 units at zero residue is
+**18 units**. The force, tilt and raster figures still have **no seed variance at all** —
+the trajectory is open-loop and the seed only moves the soil.
+
+**Seeds consumed:** 1200–1209. Start at 1300.
