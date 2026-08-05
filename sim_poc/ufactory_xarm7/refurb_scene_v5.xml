@@ -20,6 +20,16 @@
     <!-- cabinet: light warm grey plastic, like the real appliance -->
     <material name="cabmat" rgba="0.88 0.89 0.90 1" reflectance="0.12"/>
     <material name="faciamat" rgba="0.16 0.5 0.82 1" reflectance="0.2"/>
+    <!-- V5-E membrane station -->
+    <material name="bowlmat"  rgba="0.86 0.87 0.89 1" reflectance="0.12"/>
+    <material name="capmat"   rgba="0.24 0.45 0.62 1" reflectance="0.18"/>
+    <material name="oringmat" rgba="0.10 0.10 0.12 1" reflectance="0.05"/>
+    <material name="elemmat"  rgba="0.93 0.93 0.90 1" reflectance="0.04"/>
+    <material name="binmat"   rgba="0.55 0.58 0.62 1" reflectance="0.10"/>
+    <material name="watermat" rgba="0.35 0.62 0.78 0.45" reflectance="0.30"/>
+    <!-- BUBBLES. Emissive so they read against the water even at low light. Revealed only
+         as a modelled consequence of under-tightening -- see the membrane station block. -->
+    <material name="bubblemat" rgba="0.95 0.98 1.0 0.75" reflectance="0.5" emission="0.35"/>
     <material name="panelmat" rgba="0.80 0.81 0.83 1" reflectance="0.08"/>
     <!-- the three condition classes. Deliberately NOT flat recolours of the body: the
          classifier has to measure coverage and texture, not read back a value we set. -->
@@ -403,7 +413,286 @@
     <geom name="post_base" type="cylinder" size="0.055 0.010" pos="0.300 -0.340 0.010"
           material="postmat"/>
     <site name="post_pt" pos="0.300 -0.340 0.30" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- ===================== MEMBRANE STATION (Stage 10) =====================
+         PLACEHOLDER GEOMETRY. See MEM_* at the top of this file for the swap-in point
+         and the three part numbers the CAD ask names.
+
+         WHAT IS MODELLED AND WHAT IS NOT, stated here so it cannot drift:
+         * The cap is THREADED and multi-turn, terminated by a TORQUE criterion. It is a
+           hinge + slide coupled by an equality into a screw of 2 mm pitch,
+           driven by a force-limited actuator that STALLS -- which is what a torque-limited
+           driver does. It is NOT our v2/v3/v4 55-degree indexed bayonet, and the two must
+           never be called equivalent: same task class, different motion.
+         * The cap is presented ENGAGED ON THE FIRST THREAD, as a human would start it.
+           Thread-starting is its own research problem and is de-scoped, like the elbows.
+         * The O-ring is REAL: a soft geom the cap compresses. Stage 10's material table
+           lists it, and a joint with no seal is not a seal test.
+         * Plug, ball valve and 80-90 PSI are LOGGED STATE, not gas physics.
+         * BUBBLES ARE A PROXY. They are revealed as a modelled consequence of
+           under-tightening, NOT computed from fluid dynamics. There is no fluid
+           simulation anywhere in this repo. The camera still has to SEE them, so the
+           pass/fail is caused rather than asserted. -->
+    <body name="mem_fixture" pos="0.340 0.300 0">
+      <geom name="mem_post" type="cylinder" size="0.045 0.020" pos="0 0 0.020"
+            material="postmat"/>
+    </body>
+
+    <body name="mem_bowl" pos="0.340 0.300 0.040">
+      <freejoint name="bowl_free"/>
+      <!-- bowl wall as a ring of segments: MuJoCo has no open cylinder primitive, and a
+           solid one would leave nowhere to put the membrane -->
+      <geom name="mem_bowl_base" type="cylinder" size="0.0320 0.006"
+            pos="0 0 0.006" material="bowlmat" mass="0.18"/>
+      <geom name="mem_wall0" type="box" size="0.005 0.0085 0.0575"
+            pos="0.0275 0.0000 0.0575"
+            euler="0 0 0.00000" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall1" type="box" size="0.005 0.0085 0.0575"
+            pos="0.0195 0.0195 0.0575"
+            euler="0 0 0.78540" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall2" type="box" size="0.005 0.0085 0.0575"
+            pos="0.0000 0.0275 0.0575"
+            euler="0 0 1.57080" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall3" type="box" size="0.005 0.0085 0.0575"
+            pos="-0.0195 0.0195 0.0575"
+            euler="0 0 2.35619" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall4" type="box" size="0.005 0.0085 0.0575"
+            pos="-0.0275 0.0000 0.0575"
+            euler="0 0 3.14159" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall5" type="box" size="0.005 0.0085 0.0575"
+            pos="-0.0195 -0.0195 0.0575"
+            euler="0 0 3.92699" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall6" type="box" size="0.005 0.0085 0.0575"
+            pos="-0.0000 -0.0275 0.0575"
+            euler="0 0 4.71239" material="bowlmat" mass="0.018"/>
+      <geom name="mem_wall7" type="box" size="0.005 0.0085 0.0575"
+            pos="0.0195 -0.0195 0.0575"
+            euler="0 0 5.49779" material="bowlmat" mass="0.018"/>
+      
+      <!-- O-RING on the rim. Soft, and its own contact priority for the same reason the
+           wiping pad has one: MuJoCo averages solref between geoms otherwise, and the
+           compliance that sets the torque curve would silently become someone else's. -->
+      <geom name="mem_oring0" type="sphere" size="0.0030"
+            pos="0.0280 0.0000 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring1" type="sphere" size="0.0030"
+            pos="0.0242 0.0140 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring2" type="sphere" size="0.0030"
+            pos="0.0140 0.0242 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring3" type="sphere" size="0.0030"
+            pos="0.0000 0.0280 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring4" type="sphere" size="0.0030"
+            pos="-0.0140 0.0242 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring5" type="sphere" size="0.0030"
+            pos="-0.0242 0.0140 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring6" type="sphere" size="0.0030"
+            pos="-0.0280 0.0000 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring7" type="sphere" size="0.0030"
+            pos="-0.0242 -0.0140 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring8" type="sphere" size="0.0030"
+            pos="-0.0140 -0.0242 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring9" type="sphere" size="0.0030"
+            pos="-0.0000 -0.0280 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring10" type="sphere" size="0.0030"
+            pos="0.0140 -0.0242 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      <geom name="mem_oring11" type="sphere" size="0.0030"
+            pos="0.0242 -0.0140 0.1180"
+            material="oringmat" mass="0.0004" priority="1" solref="0.02 1"
+            solimp="0.85 0.93 0.0025" friction="0.9 0.02 0.001"/>
+      
+      <geom name="mem_rim0" type="sphere" size="0.0035"
+            pos="0.0300 0.0000 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim1" type="sphere" size="0.0035"
+            pos="0.0212 0.0212 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim2" type="sphere" size="0.0035"
+            pos="0.0000 0.0300 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim3" type="sphere" size="0.0035"
+            pos="-0.0212 0.0212 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim4" type="sphere" size="0.0035"
+            pos="-0.0300 0.0000 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim5" type="sphere" size="0.0035"
+            pos="-0.0212 -0.0212 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim6" type="sphere" size="0.0035"
+            pos="-0.0000 -0.0300 0.1145"
+            material="bowlmat" mass="0.001"/>
+      <geom name="mem_rim7" type="sphere" size="0.0035"
+            pos="0.0212 -0.0212 0.1145"
+            material="bowlmat" mass="0.001"/>
+      
+      <site name="mem_seal" pos="0 0 0.1150" size="0.004" rgba="0 0 0 0"/>
+      <!-- BUBBLE GEOMS. Alpha 0 until revealed. THEY ARE A PROXY: revealed as a modelled
+           consequence of an under-tightened cap, NOT computed from any fluid or gas
+           simulation -- there is none anywhere in this repo. What stays real is that the
+           camera has to SEE them, so the pass/fail is caused by the torque outcome rather
+           than read from a variable. Every artifact showing this says so on the HUD. -->
+      <geom name="bubble0" type="sphere" size="0.0035"
+            pos="0.0288 0.0000 0.1250"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble1" type="sphere" size="0.0067"
+            pos="0.0233 0.0170 0.1580"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble2" type="sphere" size="0.0099"
+            pos="0.0089 0.0274 0.1470"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble3" type="sphere" size="0.0051"
+            pos="-0.0089 0.0274 0.1360"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble4" type="sphere" size="0.0083"
+            pos="-0.0233 0.0170 0.1250"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble5" type="sphere" size="0.0035"
+            pos="-0.0288 0.0000 0.1580"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble6" type="sphere" size="0.0067"
+            pos="-0.0233 -0.0170 0.1470"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble7" type="sphere" size="0.0099"
+            pos="-0.0089 -0.0274 0.1360"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble8" type="sphere" size="0.0051"
+            pos="0.0089 -0.0274 0.1250"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      <geom name="bubble9" type="sphere" size="0.0083"
+            pos="0.0233 -0.0170 0.1580"
+            material="bubblemat" rgba="0.95 0.98 1.0 0" mass="0.00002"
+            contype="0" conaffinity="0"/>
+      
+
+      <body name="mem_cap" pos="0 0 0.1350">
+        <!-- THE SCREW. cap_z is tied to cap_rot by an equality below; together they are a
+             single helical degree of freedom. Driven by `capdrv`, whose forcerange IS the
+             torque limit -- the driver stalls instead of stripping the thread. -->
+        <joint name="cap_rot" type="hinge" axis="0 0 1" damping="0.05" armature="0.002"/>
+        <joint name="cap_z" type="slide" axis="0 0 1" damping="2.0" range="-0.030 0.001"/>
+        <geom name="mem_cap_body" type="cylinder" size="0.0340 0.010"
+              pos="0 0 0.010" material="capmat" mass="0.09"/>
+        <!-- flats for the spanner/driver head, and so the cap's rotation is VISIBLE -->
+        <geom name="mem_cap_flat" type="box" size="0.0313 0.006 0.007"
+              pos="0 0 0.024" material="stemmat" mass="0.02"/>
+        <site name="cap_top" pos="0 0 0.031" size="0.004" rgba="0 0 0 0"/>
+      </body>
+    </body>
+
+    <!-- the membrane element the arm inserts into the bowl before capping -->
+    <body name="mem_elem" pos="0.210 0.300 0.072">
+      <freejoint name="elem_free"/>
+      <geom name="mem_elem_body" type="cylinder" size="0.021 0.036" pos="0 0 0"
+            material="elemmat" mass="0.10" friction="0.9 0.01 0.001"/>
+    </body>
+    <geom name="mem_elem_nest" type="cylinder" size="0.040 0.018"
+          pos="0.210 0.300 0.018" material="postmat"/>
+
+    <!-- ===================== WATER BIN (Stage 10 dip) =====================
+         The dip is a BUBBLE TEST on a pressurised subassembly (3.6 -> 3.7), not a wash.
+         No fluid is simulated: the "water" geom has contype 0 and exists so the render
+         reads as a dip. -->
+    <body name="waterbin" pos="0.520 0.260 0">
+      <geom name="bin_w0" type="box" size="0.006 0.075 0.055"
+            pos="0.075 0.000 0.055"
+            material="binmat"/>
+      <geom name="bin_w1" type="box" size="0.006 0.075 0.055"
+            pos="-0.075 0.000 0.055"
+            material="binmat"/>
+      <geom name="bin_w2" type="box" size="0.075 0.006 0.055"
+            pos="0.000 0.075 0.055"
+            material="binmat"/>
+      <geom name="bin_w3" type="box" size="0.075 0.006 0.055"
+            pos="0.000 -0.075 0.055"
+            material="binmat"/>
+      
+      <geom name="bin_floor" type="box" size="0.075 0.075 0.005" pos="0 0 0.005"
+            material="binmat"/>
+      <geom name="bin_water" type="box" size="0.070 0.070 0.036" pos="0 0 0.046"
+            material="watermat" contype="0" conaffinity="0"/>
+      <site name="bin_centre" pos="0 0 0.070" size="0.005" rgba="0 0 0 0"/>
+    </body>
   </worldbody>
+
+  <!-- THE CAP MUST BE TOLD TO TOUCH ITS OWN O-RING. `mem_cap` is a CHILD body of
+       `mem_bowl` joined by the thread, and MuJoCo excludes contacts between bodies
+       connected by a joint -- so the cap wound 49 mm down through the seal without ever
+       loading it, and the driver never stalled. Explicit pairs override that filtering.
+       This is the seal that makes the torque criterion mean anything. -->
+  <contact>
+    <pair geom1="mem_cap_body" geom2="mem_oring0" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring1" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring2" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring3" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring4" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring5" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring6" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring7" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring8" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring9" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring10" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_oring11" solref="0.02 1"
+          solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
+    
+    <pair geom1="mem_cap_body" geom2="mem_rim0" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim1" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim2" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim3" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim4" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim5" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim6" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    <pair geom1="mem_cap_body" geom2="mem_rim7" solref="0.004 1"
+          solimp="0.97 0.99 0.0005" friction="1.1 1.1 0.05 0.001 0.001"/>
+    
+  </contact>
 
   <equality>
     <!-- ================= POSITIVE TOOL COUPLING (V5-C) =================
@@ -428,6 +717,16 @@
          conservative direction. -->
     <weld name="toollock" body1="xarm_gripper_base_link" body2="padtool"
           active="false" solref="0.004 1" torquescale="1"/>
+    <!-- THE THREAD. MuJoCo has no screw joint, so one is built from a hinge and a slide
+         tied together: cap_z = -(pitch / 2pi) * cap_rot. That single line is what makes
+         the cap MULTI-TURN and axially advancing rather than our fixed-angle bayonet.
+         pitch = 2 mm/turn, so 4 turns of driver stroke is
+         8 mm of travel. -->
+    <joint name="capthread" joint1="cap_z" joint2="cap_rot"
+           polycoef="0 -0.00031831 0 0 0"
+           solref="0.001 1" solimp="0.99 0.999 0.0001"/>
+    <weld name="partlock" body1="xarm_gripper_base_link" body2="mem_bowl"
+          active="false" solref="0.004 1" torquescale="1"/>
   </equality>
 
   <actuator>
@@ -444,6 +743,14 @@
          continuously; specify one that does. -->
     <position name="tt" joint="tt_rot" kp="120" kv="18" ctrlrange="-6.2832 6.2832"
               forcerange="-40 40"/>
+    <!-- THE TORQUE-LIMITED DRIVER. A velocity actuator whose FORCERANGE IS THE TORQUE
+         LIMIT: it winds the cap down until the O-ring load makes it stall, which is
+         precisely how a real nutrunner terminates. Achieved turns and the torque at
+         cutoff are what get reported -- never a commanded angle.
+         6.0 N.m is OUR number. Stage 10 says only "Ensure the cap is tightened
+         properly with the spanner"; no torque figure exists anywhere in the corpus. -->
+    <velocity name="capdrv" joint="cap_rot" kv="3.0" ctrlrange="-6 6"
+              forcerange="-6.00 6.00"/>
   </actuator>
 
   <keyframe>
@@ -462,11 +769,21 @@
          without touching three validated cells. Hence a second, complete keyframe.
          `v5_check_scene.py` asserts this one is correct and that index 0 is NOT used.
 
-         qpos layout (22): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         AND IT HAPPENED AGAIN IN V5-E. Adding the membrane bowl and element free joints
+         plus the two cap joints silently extended nq from 22 to 38, and the old 22-value
+         key zero-filled the rest -- putting the bowl AND the membrane element at the world
+         origin, i.e. inside the arm riser: 174 contacts at spawn, and a screw that could
+         not load because the parts it screws onto were somewhere else. If you add a joint
+         to this scene, THIS STRING IS PART OF THE CHANGE.
+
+         qpos layout (38): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
-         ctrl layout  (9): 7 arm | 1 gripper | 1 tt -->
+                         | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
+         ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
     <key name="v5home"
-         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0  0"
-         ctrl="0 -.247 0 .909 0 1.15644 0 0 0"/>
+         qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0  0
+               0.340 0.300 0.040 1 0 0 0  0 0
+               0.210 0.300 0.072 1 0 0 0"
+         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0"/>
   </keyframe>
 </mujoco>

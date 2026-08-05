@@ -747,3 +747,29 @@ what we now understand.
   luck: a partial report that dies BEFORE the write is safe, one that dies after is a file
   half-updated. Compare the console against the artifact whenever both exist -- that
   disagreement was the entire signal
+- 2026-08-04 | **The "monotonic to 60 N" pad curve was a COARSE-GRID ARTIFACT, and I had
+  already published it.** Gate 1 swept 0/5/10/20/40/60 N, found it monotonic, and I wrote
+  that the model "breaks between 60 and 80 N". Building V5-E the scene check failed on the
+  pad -- and a fine sweep showed 45 N clean, **50 N BREAKS (11.6 mm on a 10 mm pad)**,
+  55 N fine, 60 N breaks, 65 N fine. Intermittent solver instability, not a material
+  property, and the original grid simply never sampled 50. Checked against the committed
+  pre-V5-E scene: it breaks at 50 N identically, so this is pre-existing and NOT a V5-E
+  regression -- but the published characterisation was the wrong SHAPE, not just the wrong
+  number. Ceiling corrected 60 -> 45 N; cleaning peaks at 34.5 N so the conclusion stands.
+  | ~40 min | a monotonicity check is only as good as its grid, and a coarse grid over a
+  region with intermittent instability will report whatever the sample points happen to
+  hit. Sweep finely inside the range you intend to CLAIM, and print the failure region
+  instead of inferring it. The gate also took `max(-dist)` over EVERY contact in the
+  scene, so adding the membrane station made it fail on a contact unrelated to the pad --
+  filter to the geom you are actually measuring
+- 2026-08-04 | **Four scene bugs in one V5-E sitting, three of them already in this file.**
+  (1) `euler="0 0 30"` on the bowl wall segments -- xarm7.xml sets `compiler angle="radian"`,
+  so that is 30 RADIANS; the ring of boxes was flung into the bench and the arm riser.
+  (2) The `v5home` keyframe predates the three new joints, so MuJoCo zero-filled them and
+  put the bowl AND the membrane element at the world origin, inside the riser: 174 contacts
+  at spawn. **The keyframe block's own comment warns about exactly this**, from the last
+  two times. (3) 12 wall segments 22 mm wide on a 173 mm circumference -- 91 mm of overlap.
+  (4) The membrane element spawned 36 mm INSIDE its nest. | ~50 min | if a scene file
+  carries a comment saying "if you add a joint, this string is part of the change", that is
+  a checklist, not decoration. `v5_check_scene` catches spawn interpenetration in one run
+  and should be the FIRST thing executed after any geometry edit, not the last

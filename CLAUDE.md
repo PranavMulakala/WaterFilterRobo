@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the 60 N model-validity ceiling |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **34.5 N** inside the **45 N** model-validity ceiling |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | not started |
 | V5-F route wiring (triage grade selects the route, end-to-end eval) | not started |
@@ -37,9 +37,9 @@ z = 0.400, the top face at z = 0.450, so it graded four faces while cleaning cov
 **and the face it could not see was the face cleaning missed.** A `verify_top` camera fixed
 it and is a CELL_SPEC hardware requirement. Always report the FALSE-VERIFY rate next to the
 sabotage rate; a sabotage arm alone cannot detect a blind verifier. V5-C's five fixes are
-landed; see V5_PLAN "V5-C DIAGNOSIS" and "V5-C RESULT". Coverage **64.7% → 94.6%** held
-out (seeds 900–907), 0 raster points skipped, tool drift 0.03 mm. None of it came from
-tuning — it was four bugs in the motion layer plus two more that fell out of fixing them:
+landed; see V5_PLAN "V5-C DIAGNOSIS", "V5-C RESULT" and "V5-C REOPENED". Coverage went
+**64.7% → 94.6% → 100%**, 0 raster points skipped, tool drift 0.03 mm. None of it came
+from tuning — it was four bugs in the motion layer plus two more that fell out of them:
 
 1. **The indexer never reached 270°** — `deg2rad(270)` vs `ctrlrange` ±π, clamped
    silently. Now ±360°, and the cycle indexes *forward* to 360° for the top pass.
@@ -57,14 +57,13 @@ tuning — it was four bugs in the motion layer plus two more that fell out of f
    roughly halves — front/back 47.9%, sides 14.6%, top 29.2%. Those are the honest
    exact-normal numbers and they are why the cone is load-bearing.*
 
-**NOT closed, and it is the first thing to look at if V5-C is reopened:** in-band force
-is **88.1%** with a **271 N** peak. **Say that honestly: 60 N is where OUR pad's
-force/penetration curve stops being monotonic, not a component rating** — beyond it the
-contact model is extrapolating. "271 N against a pad rated for 60 N" manufactures a
-hardware damage claim the simulation cannot support. The front and top
-faces still never reach their planned pose (0% / 42% arrival) so they press hardest.
-Moving the device out cuts the required tilt (10.9° at x = 0.58 → 6.8° at x = 0.70) but
-costs the top face. Measure that trade **under contact**, not kinematically.
+**Force is CLOSED, and the ceiling was itself corrected.** In-band 100%, peak **34.5 N**.
+The pad's curve is clean and repeatable to **45 N** — not 60: "monotonic to 60" was a
+coarse-grid artifact that never sampled 50 N, where the contact solver goes unstable
+(11.6 mm on a 10 mm pad). Above 45 N it fails *intermittently* — 50 breaks, 55 is fine,
+60 breaks — so it is solver behaviour, not the pad. Present before V5-E (verified against
+the pre-V5-E scene), so not a regression. `force_hi` is 45 N and `v5_clean` asserts the
+peak against it every run.
 
 **Do not quote a force/tilt/raster figure as an n-unit spread.** The cleaning trajectory
 is open-loop and seed-independent — only coverage and missed spots vary with the seed.
@@ -103,8 +102,8 @@ to 900 so a bare `--eval 8` reproduces the published number rather than a spent 
    writes anything (only `v5_reach.py --sweep` writes `reach_v5.json`), so they are safe
    to run.
 5. **The v5 baselines are protected recorded results too**, and are reproduced by
-   `v5_triage.py --eval 120 --seed0 700` (97.5%) and `v5_clean.py --eval 8` (94.6%,
-   `--seed0` defaults to 900). Running either with a different seed range OVERWRITES the
+   `v5_triage.py --eval 120` (97.5%) and `v5_clean.py --eval 8` (100% coverage); both
+   `--seed0` defaults now reproduce the published number. Running either with a different seed range OVERWRITES the
    committed stats file with a number that is not the published one.
 
 ## Environment — read this before debugging an install

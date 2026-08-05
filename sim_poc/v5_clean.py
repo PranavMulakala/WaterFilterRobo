@@ -147,7 +147,15 @@ class CleanConfig:
     # --- force band. Upper bound from the pad curve (60 N is still monotonic); lower
     #     bound is "actually touching".
     force_lo: float = 1.0
-    force_hi: float = 60.0
+    # 45, NOT 60. "Monotonic to 60 N" was an artifact of a COARSE GRID: the sweep
+    # sampled 0/5/10/20/40/60 and never tried 50, where the contact solver goes unstable
+    # (12.1 mm of penetration on an 10 mm pad). Sampled finely the curve is clean and
+    # repeatable to 45 N and intermittently unstable above -- 50 breaks, 55 is fine, 60
+    # breaks, 65 is fine. That is solver behaviour, not a material property, and it was
+    # present BEFORE the membrane station was added (verified against the committed
+    # pre-V5-E scene), so it is a pre-existing mischaracterisation and not a regression.
+    # Cleaning peaks at 34.5 N, comfortably inside the stable region.
+    force_hi: float = 45.0
 
     speed: float = 1.0
     settle_s: float = 0.35
@@ -1123,8 +1131,11 @@ def report(rows):
     print(f"  contact force   : median {fm.mean():.1f} N, peak {peak:.1f} N   "
           f"[{'OK' if force_ok else '*** OUTSIDE MODEL VALIDITY ***'} -- our pad's "
           f"force/penetration curve is measured monotonic to {cfg_force_hi:.0f} N and")
-    print(f"                    breaks above it (2.19 mm at 60 N, 20.25 mm at 80 N). That "
-          f"is a MODEL-validity ceiling, not a component rating.]")
+    print(f"                    goes INTERMITTENTLY unstable above it -- 50 N breaks "
+          f"(11.6 mm on a 10 mm pad), 55 N is fine,")
+    print(f"                    60 N breaks. That is the contact solver, not the pad, and "
+          f"it is a MODEL-validity")
+    print(f"                    ceiling rather than a component rating.]")
     rp = sum(r.get("raster_planned", 0) for r in ok)
     rs = sum(r.get("raster_skipped", 0) for r in ok)
     # Contact is reported over the PLANNED raster, not the executed subset. Skipped
