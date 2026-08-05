@@ -285,6 +285,19 @@ def build(seed=SEED, cab_x=CAB_X):
          roughly y = +0.26, well inside its +/-0.46 half-width. Offset in -Y to clear the
          arm, which sits at the origin. fovy 48 frames the {CAB_HEIGHT*1000:.0f} mm device
          at this range with margin. -->
+    <!-- V5-D TOP-FACE VERIFICATION CAMERA. A hardware requirement discovered by the
+         falsification test, not a nicety. The `inspect` camera sits at z = 0.400 and the
+         device top face at z = 0.450 -- i.e. BELOW the plane of that face -- so it can
+         never see the top. V5-C wipes five faces and counts five; without this camera the
+         cleaning check saw four, and every unit that failed did so on the top face. The
+         first falsification run scored a perfect 10/10 caught while quietly letting 9 of
+         10 dirty units pass, because cleaning misses and camera blindness landed on the
+         SAME face. Mounted on the -Y side, above the top plane and clear of the arm's
+         working volume over the device. -->
+    <camera name="verify_top" fovy="40"
+            pos="{_cam((0.30, -0.30, 1.05), (0.58, 0, 0.46))[0]}"
+            xyaxes="{_cam((0.30, -0.30, 1.05), (0.58, 0, 0.46))[1]}"/>
+
     <camera name="inspect" fovy="48"
             pos="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[0]}"
             xyaxes="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[1]}"/>

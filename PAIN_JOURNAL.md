@@ -684,3 +684,26 @@ what we now understand.
   warning on every run. | ~15 min | the smell test is worth running even when it comes
   back clean -- the answer here was not "false alarm" but "your force statistic has one
   sample and you were about to call it eight"
+- 2026-08-04 | **The sabotage test passed n/n and the verifier was blind.** V5-D's first
+  run scored honest-verified 10/10 AND sabotaged-caught 10/10 -- V5_PLAN's stated exit
+  criterion, met exactly -- while letting **9 of 10 honestly-cleaned units pass with soil
+  still on them**. Every one of the 12 residual patches was on the TOP face. Cause: the
+  triage camera sits at z = 0.400 and the device top face at z = 0.450, i.e. BELOW the
+  plane of that face (cos(normal, view) = +0.076), so `face_regions` returns the four
+  VERTICAL faces only -- while V5-C wipes five faces and counts five in its coverage
+  number. The killer is that the two blind spots COINCIDE: the top face is also where
+  V5-C cleans worst (29.2% exact-normal reachability, 0/48 arrival in the V5-C
+  diagnosis). **The station fails precisely where it cannot check.** Fixed by adding a
+  second camera (`verify_top`) and grading the top face through it; false verifies
+  9/10 -> 0/10 on the same seeds. | ~2 h | a falsification test with only a SABOTAGE arm
+  measures nothing -- sabotage everything and a blind checker still catches it, because
+  enough dirt lands where it can see. The diagnostic that mattered was reporting the
+  HONEST arm's residual truth alongside its verdict, which turns "verified" into
+  "verified, and here is what was still on it". Report FALSE VERIFIES next to the
+  sabotage rate, always
+- 2026-08-04 | **An exit criterion can be met vacuously, and this one was.** "Honest
+  cleanings verified; sabotaged cleanings caught, n/n" was written into V5_PLAN months
+  before the station existed, and it is satisfiable by a check that sees four of five
+  faces. Criteria written before the thing they measure cannot anticipate where it will
+  be blind. | ~0 | when a criterion is met on the first attempt, that is a reason to
+  distrust it, not to celebrate. Ask what a broken version of the system would score

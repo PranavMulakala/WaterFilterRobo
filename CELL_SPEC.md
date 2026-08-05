@@ -127,6 +127,30 @@ Mounted on `xarm_gripper_base_link` at local **(0.060, 0, 0.030) m**, optical ax
 > hand-eye calibration from the inspection path entirely, which was the single largest
 > un-modelled risk in the original plan.
 
+### Top-face verification camera (V5-D) — a SECOND camera, and it is required
+
+| | |
+|---|---|
+| name | `verify_top` |
+| position | **(0.300, −0.300, 1.050) m** |
+| aim point | the device's top face centre, (0.580, 0, 0.460) m |
+| field of view | **fovy 40°** |
+
+**Why the cell needs two cameras, measured rather than assumed.** The `inspect` camera
+below sits at **z = 0.400** and the device's top face at **z = 0.450** — *below* the plane
+of that face, cos(top normal, view) = **+0.076** — so it can never see the top, and the
+per-face search regions cover the four **vertical** faces only. The cleaning station wipes
+**five** faces and its coverage number counts five.
+
+Verified through the `inspect` camera alone, the V5-D falsification test caught **10/10**
+sabotaged units and simultaneously passed **9 of 10** honestly-cleaned-but-still-dirty
+ones — because the face the cleaner misses and the face the camera cannot see are the
+**same face**. With `verify_top` the false-verify rate is **0/10**.
+
+Mount it on the −Y side above the top plane, clear of the arm's working volume over the
+device. It needs a one-off extrinsic survey, not hand-eye calibration — the arm parks
+during verification, exactly as it does for triage.
+
 ### Inspection station camera (V5-B)
 
 A **fixed** camera, not the wrist camera. With the device on a rotary indexer, a fixed

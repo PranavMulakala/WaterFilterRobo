@@ -506,3 +506,35 @@ stopped getting closer*, which is what "the wipe is done" actually means.
 something adjacent to what mattered. And we kept the 94.6% rather than a 100% we could
 have had by pressing longer and harder, because coverage bought with force is not
 coverage.
+
+## 2026-08-04 — We built a test that couldn't fail, and it passed
+
+**What we built:** the check that proves the cleaning worked — re-photograph the unit
+afterwards and look for leftover dirt — plus a deliberately sabotaged run to prove the
+check can catch a dirty one. The first version passed every test we set it and was
+worthless.
+
+**The setup.** Clean ten units properly, and clean ten more with the wiping switched off
+while the arm still goes through every motion. The check must pass the first ten and fail
+the second ten. It did: 10 out of 10 both ways. That was the target we'd written down
+months earlier, hit exactly.
+
+**Then we asked a different question: of the units it passed, how many were actually
+clean?** One. Nine of the ten it had just certified still had dirt on them.
+
+**Why, and it is the kind of thing you only find by looking.** The camera sits slightly
+*below* the top of the device, so it cannot see the top surface at all — it photographs
+the four sides. And the top is exactly the surface our robot cleans worst, because it's
+the hardest place for the arm to reach. **The machine fails in the one place it cannot
+look.** Sabotage everything and the check still catches it, because enough dirt lands on
+the sides. Sabotage nothing and it waves through the real failures.
+
+**The fix was a second camera**, mounted above and to one side. False passes went from
+nine in ten to zero. And the "success" rate of the honest cleaning *dropped* — which is
+the check becoming truthful, not getting worse. Those units were always dirty.
+
+**Why it matters:** the customer's actual standard is "any missed spots" — pass or fail,
+per device. By that standard our cleaning station scores **6 out of 10**, not the 94.6%
+of surface area we'd been quoting. A percentage averaged over a device can look excellent
+while the thing fails every other unit. And a test that has never failed is not a test
+you've passed — it's a test you haven't finished writing.
