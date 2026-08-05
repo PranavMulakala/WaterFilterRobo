@@ -75,6 +75,29 @@ conversation with the founder. It is a note-to-self, not a strategy.
 > presented to the founder as a claim about his own supply chain that he knows to be
 > false. Keep tagging.
 
+## 2b. QUESTIONS SENT TO THE FOUNDER — 2026-08-04 (evening), AWAITING RESPONSE
+
+Sent by Pranav's partner. Recorded verbatim here so the answers can be tracked against
+what was actually asked, and so nobody re-asks them in a different form.
+
+1. **Grading.** Stage 1 sorts into Easy/Medium/Hard but no written criteria were found.
+   Is there a document? If not, do operators judge **by eye, a wear indicator, or
+   experience/feel?** Plus: scans of QC **Annexures 1–13** (at minimum filters, pump,
+   membrane).
+2. **Test pressure.** Stage 6 says 45 PSI (per BIS); the QC flowchart shows 80 PSI on the
+   final line test. Which governs the assembled device? And in Stage 10's dip, is the
+   80–90 PSI **held while submerged?**
+3. **CAD.** STL/STEP for the **membrane bowl and cap**, plus the **O-ring spec** — so the
+   placeholder geometry can be replaced without a physical shipment.
+4. **The cleaning step.** The bar was *"the arm cleans the filter with a solution"*. The
+   docs show cabinet/panel cleaning with creams (Stages 2–3) and a membrane **water dip as
+   a leak check** (Stage 10) — but **no step where a filter is washed with a solution.**
+   Is there such a process, or was the cabinet cleaning meant?
+
+**Q4 is the one that can invalidate work.** v5's CLEAN is a dry pad wipe of the cabinet
+exterior; v4's cartridge dip in a solution tank is much closer to the bar's wording. Until
+it is answered, do not build more cleaning capability in either direction.
+
 ## 3. The two asks (current)
 
 **Ask 1 — define the funding bar, in writing.**

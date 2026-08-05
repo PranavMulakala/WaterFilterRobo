@@ -350,6 +350,15 @@ def build(seed=SEED, cab_x=CAB_X):
             pos="{_cam((BIN_XY[0] - 0.17, BIN_XY[1] - 0.19, 0.40), (BIN_XY[0], BIN_XY[1], 0.115))[0]}"
             xyaxes="{_cam((BIN_XY[0] - 0.17, BIN_XY[1] - 0.19, 0.40), (BIN_XY[0], BIN_XY[1], 0.115))[1]}"/>
 
+    <!-- DEMO camera on the membrane station. VISUAL ONLY -- it has NO measurement role
+         and nothing reads pixels from it, which is the whole reason it is a separate
+         camera rather than a re-aim of verify_dip. Re-aiming a measurement fixture for
+         nicer framing is exactly what broke V5-E once (17835 bubble px on a sealed unit).
+         Added 2026-08-05 so the element insertion is actually VISIBLE in the reel. -->
+    <camera name="demo_mem" fovy="40"
+            pos="{_cam((MEM_XY[0] - 0.16, MEM_XY[1] - 0.20, 0.36), (MEM_XY[0], MEM_XY[1], 0.13))[0]}"
+            xyaxes="{_cam((MEM_XY[0] - 0.16, MEM_XY[1] - 0.20, 0.36), (MEM_XY[0], MEM_XY[1], 0.13))[1]}"/>
+
     <camera name="inspect" fovy="48"
             pos="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[0]}"
             xyaxes="{_cam((0.10, -0.45, 0.40), (0.58, 0, 0.235))[1]}"/>
