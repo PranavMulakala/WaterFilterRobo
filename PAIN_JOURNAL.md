@@ -814,3 +814,14 @@ what we now understand.
   when inputs agree and outputs do not, the difference is in state neither call passed
   explicitly. Also worth noting the calibrated region is HALF the face: that is not wrong
   (the thresholds were frozen against it and hold out at 97.5%), but nobody knew it
+- 2026-08-04 | **Re-aimed a camera for nicer framing and broke a published result.** V5-G's
+  first dip shot was badly composed, so I moved `verify_dip`. The next render showed
+  **17835 bubble px -> FAIL on a unit that had just stalled at 6.00 Nm and was sealed** --
+  a false fail against a station that published 0/10 the same day. `verify_dip` is a
+  MEASUREMENT fixture: the bubble threshold is frozen against its exact pose and the ROI is
+  projected from it, so moving it slid bright water and bin edge into the window. Fixed by
+  adding a separate `demo_dip` with no measurement role; verify_dip went back and
+  stats_v5_membrane.json is byte-identical. | ~20 min | v4's "a vision result is only as
+  valid as the fixture that presents the part" applies to the CAMERA, not just the part.
+  Cameras a number depends on are part of the apparatus -- give the video its own, and if a
+  measurement camera ever must move, the threshold is re-frozen and the eval re-run

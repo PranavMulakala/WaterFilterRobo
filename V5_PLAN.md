@@ -1074,3 +1074,48 @@ globals at construction and restores them before every grade; grading went 1 wro
 **0 wrong in 12**.
 
 **Seeds consumed:** 1500–1511 (first look) and 1512–1539 (headline). Start at 1600.
+
+---
+
+## V5-G RESULT — the video, and the camera that must not move
+
+`sim_poc/v5_video.py --render SEED [--speed N]`. Renders a full route cycle with a HUD:
+live workpiece metrics, the route plan, stage chips, a stamped speed-up, and — the part
+that matters — **the caveat for whatever is on screen at that moment.**
+
+`media/v5_cell_medium.mp4` (62 s @ 4×, the full TRIAGE → CLEAN → VERIFY → MEMBRANE → DIP
+line) and `media/v5_cell_hard.mp4` (the scrap-approval gate).
+
+**Every station carries its own on-frame caveat**, because a video is where overstatement
+is easiest and hardest to catch:
+
+| station | on-frame text |
+|---|---|
+| TRIAGE | class NAMES are DrinkPrime's, BOUNDARIES are ours |
+| CLEAN | no cream, detergent or chemistry is simulated |
+| VERIFY | re-inspected through a SECOND camera — the triage camera cannot see the top face |
+| MEMBRANE | threaded, multi-turn to torque — not our bayonet; geometry is PLACEHOLDER |
+| **DIP** | **BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM** |
+| SCRAP | HARD forks on rectification cost; we have no cost model → human gate |
+
+**Numbers before pictures, deliberately.** `--render` existed nowhere in v5 until every
+station had been measured. A video is a claim; the evidence should predate it.
+
+### The bug worth keeping — a demo camera and a measurement camera are not the same object
+
+The first cut framed the dip badly, so I re-aimed `verify_dip` for a better shot. The next
+render showed **17835 bubble px → FAIL on a unit that had just stalled at 6.00 N·m and was
+sealed** — a false fail, against a station that had published **0/10**.
+
+`verify_dip` is a **measurement fixture**: the bubble threshold is frozen against its exact
+pose and the ROI is projected from it. Moving it slid bright water and bin edge into the
+ROI. *"A vision result is only as valid as the fixture that presents the part"* — the
+v4 lesson that cost 37 points of accuracy — **applies to the camera as much as to the
+part.**
+
+Fixed by adding a separate `demo_dip` camera with no measurement role. `verify_dip` is back
+at its calibrated pose and **V5-E reproduces exactly**: median 9.68 turns, 10/10 honest
+pass, 0 false fail, 10/10 sabotage caught, 0 false pass, `stats_v5_membrane.json`
+byte-identical.
+
+**Demo seeds:** 1607 (medium), 1604 (hard). Rendering consumes no evaluation seeds.
