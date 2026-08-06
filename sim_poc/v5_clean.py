@@ -1379,7 +1379,7 @@ class Cell:
                                   if self.tilts else 0.0}
 
 
-def run_with_backstop(cell, seed, max_recleans=2):
+def run_with_backstop(cell, seed, max_recleans=2, frames=None):
     """Targeted clean with the VERIFY backstop: re-clean while the camera sees residue.
 
     THE ACCEPTANCE IS THE CAMERA'S, not the plan's: each round ends with verify(), and
@@ -1388,7 +1388,7 @@ def run_with_backstop(cell, seed, max_recleans=2):
     """
     # Cell.run EXPLICITLY: on a RouteCell, `cell.run` dispatches to the MEMBRANE cycle
     # (MemCell.run overrides it), which is a different machine entirely.
-    r = Cell.run(cell, seed)
+    r = Cell.run(cell, seed, frames=frames)
     v = cell.verify()
     rounds = 0
     while v["soil_left_truth"] > 0 and rounds < max_recleans:

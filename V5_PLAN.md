@@ -1261,3 +1261,55 @@ byte-identical.
 the sense that rendering writes no stats file. These two seeds were rendered and watched
 frame by frame, so their outcomes are known — they can never serve as held-out units again,
 and the ledger in `CLAUDE.md` now says so.)*
+
+
+---
+
+## V6-SPEED RESULT — targeted cleaning and the honest floor (2026-08-05)
+
+Branch work, merged after verification. Objective: the fastest per-cell cycle **at
+near-100% accuracy** — accuracy was the gate, not a trade.
+
+| | v5 (full coverage) | V6 targeted | evidence |
+|---|---|---|---|
+| CLEAN | 186.8 s | **~75–120 s** (median 74.7) | fresh 1840–47 + 1860–75: **0/24 residue**, all verified |
+| membrane insert | 25.6 s | ~21 s | worst seat 1.48 mm vs 1.47 (bound 1.8) |
+| cap tighten | 17.4 s | ~11.7 s | drive 12 rad/s; loaded turns unchanged; 2.6× under a real nutrunner |
+| **full MEDIUM cycle** | **231.0 s (3:51)** | **152.5 s median (2:33)** | sim clock, 3 units |
+
+**Every falsification gate re-passed at the new speeds:** membrane 10/10 honest, 10/10
+sabotage caught, 0 false pass (fresh 1850–1859); sabotaged *cleaning* caught **15/15** by
+VERIFY through the backstop. Full-coverage mode is **byte-identical** (`--eval 8`).
+v2/v3/v4/triage baselines byte-identical.
+
+### How targeted mode stays honest
+
+1. It wipes ±1-row **bands** around seen soil — the band is measured need, not caution: at
+   some face locations the smallest feasible tilt presses edge-first with the pad face
+   29.5 mm off the patch (reach is 22), and the visit that cleans such a patch is a
+   *neighbouring* one. Sparse-point targeting missed 7% of patches; bands close it.
+2. A **spot pass** aims directly at anything the lattice left dirty.
+3. A **VERIFY-triggered backstop** re-cleans up to twice; the final round is a full sweep
+   of the still-dirty faces, recovering full-coverage's guarantee exactly where needed.
+   Recleans fired on ~1 unit in 6 and are included in every quoted time.
+4. **Label that travels with it:** soil *locations* come from ground truth standing in for
+   camera localisation (perception assumed perfect). The residue number is a real camera
+   measurement, and sabotage-caught 15/15 shows the backstop cannot be fooled by a
+   cleaning that does nothing.
+
+### The bug that cost the most was mine
+
+An early-exit indexer wait ("angle arrived, go") replaced the fixed 1.2 s dwell and broke
+coverage in BOTH modes — angle-arrived is not settled, and a corner patch survived a FULL
+raster. Five targeting mechanisms were built to chase symptoms of it. Restored, with a
+warning that any revisit needs a velocity-settle criterion. *A speed optimisation that
+touches a measured invariant re-earns every number downstream of it.*
+
+### Sub-60 s: no, and now it is measured rather than argued
+
+Stripping the band and backstop reaches ~48 s and ships ~7% of patches dirty. The tilt
+band and the backstop **are** the accuracy. Honest floor at zero residue: **~2:10–2:35**
+per unit. One unit **per minute** is a *throughput* statement: two cells at 2:33 give 47
+units/hour; four give 94 (≈2,000/day over 21 h). Cost model: open, [not yet priced].
+
+**Seeds:** 1840–1847, 1850–1859, 1860–1875 spent. Next free 1880.

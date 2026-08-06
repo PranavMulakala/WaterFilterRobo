@@ -38,6 +38,24 @@ falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
+**V6-SPEED (2026-08-05 evening) — TARGETED CLEANING + FAST MEMBRANE: full MEDIUM cycle
+231 s → 152.5 s median, at ZERO residue.** `CleanConfig.targeted` (DEFAULT OFF — full
+coverage stays the shipping mode; "all surfaces covered" is the customer's criterion).
+Targeted wipes only ±1-row bands around seen soil, skips soil-free faces, spot-visits
+leftovers, and a **VERIFY-triggered backstop** re-cleans up to twice (last round = full
+sweep of dirty faces). **Acceptance is the CAMERA's, never the plan's.** HONESTY LABEL:
+soil *locations* are ground truth standing in for camera localisation; the residue check
+is a real camera. Validated fresh: **0/24 units with residue (1840–1847, 1860–1875)**,
+sabotaged cleaning caught **15/15** through the backstop. Clean cycle 186.8 → **~75–120 s**
+(median 74.7 on 1860–75; recleans fire on ~1 in 6 units and are included). Membrane:
+`drive_rate` 4→12 rad/s and carry 0.05→0.10 m/s, swept with the sabotage gate — loaded
+turns unchanged, worst seat 1.48 mm vs 1.47 (bound 1.8), fresh 1850–1859 10/10 honest,
+10/10 caught, 0 false pass. **The bug that cost the most was MY OWN optimisation:** an
+early-exit indexer wait (angle-arrived ≠ settled) broke coverage in BOTH modes and was
+chased through five targeting mechanisms before being found; the 1.2 s dwell is restored
+with a warning comment. Sub-60 s at zero residue is NOT achievable on one arm — the tilt
+band and backstop ARE the accuracy; the throughput path is parallel cells.
+
 **V6 — CYCLE TIME. The diagnosis was that the cycle IS the raster, and the raster
 oversampled by 2.2×.** `v5_clean.py --budget SEED` prints where the seconds go. On the old
 config: **STROKE 91.3%, all overhead 7.2%** (tool changer + five turntable rotations +
@@ -180,7 +198,7 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E published headline (2026-08-05)**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 held-out stride validation**. Next free block: **1840+**.
+**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane headline**. Next free block: **1880+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of
