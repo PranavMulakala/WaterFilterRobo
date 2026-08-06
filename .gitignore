@@ -31,3 +31,4 @@ datasets/
 # Editors
 .vscode/
 .idea/
+venv
