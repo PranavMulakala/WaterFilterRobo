@@ -782,3 +782,19 @@ must hold still briefly to confirm the pad is pressing, so a faster arm just wai
 
 **Why it matters:** the instinct is to speed up the moving. The time was in *how many
 times it stopped* — a number nobody had questioned since it was written.
+
+## 2026-08-05 — Cleaning only where the dirt is, without losing the guarantee
+
+**What we built:** an opt-in fast cleaning mode — wipe only where the camera saw dirt, then
+a second camera checks and re-cleans anything left. Full cycle 3:51 → 2:33; on 24 fresh
+units zero residue, and sabotaged cleaning was caught 15 of 15 times.
+
+**The concept: a shortcut is safe only if a separate check can catch its mistakes.**
+Skipping clean areas is a bet that the camera saw everything. The bet is covered two ways:
+we wipe a small *band* around each dirty spot (a tilted pad sometimes presses edge-first
+and misses the exact spot — a neighbour's pass gets it), and after cleaning, the verify
+camera looks again and sends the arm back — escalating to a full wipe of any face that
+still fails. The final word always belongs to the check, never the plan.
+
+**Why it matters:** every fast path needs an independent judge. Our worst bug was our own
+speed tweak (cutting a settle pause) — fast changes must re-earn every number downstream.

@@ -54,6 +54,10 @@ closer to the funding bar's wording than v5's dry cabinet wipe. See the videos b
 
 ## The demos
 
+**[media/v6_cell_realtime.mp4](media/v6_cell_realtime.mp4)** — **the V6 targeted cell at
+true 1× (2:33 cycle)** — every frame carries a plain-English caption of what the arm is
+doing. Same accuracy gates as v5, verified on 24 fresh units with zero residue.
+
 **[media/v5_cell_realtime.mp4](media/v5_cell_realtime.mp4)** — **how long a unit actually
 takes.** One complete MEDIUM cycle at **true 1×, no speed-up** — the clip's runtime *is* the
 cycle time: **3 min 51 s** (clean 186.8 s, membrane + dip 44.1 s, triage/verify cost no
@@ -97,6 +101,7 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | | |
 |---|---|
 | **v5 TRIAGE — grade a whole unit** | **97.5%** on 120 fresh units; **missed-hard 0.0%**, false-easy 2.5% |
+| **V6 TARGETED CLEAN (opt-in)** | wipes only where dirt was seen + camera-verified backstop: **0/24 residue on fresh units**, sabotage caught 15/15; clean ~75–120 s, **full cycle 2:33** |
 | **v5 CLEAN — wipe five faces** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **32.9 N** vs a **45 N** validity ceiling. **V6: 254.7 s → 186.8 s/unit (1.36×)** |
 | **v5 VERIFY — prove the check can fail** | honest **10/10** verified with zero residue, **0/10** false verifies, sabotage caught **10/10** |
 | **v5 MEMBRANE — Stage 10** | **arm really inserts the element 10/10** (aligned 0.30 mm median vs 1.5 mm clearance); cap stalls on torque, median **9.40 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass. **The cap is presented by a fixture, not fitted by the robot** |
