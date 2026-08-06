@@ -980,3 +980,24 @@ what we now understand.
   it because it reported PEAK FORCE alongside cycle time. A sweep that plotted speed
   against time alone would have shown a clean monotonic curve and hidden a 2.4x force
   excursion
+- 2026-08-05 | **Cut a 1.2 s settle dwell to save 4 s and spent hours chasing the misses it
+  caused.** Replacing the indexer dwell with an angle-arrived early exit broke coverage in
+  BOTH cleaning modes: angle-arrived is not SETTLED, the device still oscillates, and a
+  corner patch survived even a FULL raster. I then built five successive targeting
+  mechanisms (margins, row segments, seed chains, spot passes, home-drives) chasing what
+  looked like sparse-coverage physics. The tell I ignored: the same geom failed at the same
+  location across every mechanism -- a fixed-location failure is an environment change, not
+  a coverage property. Found only by testing FULL mode on the failing seed. | most of a
+  session | A speed change that touches a measured invariant re-earns every number
+  downstream, FIRST -- run the invariant check (full-mode eval) immediately after the
+  "harmless" tweak, not after building on top of it. And when a failure is pinned to one
+  location regardless of strategy, stop varying the strategy
+- 2026-08-05 | **Sparse-point targeting missed 7% of patches for a real physical reason.**
+  At some face locations the smallest FEASIBLE tilt presses the pad edge-first with its
+  face 29.5 mm off the patch (reach is 22 mm) -- measured by logging closest pad approach
+  per patch. The full raster cleans those spots via NEIGHBOURING visits with different
+  tilts; a sparse pass must keep that diversity deliberately (+-1-row bands) and back it
+  with a camera-triggered re-clean. | ~1 h | Coverage of a compliant tilted tool is a
+  property of the VISIT SET, not the visit: thinning visits removes redundancy that was
+  doing invisible work. Measure per-patch closest-approach before trusting any sparser
+  pattern

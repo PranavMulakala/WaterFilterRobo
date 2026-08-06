@@ -99,6 +99,14 @@ class CleanConfig:
     # prove a 2.4 mm gap band is closed, only that it is rarely hit. 1.414 is a cliff and
     # 1.30 sits 8% from it. Real surface variation, pad wear or fixture error would eat that.
     step_frac: float = 1.20         # raster step, in pad RADII
+    # --- V6 TARGETED MODE (off by default; full coverage is the customer's criterion).
+    # Visits only raster points within a pad radius of soil, and skips soil-free faces
+    # entirely. HONESTY LABEL, printed every run it is used: soil locations are taken
+    # from ground truth as a stand-in for camera localisation (perception assumed
+    # perfect). The BACKSTOP is real: VERIFY re-inspects with the actual cameras and
+    # triggers one spot re-clean round; the residue number is still camera-measured.
+    targeted: bool = False
+    target_margin: float = 0.0      # extra keep-radius around soil, m
     # 3 mm, not 6. The pad gives 1.4-4.6 mm over 0-60 N, so 6 mm of commanded
     # over-travel sat high on that curve and the resulting friction tore the tool out of
     # the grip. 3 mm lands around 10 N -- enough to wipe, not enough to strip.
@@ -360,6 +368,7 @@ class Cell:
         self.face_unreachable = {}
         mujoco.mj_forward(m, d)
         self.q_des = d.qpos[self.qadr].copy()
+        self.q_home = self.q_des.copy()
         return truth, nd, ns, no
 
     def pad_contact_force(self):
@@ -890,9 +899,42 @@ class Cell:
         return min(xs), cy, max(ys), z0, z1
 
     # ---------------------------------------------------------------- the cycle
-    def run(self, seed, verbose=False, frames=None):  # noqa: C901
+    def run(self, seed, verbose=False, frames=None, reclean=False):  # noqa: C901
         cfg = self.cfg
-        truth, nd, ns, no = self.reset(seed)
+        if reclean:
+            # RE-CLEAN ROUND: keep the unit exactly as the last pass left it -- same
+            # soil state, no respawn -- and sweep only what is still dirty. Entered via
+            # run_with_backstop() when VERIFY still sees residue. A fresh entry gives
+            # the planner a fresh branch, which is precisely what the stuck patches
+            # need: their failure mode is a tilt the previous approach was locked into.
+            truth, nd, ns, no = self._last_reset
+            self.raster_planned = self.raster_skipped = self.raster_infeasible = 0
+            self.tilts = []
+            self.q_warm = None
+            self.face_unreachable = {}
+            # DRIVE HOME FIRST. verify() parks the arm (teleport, camera clearance), and
+            # entering the plan chain from PARK put the first face's corner points into
+            # a tilt branch that presses edge-first -- the same patch failed every
+            # reclean round while a fresh run cleaned it. Entry state is part of the
+            # plan; make it the same one every fresh run has.
+            mujoco.mj_forward(self.m, self.d)
+            self.q_des = self.d.qpos[self.qadr].copy()
+            t_h = 0.0
+            while t_h < 3.0:
+                dq = self.q_home - self.q_des
+                mx = np.max(np.abs(dq))
+                if mx > 0.02:
+                    dq = dq * (0.02 / mx)
+                self.q_des = self.q_des + dq
+                self.d.ctrl[self.act] = self.q_des
+                self.d.qfrc_applied[self.dof] = self.d.qfrc_bias[self.dof]
+                mujoco.mj_step(self.m, self.d)
+                t_h += self.dt
+                if np.max(np.abs(self.d.qpos[self.qadr] - self.q_home)) < 0.02:
+                    break
+        else:
+            truth, nd, ns, no = self.reset(seed)
+            self._last_reset = (truth, nd, ns, no)
         n0 = len(self.revealed_soil)
         gm = grasp_mat()
         want = np.array(cfg.couple_tcp)
@@ -926,6 +968,8 @@ class Cell:
         # Everything indexes from here.
         safe = np.array([0.26, 0.0, 0.42])
         prev_deg = 0.0
+        if cfg.targeted:
+            self.targeted_skipped_faces = []
         for deg in cfg.faces_deg:
             # RETRACT CLEAR, THEN INDEX, THEN APPROACH -- in that order. Rotating the
             # device while the arm was still swinging back across it swept the tool
@@ -937,10 +981,42 @@ class Cell:
             if pl is not None:
                 self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
                                   tol=0.006, t_max=8.0, tag="SAFE", frames=frames)
+            # The fixed 1.2 s indexer dwell STAYS. An early-exit on measured angle
+            # (|tt - deg| < 0.005 rad, min 0.15 s) saved ~4 s per unit and BROKE
+            # COVERAGE: angle-arrived is not settled -- the device still carries a small
+            # oscillation, and a corner patch (geom 33, front top-right) survived a FULL
+            # raster that cleans it when the dwell is respected. 4 s is not worth a
+            # missed patch; if this is ever revisited it needs an angular-VELOCITY
+            # settle criterion, not an angle threshold.
             self.dwell(1.2, tool_mat_face(deg), safe, cfg.grip_open,
                        index_deg=deg, frames=frames, tag=f"INDEX {deg:.0f}")
             prev_deg = deg
             fx, cy, hw, z0, z1 = self.front_face_plane(deg)
+            # GEOMETRIC soil selection: a patch is on the PRESENTED face iff, after this
+            # rotation, it sits on the presented plane. Face names were tried first and
+            # mis-mapped left/right, which filtered against the wrong list and missed
+            # 1-4 patches per unit -- geometry cannot be wrong that way.
+            if cfg.targeted:
+                mujoco.mj_forward(self.m, self.d)
+                _face_soil = [self.d.geom_xpos[g].copy() for g in self.revealed_soil
+                              if self.m.geom_rgba[g][3] > 0
+                              and abs(self.d.geom_xpos[g][0] - fx) < 0.03
+                              and self.d.geom_xpos[g][2] < z1 - 0.005]
+                if not _face_soil:
+                    if __import__("os").environ.get("V6DBG"):
+                        import numpy as _np
+                        _tt = float(_np.rad2deg(self.d.qpos[self.tt_q]))
+                        print(f"    [dbg] deg {deg}: SKIP, tt={_tt:.1f}, fx={fx:.4f}, "
+                              f"z1={z1:.3f}; nearest dx of revealed:")
+                        for g in self.revealed_soil:
+                            if self.m.geom_rgba[g][3] > 0:
+                                d_ = self.d.geom_xpos[g]
+                                if abs(d_[0] - fx) < 0.1:
+                                    print(f"          g{g} x{d_[0]:.4f} "
+                                          f"dx{abs(d_[0]-fx)*1000:5.1f}mm z{d_[2]:.3f}")
+                    self.targeted_skipped_faces.append(deg)
+                    prev_deg = deg
+                    continue
             tm = tool_mat_face(deg)
             zc, zh = (z0 + z1) / 2, (z1 - z0)
             # approach the face centre from clear
@@ -953,9 +1029,21 @@ class Cell:
             approach = np.array([fx - cfg.standoff, cy, zc]) - tm @ self.pad_rel
             pl = self.plan_pose(approach, tm, self.q_des)
             if pl is None:
+                # RETRY, best seed first. The DEVICE rotates between faces, not the arm,
+                # so every face's approach is nearly the same arm pose -- the previous
+                # face's approach solution is the natural seed. Then home. In targeted
+                # mode a sparse visit can end where no continuation exists, and without
+                # a retry the WHOLE FACE was silently dropped with its patches.
+                for _sq in ([getattr(self, "_last_q_ap")] if getattr(self, "_last_q_ap",
+                            None) is not None else []) + [self.q_home]:
+                    pl = self.plan_pose(approach, tm, _sq)
+                    if pl is not None:
+                        break
+            if pl is None:
                 self.face_unreachable[deg] = "approach"
                 continue
             q_ap, mat_ap, _ = pl
+            self._last_q_ap = q_ap.copy()
             # start each face from its OWN approach pose, not from wherever the previous
             # face's last raster point left the arm on the other side of the device
             self.q_warm = q_ap
@@ -979,10 +1067,53 @@ class Cell:
             step = cfg.step_frac * cfg.pad_radius
             rows = max(int(np.ceil((v_hi - v_lo) / step)) + 1, 2)
             cols = max(int(np.ceil(2 * u_lim / step)) + 1, 2)
+            # targeted: keep only points with soil within a pad radius (in-plane).
+            # Grid spacing <= R*sqrt(2) guarantees every soil location is within R of
+            # at least one grid point, so every patch keeps at least one visit.
+            keep = None
+            if cfg.targeted and not getattr(self, "_reclean_full", False):
+                sp = _face_soil
+                keep = set()
+                # CONTIGUOUS ROW SEGMENTS, not scattered points. Scattered keeps broke
+                # the serpentine's joint-space continuity -- the planner chained through
+                # IK branches it never sees in full mode, one face became unplannable
+                # and its patches were missed. Within a kept row, everything from the
+                # first to the last soil-adjacent column is visited, so every executed
+                # stroke is a pattern the full raster also executes.
+                # +-1 ROW BAND around soil rows, columns widened by 1. Measured need,
+                # not caution: at some face locations the smallest FEASIBLE tilt still
+                # presses edge-first with the pad face ~30 mm off the patch (reach 22),
+                # so the visit that actually cleans such a patch is a NEIGHBOURING one
+                # whose tilted face sweeps it. Full coverage carries that diversity for
+                # free; a sparse pass must keep the one-row band that provides it.
+                _hits = {}
+                for r_ in range(rows):
+                    v_ = v_lo + (v_hi - v_lo) * r_ / (rows - 1)
+                    for c_ in range(cols):
+                        u_ = -u_lim + 2 * u_lim * c_ / (cols - 1)
+                        for p_ in sp:
+                            if np.hypot(p_[1] - (cy + u_), p_[2] - (zc + v_)) \
+                                    <= cfg.pad_radius + cfg.target_margin:
+                                _hits.setdefault(r_, []).append(c_); break
+                for r_, cl_ in _hits.items():
+                    lo_, hi_ = max(min(cl_) - 1, 0), min(max(cl_) + 1, cols - 1)
+                    for rb in (r_ - 1, r_, r_ + 1):
+                        if 0 <= rb < rows:
+                            for c_ in range(lo_, hi_ + 1):
+                                keep.add((rb, c_))
+            if cfg.targeted and __import__("os").environ.get("V6DBG"):
+                print(f"    [dbg] deg {deg}: soil_on_face {len(_face_soil)} "
+                      f"kept {len(keep)}/{rows*cols} fx {fx:.4f} "
+                      f"cy {cy:.3f} zc {zc:.3f} u_lim {u_lim:.3f} "
+                      f"v [{v_lo:.3f},{v_hi:.3f}]")
+                for p_ in _face_soil:
+                    print(f"          soil {np.round(p_,3)}")
             for r in range(rows):
                 v = v_lo + (v_hi - v_lo) * r / (rows - 1)
                 order = range(cols) if r % 2 == 0 else reversed(range(cols))
                 for c in order:
+                    if keep is not None and (r, c) not in keep:
+                        continue
                     u = -u_lim + 2 * u_lim * c / (cols - 1)
                     # PROBE THE SURFACE PER POINT with a ray, instead of assuming one
                     # plane for the whole face. A single plane from the geom extents was
@@ -1018,6 +1149,41 @@ class Cell:
                                                  tol=cfg.wipe_tol, t_max=2.5, wipe=True,
                                                  log=forces, tag=f"WIPE {deg:.0f}",
                                                  frames=frames)
+            # SPOT PASS: any patch on this face the lattice pass left dirty gets a
+            # visit aimed AT THE PATCH, not at the nearest lattice point. Measured cause:
+            # at high tilt the pad presses with an edge, its face plane 29.5 mm off the
+            # patch (reach is 22), so a single lattice visit can carry force straight
+            # over a patch without touching it. Full coverage survives this through
+            # neighbouring visits with different tilts; a sparse pass must aim directly.
+            if cfg.targeted:
+                mujoco.mj_forward(self.m, self.d)
+                for p_ in _face_soil:
+                    g_alive = [g for g in self.revealed_soil
+                               if self.m.geom_rgba[g][3] > 0
+                               and np.linalg.norm(self.d.geom_xpos[g] - p_) < 0.005]
+                    if not g_alive:
+                        continue
+                    u_s = float(np.clip(p_[1] - cy, -u_lim, u_lim))
+                    v_s = float(np.clip(p_[2] - zc, v_lo, v_hi))
+                    self.raster_planned += 1
+                    hit = self.surface_x(cy + u_s, zc + v_s)
+                    if hit is None:
+                        self.raster_skipped += 1
+                        continue
+                    pad_pt = np.array([hit - cfg.pad_thick_half + cfg.press,
+                                       cy + u_s, zc + v_s])
+                    warm = self.q_warm if self.q_warm is not None else self.q_des
+                    got = self.plan_pad(pad_pt, tm, pad_rel, warm)
+                    if got is None:
+                        self.raster_infeasible += 1
+                        continue
+                    q_pt, mat_pt, tilt_pt, tgt = got
+                    self.q_warm = q_pt
+                    self.tilts.append(tilt_pt)
+                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
+                                                 index_deg=deg, tol=cfg.wipe_tol,
+                                                 t_max=2.5, wipe=True, log=forces,
+                                                 tag=f"WIPE {deg:.0f}", frames=frames)
             retract = np.array([fx - cfg.standoff - 0.05, cy, zc]) - tm @ pad_rel
             pl = self.plan_pose(retract, tm, self.q_des)
             if pl is not None:
@@ -1047,53 +1213,122 @@ class Cell:
         # error the vertical loop documents above. 360 deg keeps every step of the cycle
         # a +90 deg move in one direction, which is also how a real indexer is driven.
         top_deg = 360.0
-        self.dwell(1.4, tool_mat_face(0.0), safe, cfg.grip_open, index_deg=top_deg,
-                   frames=frames, tag=f"INDEX {top_deg:.0f}")
-        tmt = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]).T
-        cg = self.m.geom("cab_body").id
-        cx, cyy = self.d.geom_xpos[cg][0], self.d.geom_xpos[cg][1]
-        _, _, _, _, ztop = self.front_face_plane(top_deg)
-        appr = np.array([cx, cyy, ztop + 0.10])
-        pl = self.plan_pose(appr, tmt, self.q_des)
-        if pl is not None:
-            self.q_warm = pl[0]
-            self.move_planned(pl[0], appr, cfg.grip_open, index_deg=top_deg,
-                              tol=0.006, t_max=10.0, tag="TO TOP", frames=frames)
-        self.dwell(0.3, tmt, appr, cfg.grip_open, index_deg=top_deg,
-                   frames=frames, tag="SETTLE")
-        tcp_n = self.d.site_xpos[self.site]
-        Rn = self.d.site_xmat[self.site].reshape(3, 3)
-        prel = Rn.T @ (self.d.geom_xpos[self.pad_face] - tcp_n)
-        hx, hy = self.m.geom_size[cg][0], self.m.geom_size[cg][1]
-        step = cfg.step_frac * cfg.pad_radius
-        ux, uy = hx - cfg.pad_half, hy - cfg.pad_half
-        rows = max(int(np.ceil(2 * ux / step)) + 1, 2)
-        cols = max(int(np.ceil(2 * uy / step)) + 1, 2)
-        for r in range(rows):
-            du = -ux + 2 * ux * r / (rows - 1)
-            order = range(cols) if r % 2 == 0 else reversed(range(cols))
-            for cc in order:
-                dv = -uy + 2 * uy * cc / (cols - 1)
-                pad_pt = np.array([cx + du, cyy + dv,
-                                   ztop + cfg.pad_thick_half - cfg.press])
-                self.raster_planned += 1
-                warm = self.q_warm if self.q_warm is not None else self.q_des
-                got = self.plan_pad(pad_pt, tmt, prel, warm)
-                if got is None:
-                    self.raster_infeasible += 1
-                    continue
-                q_pt, mat_pt, tilt_pt, tgt = got
-                self.q_warm = q_pt
-                self.tilts.append(tilt_pt)
-                cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
-                                             index_deg=top_deg, tol=cfg.wipe_tol,
-                                             t_max=2.5, wipe=True, log=forces,
-                                             tag="WIPE top", frames=frames)
-        clear = np.array([cx, cyy, ztop + 0.12])
-        pl = self.plan_pose(clear, tmt, self.q_des)
-        if pl is not None:
-            self.move_planned(pl[0], clear, cfg.grip_open, index_deg=top_deg,
-                              tol=0.006, t_max=8.0, tag="TOP CLEAR", frames=frames)
+        skip_top = False
+        if cfg.targeted:
+            # decide from LOCAL z (rotation-invariant); capture world positions only
+            # AFTER the 360-deg index below, because the device is still at 270 here and
+            # top-soil x,y rotate with it -- capturing now filtered against a world that
+            # no longer existed and missed every top patch.
+            cab = self.cab_bodyid
+            _p0 = self.d.xpos[cab]; _R0 = self.d.xmat[cab].reshape(3, 3)
+            _n_top = sum(1 for g in self.revealed_soil
+                         if self.m.geom_rgba[g][3] > 0
+                         and (_R0.T @ (self.d.geom_xpos[g] - _p0))[2] > 0.44)
+            if _n_top == 0:
+                self.targeted_skipped_faces.append(top_deg)
+                skip_top = True
+        if not skip_top:
+            self.dwell(1.4, tool_mat_face(0.0), safe, cfg.grip_open, index_deg=top_deg,
+                       frames=frames, tag=f"INDEX {top_deg:.0f}")
+            if cfg.targeted:
+                mujoco.mj_forward(self.m, self.d)
+                cg0 = self.m.geom("cab_body").id
+                _ztop = float(self.d.geom_xpos[cg0][2] + self.m.geom_size[cg0][2])
+                _top_soil = [self.d.geom_xpos[g].copy() for g in self.revealed_soil
+                             if self.m.geom_rgba[g][3] > 0
+                             and self.d.geom_xpos[g][2] > _ztop - 0.03]
+            tmt = np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]).T
+            cg = self.m.geom("cab_body").id
+            cx, cyy = self.d.geom_xpos[cg][0], self.d.geom_xpos[cg][1]
+            _, _, _, _, ztop = self.front_face_plane(top_deg)
+            appr = np.array([cx, cyy, ztop + 0.10])
+            pl = self.plan_pose(appr, tmt, self.q_des)
+            if pl is not None:
+                self.q_warm = pl[0]
+                self.move_planned(pl[0], appr, cfg.grip_open, index_deg=top_deg,
+                                  tol=0.006, t_max=10.0, tag="TO TOP", frames=frames)
+            self.dwell(0.3, tmt, appr, cfg.grip_open, index_deg=top_deg,
+                       frames=frames, tag="SETTLE")
+            tcp_n = self.d.site_xpos[self.site]
+            Rn = self.d.site_xmat[self.site].reshape(3, 3)
+            prel = Rn.T @ (self.d.geom_xpos[self.pad_face] - tcp_n)
+            hx, hy = self.m.geom_size[cg][0], self.m.geom_size[cg][1]
+            step = cfg.step_frac * cfg.pad_radius
+            ux, uy = hx - cfg.pad_half, hy - cfg.pad_half
+            rows = max(int(np.ceil(2 * ux / step)) + 1, 2)
+            cols = max(int(np.ceil(2 * uy / step)) + 1, 2)
+            keep_top = None
+            if cfg.targeted and not getattr(self, "_reclean_full", False):
+                sp = _top_soil
+                keep_top = set()
+                _hits = {}
+                for r_ in range(rows):
+                    du_ = -ux + 2 * ux * r_ / (rows - 1)
+                    for c_ in range(cols):
+                        dv_ = -uy + 2 * uy * c_ / (cols - 1)
+                        for p_ in sp:
+                            if np.hypot(p_[0] - (cx + du_), p_[1] - (cyy + dv_)) \
+                                    <= cfg.pad_radius + cfg.target_margin:
+                                _hits.setdefault(r_, []).append(c_); break
+                for r_, cl_ in _hits.items():
+                    lo_, hi_ = max(min(cl_) - 1, 0), min(max(cl_) + 1, cols - 1)
+                    for rb in (r_ - 1, r_, r_ + 1):
+                        if 0 <= rb < rows:
+                            for c_ in range(lo_, hi_ + 1):
+                                keep_top.add((rb, c_))
+            for r in range(rows):
+                du = -ux + 2 * ux * r / (rows - 1)
+                order = range(cols) if r % 2 == 0 else reversed(range(cols))
+                for cc in order:
+                    if keep_top is not None and (r, cc) not in keep_top:
+                        continue
+                    dv = -uy + 2 * uy * cc / (cols - 1)
+                    pad_pt = np.array([cx + du, cyy + dv,
+                                       ztop + cfg.pad_thick_half - cfg.press])
+                    self.raster_planned += 1
+                    warm = self.q_warm if self.q_warm is not None else self.q_des
+                    got = self.plan_pad(pad_pt, tmt, prel, warm)
+                    if got is None:
+                        self.raster_infeasible += 1
+                        continue
+                    q_pt, mat_pt, tilt_pt, tgt = got
+                    self.q_warm = q_pt
+                    self.tilts.append(tilt_pt)
+                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
+                                                 index_deg=top_deg, tol=cfg.wipe_tol,
+                                                 t_max=2.5, wipe=True, log=forces,
+                                                 tag="WIPE top", frames=frames)
+            # spot pass -- same reason as the side faces
+            if cfg.targeted:
+                mujoco.mj_forward(self.m, self.d)
+                for p_ in _top_soil:
+                    g_alive = [g for g in self.revealed_soil
+                               if self.m.geom_rgba[g][3] > 0
+                               and np.linalg.norm(self.d.geom_xpos[g] - p_) < 0.005]
+                    if not g_alive:
+                        continue
+                    du_s = float(np.clip(p_[0] - cx, -ux, ux))
+                    dv_s = float(np.clip(p_[1] - cyy, -uy, uy))
+                    pad_pt = np.array([cx + du_s, cyy + dv_s,
+                                       ztop + cfg.pad_thick_half - cfg.press])
+                    self.raster_planned += 1
+                    warm = self.q_warm if self.q_warm is not None else self.q_des
+                    got = self.plan_pad(pad_pt, tmt, prel, warm)
+                    if got is None:
+                        self.raster_infeasible += 1
+                        continue
+                    q_pt, mat_pt, tilt_pt, tgt = got
+                    self.q_warm = q_pt
+                    self.tilts.append(tilt_pt)
+                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
+                                                 index_deg=top_deg, tol=cfg.wipe_tol,
+                                                 t_max=2.5, wipe=True, log=forces,
+                                                 tag="WIPE top", frames=frames)
+            clear = np.array([cx, cyy, ztop + 0.12])
+            pl = self.plan_pose(clear, tmt, self.q_des)
+            if pl is not None:
+                self.move_planned(pl[0], clear, cfg.grip_open, index_deg=top_deg,
+                                  tol=0.006, t_max=8.0, tag="TOP CLEAR", frames=frames)
 
         # measure how far the tool moved relative to the wrist across the whole job,
         # while it is STILL LATCHED -- measuring after unlatch just reports the holder
@@ -1142,6 +1377,38 @@ class Cell:
                 "tilt_max": float(np.max(self.tilts)) if self.tilts else 0.0,
                 "tilt_zero_frac": float(np.mean([t == 0.0 for t in self.tilts]))
                                   if self.tilts else 0.0}
+
+
+def run_with_backstop(cell, seed, max_recleans=2, frames=None):
+    """Targeted clean with the VERIFY backstop: re-clean while the camera sees residue.
+
+    THE ACCEPTANCE IS THE CAMERA'S, not the plan's: each round ends with verify(), and
+    the loop re-enters only on what VERIFY reports. Returns the final run row, the final
+    verify row, and how many re-cleans were needed.
+    """
+    # Cell.run EXPLICITLY: on a RouteCell, `cell.run` dispatches to the MEMBRANE cycle
+    # (MemCell.run overrides it), which is a different machine entirely.
+    r = Cell.run(cell, seed, frames=frames)
+    v = cell.verify()
+    rounds = 0
+    while v["soil_left_truth"] > 0 and rounds < max_recleans:
+        rounds += 1
+        # LAST ROUND ESCALATES to a full sweep of the still-dirty faces. The sparse
+        # pass's one failure mode is a patch whose location admits no face contact from
+        # any nearby approach; the full raster provably cleans those (100% at this
+        # stride), so the guarantee of full-coverage mode is recovered exactly where it
+        # is needed, at the cost of one face's sweep on the rare unit that needs it.
+        cell._reclean_full = (rounds == max_recleans)
+        r2 = Cell.run(cell, seed, reclean=True)
+        cell._reclean_full = False
+        # accumulate the honest totals: planned/skipped/infeasible add up across rounds
+        for k in ("raster_planned", "raster_skipped", "raster_infeasible"):
+            r[k] += r2[k]
+        r["f_max"] = max(r["f_max"], r2["f_max"])
+        r["coverage"] = r2["coverage"]
+        r["missed"] = r2["missed"]
+        v = cell.verify()
+    return r, v, rounds
 
 
 def report(rows):

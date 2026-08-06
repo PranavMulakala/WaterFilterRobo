@@ -33,6 +33,47 @@ from sim_poc4 import _font, FPS
 
 W, H = 1280, 720
 
+# Plain-English narration for every motion tag -- the HUD shows this line so a
+# non-technical viewer can follow what the arm is doing at any moment.
+FRIENDLY = {
+    "APPROACH": "Reaching for the cleaning pad",
+    "COUPLE": "Locking the pad onto the wrist (tool changer)",
+    "LIFT": "Lifting the pad off its post",
+    "SAFE": "Backing away to a safe position",
+    "TO FACE": "Moving in front of the next surface",
+    "SETTLE": "Letting the arm settle",
+    "RETRACT": "Pulling back from the surface",
+    "TO TOP": "Moving above the unit",
+    "TOP CLEAR": "Backing away from the top",
+    "RETURN": "Returning the pad to its post",
+    "PLACE": "Setting the pad down",
+    "UNLATCH": "Releasing the pad",
+    "CLEAR": "Backing away, cleaning done",
+    "ELEM_UP": "Rising to travel height",
+    "ELEM_OVER": "Travelling over to the membrane element",
+    "ELEM_DESCEND": "Descending to the element",
+    "ELEM_GRIP": "Gripping the element",
+    "ELEM_LIFT": "Lifting the element (slowly -- it can slip)",
+    "ELEM_CARRY": "Carrying the element to the open housing",
+    "ELEM_ALIGN": "Fine-correcting aim, watching the ELEMENT not the wrist",
+    "ELEM_INSERT": "Lowering the element into the housing (1.5 mm to spare)",
+    "ELEM_RELEASE": "Opening the jaws",
+    "ELEM_RETRACT": "Withdrawing -- element seated",
+    "ELEM_SETTLE": "Letting everything settle",
+    "MEMBRANE_INSERT": "Starting the membrane insert",
+}
+
+
+def friendly(tag):
+    if tag.startswith("WIPE top"):
+        return "Wiping the TOP surface"
+    if tag.startswith("WIPE"):
+        return f"Wiping a side surface (position {tag.split()[-1]} deg)"
+    if tag.startswith("INDEX"):
+        return "Turntable rotating the next surface into reach"
+    return FRIENDLY.get(tag, tag)
+
+
 CAVEAT = {
     "TRIAGE": "NO ARM MOTION HERE -- the arm parks clear, the turntable is stepped to each "
               "face and a FIXED camera grades pixels. NAMES theirs, BOUNDARIES ours.",
@@ -143,8 +184,15 @@ def _wrap(s, n):
     return out[:2]
 
 
-def render_unit(seed, speed=1.0, out=None):
-    c = RT.RouteCell()
+def render_unit(seed, speed=1.0, out=None, v6=False):
+    import dataclasses as _dc
+    import v5_clean as _CL
+    c = RT.RouteCell(_dc.replace(_CL.CFG, targeted=True)) if v6 else RT.RouteCell()
+    if v6:
+        CAVEAT["CLEAN"] = (
+            "V6 TARGETED: wipes only where dirt was seen, then a camera re-checks and "
+            "re-cleans if anything is left. Dirt LOCATIONS are ground truth standing in "
+            "for camera localisation; the FINAL residue check is a real camera.")
     rec = Recorder(c.m, speed)
     every = max(1, int(round(speed / (FPS * c.dt))))
 
@@ -174,10 +222,15 @@ def render_unit(seed, speed=1.0, out=None):
         # ---------------- CLEAN (the real V5-C cycle, frames plumbed through)
         rec.info.pop("INDEX", None)
         frames = {"f": rec.frames, "max": 10_000, "every": every,
-                  "cb": lambda tag: (rec.info.__setitem__("STEP", tag),
+                  "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                      rec.grab(c.d, "CLEAN", inset="verify_top"))}
-        cr = super(RT.MB.MemCell, c).run(seed, frames=frames)
-        rec.info["COVERAGE"] = f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
+        if v6:
+            cr, v_bs, n_rc = _CL.run_with_backstop(c, seed, frames=frames)
+            rec.info["COVERAGE"] = (f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
+                                    f"  re-cleans {n_rc}")
+        else:
+            cr = super(RT.MB.MemCell, c).run(seed, frames=frames)
+            rec.info["COVERAGE"] = f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
         rec.info.pop("STEP", None)
 
         # ---------------- VERIFY
@@ -201,7 +254,7 @@ def render_unit(seed, speed=1.0, out=None):
             rec.info["STEP"] = "MEMBRANE_INSERT"
             ins = c.insert_element(frames={
                 "f": rec.frames, "max": 10_000, "every": every,
-                "cb": lambda tag: (rec.info.__setitem__("STEP", tag),
+                "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                    rec.grab(c.d, "MEMBRANE", cam="main",
                                             inset="demo_mem"))})
             rec.info["INSERT"] = (
@@ -365,7 +418,7 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
     return out
 
 
-def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4"):
+def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -376,7 +429,7 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4"):
     W_, G, B, A = (235, 240, 245), (150, 160, 175), (120, 200, 255), (255, 180, 90)
     clip = f"rt_{seed}.mp4"
     raw = f"rt_raw_{seed}.mp4"
-    _, marks, dur = render_unit(seed, 1.0, raw)
+    _, marks, dur = render_unit(seed, 1.0, raw, v6=v6)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -407,7 +460,8 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4"):
         merged[name] = merged.get(name, 0.0) + d
     mm, ss = int(dur) // 60, dur % 60
 
-    _card([("ONE UNIT, START TO FINISH", 54, True, W_),
+    _card([(("ONE UNIT, START TO FINISH -- V6" if v6 else "ONE UNIT, START TO FINISH"),
+            54, True, W_),
            ("", 12, False, (0, 0, 0)),
            ("REAL TIME  --  NOT SPED UP", 40, True, A),
            ("the length of this clip IS the cycle time", 26, False, G),
@@ -454,6 +508,8 @@ if __name__ == "__main__":
     ap.add_argument("--render", type=int, help="seed to render")
     ap.add_argument("--realtime", type=int, nargs="?", const=1704, metavar="SEED",
                     help="one full cycle at TRUE 1x + timing cards")
+    ap.add_argument("--v6", action="store_true",
+                    help="film the V6 targeted cell (fast clean + fast membrane)")
     ap.add_argument("--reel", action="store_true",
                     help="title + one clip per route + stats + caveats -> one file")
     ap.add_argument("--speed", type=float, default=1.0,
@@ -461,7 +517,9 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     if a.realtime is not None:
-        make_realtime(a.realtime, a.out or "../media/v5_cell_realtime.mp4")
+        make_realtime(a.realtime, a.out or ("../media/v6_cell_realtime.mp4"
+                                            if a.v6 else "../media/v5_cell_realtime.mp4"),
+                      v6=a.v6)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:

@@ -60,7 +60,11 @@ class MemConfig:
     torque_pass_nm: float = 5.4       # 90% of the limit = a genuine stall, not a stumble
     turns_min: float = 6.0            # below this the cap cannot have reached the seal
     turns_max: float = 14.0
-    drive_rate: float = 4.0           # rad/s commanded
+    drive_rate: float = 12.0          # rad/s commanded. V6: was 4.0. Swept 4/8/12/16
+                                      # with the sabotage gate: 5/5 honest, 0/5 false
+                                      # pass, loaded-turns median unchanged (9.33) at
+                                      # every rate. 12 keeps 2.6x margin to a real
+                                      # nutrunner's ~31 rad/s. Torque criterion untouched.
     drive_t_max: float = 26.0         # s
     # STALL IS AXIAL PROGRESS STOPPING, not rotation slowing. Measured: the cap advances
     # at ~1250 um/s while the thread is free, drops to 588 um/s as the seal takes load,
@@ -77,10 +81,14 @@ class MemConfig:
     grip_below_top: float = 0.012     # pads this far below the element top. Grip HIGH: the
                                       # fingers are wider than the bore and cannot follow
                                       # the element in, so this sets the release depth.
-    carry_speed: float = 0.05         # m/s setpoint limit. The pads are flat and close
+    carry_speed: float = 0.10         # m/s setpoint limit. V6: was 0.05; at 0.10 the
+                                      # worst settled seat is 1.48 mm vs 1.47 at 0.05
+                                      # (bound 1.8), insert 26.1 -> 22.2 s. 0.15 passed
+                                      # too (worst 1.57) and was NOT taken -- the margin
+                                      # thins for 2 s. The pads are flat and close
                                       # along Y, so in X the element rides on FRICTION
                                       # ALONE; an unlimited carry slid it 19 mm in the jaws.
-    align_speed: float = 0.010
+    align_speed: float = 0.020        # V6: was 0.010; swept with carry_speed above
     align_tol_m: float = 0.0010       # against 1.5 mm radial clearance
     align_tries: int = 5
     rim_clear_m: float = 0.004
