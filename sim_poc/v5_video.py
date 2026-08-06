@@ -61,6 +61,19 @@ FRIENDLY = {
     "ELEM_RETRACT": "Withdrawing -- element seated",
     "ELEM_SETTLE": "Letting everything settle",
     "MEMBRANE_INSERT": "Starting the membrane insert",
+    "CAP_UP": "Rising to travel height",
+    "CAP_OVER": "Travelling to the cap",
+    "CAP_DESCEND": "Descending to the cap",
+    "CAP_GRIP": "Gripping the cap by its pick stem",
+    "CAP_LIFT": "Lifting the cap",
+    "CAP_CARRY": "Carrying the cap to the housing",
+    "CAP_ALIGN": "Fine-correcting aim, watching the CAP not the wrist",
+    "CAP_LOWER": "Lowering the cap onto the housing mouth",
+    "CAP_RELEASE": "Opening the jaws -- cap engaged on its first thread",
+    "CAP_RETRACT": "Withdrawing",
+    "DRV_APPROACH": "Bringing the driver over the cap",
+    "DRV_DOCK": "Holding the driver on the cap -- spindle spins only while held",
+    "DRV_SPIN": "Driver spinning the cap down -- arm holds station (enforced)",
 }
 
 
@@ -81,8 +94,9 @@ CAVEAT = {
              "soil the camera could see is gone.",
     "VERIFY": "NO ARM MOTION -- cameras only. Re-inspected through a SECOND camera: the "
               "triage camera cannot see the top face, and that is the face cleaning misses.",
-    "MEMBRANE": "The ARM really inserts the element. The CAP IS NOT TURNED BY THE ARM -- a "
-                "station driver spins it, and the fixture presents it. Geometry PLACEHOLDER.",
+    "MEMBRANE": "The ARM inserts the element, PLACES the cap (thread-start capture 4mm/4deg "
+                "is modelled) and HOLDS the driver -- the spindle spins only while the arm "
+                "holds station. Geometry PLACEHOLDER.",
     "DIP": "THE ARM DOES NOT CARRY THIS -- the assembly is TELEPORTED into the bin. "
            "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. The camera must still see them.",
     "SCRAP": "NO MOTION DELIVERS THE UNIT ANYWHERE -- this is a SOFTWARE decision only. "
@@ -261,43 +275,24 @@ def render_unit(seed, speed=1.0, out=None, v6=False):
                 f"aligned {ins['align_mm']:.2f} mm -> seated {ins['seat_xy_mm']:.2f} mm "
                 f"off-axis, {'IN' if ins['inserted'] else 'NOT SEATED'}")
             rec.info.pop("STEP", None)
-            # the cap is PRESENTED by the fixture, engaged on the first thread -- a
-            # declared de-scope, NOT a robot motion, and the frame says so
-            c.cap_present(True)
-            mujoco.mj_forward(c.m, c.d)
-            for _ in range(int(FPS * 1.2)):
-                rec.grab(c.d, "MEMBRANE", cam="main", inset="demo_mem")
-            t, held, hist = 0.0, 0.0, []
-            win = max(int(0.1 / c.dt), 1)
-            k = 0
-            while t < mc.drive_t_max:
-                c.d.ctrl[c.capdrv] = mc.drive_rate
-                c.d.qfrc_applied[c.dof] = c.d.qfrc_bias[c.dof]
-                mujoco.mj_step(c.m, c.d)
-                t += c.dt
-                k += 1
-                if k % every == 0:
-                    rec.info["TIGHTEN"] = (f"{c.turns():5.2f} turns  {c.torque():4.2f} Nm  "
-                                           f"seal {c.seal_load():4.0f} N")
-                    rec.grab(c.d, "MEMBRANE", cam="main", inset="demo_mem")
-                hist.append(float(c.d.qpos[c.cap_z_q]))
-                if len(hist) > win:
-                    hist.pop(0)
-                    dz = abs(hist[-1] - hist[0]) / (win * c.dt) * 1e6
-                    if c.torque() >= 0.98 * mc.torque_target_nm and dz < mc.stall_dz_um_s:
-                        held += c.dt
-                        if held >= mc.stall_hold_s:
-                            break
-                    else:
-                        held = 0.0
-            c.d.ctrl[c.capdrv] = 0.0
-            tq = c.torque()
-            stalled = bool(held >= mc.stall_hold_s)
+            # THE ARM places the cap and holds the driver -- the REAL methods, with
+            # frame callbacks only. (This block was previously a copied drive loop plus
+            # a cap_present teleport; it silently stopped filming the actual system the
+            # moment cap_place existed -- the same render-path rot as the V5-G bug.)
+            fr = {"f": rec.frames, "max": 10_000, "every": every,
+                  "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
+                                     rec.grab(c.d, "MEMBRANE", cam="main",
+                                              inset="demo_mem"))}
+            cp = c.cap_place(frames=fr)
+            rec.info["CAP"] = (f"landed {cp['place_err_mm']:.2f} mm off-axis -> "
+                               f"{'ENGAGED first thread' if cp['placed'] else 'MISSED'}")
+            mc = c.mcfg
+            tg = c.tighten(frames=fr)
+            tq = tg["torque_nm"]
             rec.info["TIGHTEN"] = (
-                f"{c.turns():5.2f} turns  {tq:4.2f} Nm  "
-                f"{'STALLED' if stalled else 'NO STALL'} "
+                f"{tg['turns']:5.2f} turns  {tq:4.2f} Nm  "
+                f"{'STALLED' if tg['stalled'] else 'NO STALL'} "
                 f"(driver limit {mc.torque_target_nm:.1f})")
-
             # ---------------- 3.6 charge, then 3.7 dip
             chg = c.pressurise(tq)
             rec.info["CHARGE"] = "end plug + ball valve + 85 PSI  [LOGGED STATE]"

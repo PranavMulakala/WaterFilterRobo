@@ -1313,3 +1313,33 @@ per unit. One unit **per minute** is a *throughput* statement: two cells at 2:33
 units/hour; four give 94 (≈2,000/day over 21 h). Cost model: open, [not yet priced].
 
 **Seeds:** 1840–1847, 1850–1859, 1860–1875 spent. Next free 1880.
+
+
+### V6-ARM addendum — the ARM now places the cap and holds the driver (2026-08-05 night)
+
+The user's bar: *everything has to be the arm doing.* Done, with the labels stated:
+
+| step | who does it now | evidence (fresh 1890–1899) |
+|---|---|---|
+| element insert | ARM (unchanged) | 10/10, worst seat 1.61 mm (bound 1.8) |
+| **cap placement** | **ARM** — picks the cap by a **pick stem**, aligns on the *cap*, lands it on the mouth | **10/10, landing median 1.32 mm, worst 1.86 mm** into a 4 mm / 4° thread-start capture envelope |
+| **cap tightening** | **ARM-held driver** — the spindle advances **only while the wrist holds station** over the cap (8 mm XY, 25 mm socket throw), enforced every step | stalled 10/10, turns 9.29–9.75, torque 6.00 |
+| leak dip | teleport + camera (unchanged) | honest 10/10, sabotage caught 10/10, **0 false pass** |
+
+**Modelled, and said so:** thread-start *engagement* (the capture envelope — the arm's aim
+is real, the thread catching is not simulated), and the spindle's reaction torque. The
+**pick stem** on the cap is a design-for-automation feature, added deliberately: the bare
+cap cylinder is ungrippable by parallel jaws (20 mm tall vs 18 mm pad-row spacing, and a
+cylinder in flat jaws is a pivot that rolled loose — measured, not assumed).
+
+**Three bugs found by the fresh-seed battery, all now in PAIN_JOURNAL:** the keyframe trap
+(third appearance — the blank spawned at the origin inside the riser); the capture swap
+exploding when performed **while the jaws were still closed** at the spot (random cap
+phases intersected a finger; the bowl was launched metres — release, retract, *then*
+capture); and a fixed drive-dock envelope that cut the spindle as the cap screwed itself
+downward out of it (the socket now has stated 25 mm throw). The first 10-seed battery
+caught an honest-failure rate of 4/10 and one false pass that the single-seed test
+completely missed — **one seed is a smoke test, never evidence.**
+
+Full cycle, arm doing everything: **2:11–2:45** (cap place adds ~12 s). Seeds: 1880–1889
+development (burned in debugging), **1890–1899 the headline**. Next free **1900+**.

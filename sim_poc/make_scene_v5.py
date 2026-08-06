@@ -704,6 +704,32 @@ def build(seed=SEED, cab_x=CAB_X):
     <geom name="mem_elem_nest" type="cylinder" size="0.040 0.018"
           pos="{MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.018" material="postmat"/>
 
+    <!-- V6-ARM: the cap the ARM places. A free "blank" on its own nest; when the arm
+         delivers it onto the bowl mouth inside a thread-start capture envelope, the
+         blank is exchanged for the threaded cap engaged on its first thread -- the same
+         capture-envelope honesty as the tool changer: the ARM must achieve the pose,
+         the ENGAGEMENT is modelled. Thread-STARTING physics stays a declared de-scope. -->
+    <body name="cap_blank" pos="{MEM_XY[0] - 0.13:.3f} {MEM_XY[1] + 0.10:.3f} 0.046">
+      <freejoint name="capblank_free"/>
+      <geom name="cap_blank_body" type="cylinder" size="{MEM_CAP_R:.4f} 0.010"
+            material="capmat" mass="0.09" friction="0.9 0.01 0.001"/>
+      <geom name="cap_blank_flat" type="box" size="{MEM_CAP_R*0.92:.4f} 0.006 0.007"
+            pos="0 0 0.014" material="stemmat" mass="0.02"/>
+      <!-- PICK STEM: a design-for-automation feature so parallel jaws can hold the cap
+           with BOTH pad rows and the CoM hanging well below the grip line. The cap
+           cylinder itself is ungrippable by these jaws: 20 mm tall vs 18 mm between
+           pad rows (any offset loses a row), and a cylinder in flat jaws is a pivot.
+           The pad tool's shank is the same solution to the same problem. -->
+      <geom name="cap_blank_stem" type="cylinder" size="0.012 0.014"
+            pos="0 0 0.035" material="stemmat" mass="0.015"/>
+    </body>
+    <!-- nest is SLIMMER than the cap (r20 vs r34) so the jaws can close on the cap's
+         cylinder with both pad rows without striking the nest wall -- the v4 lesson
+         (a fixture must clear the part's largest feature) applied in reverse: here the
+         FIXTURE must stay inside the GRIPPER's closing envelope. -->
+    <geom name="cap_nest" type="cylinder" size="0.020 0.018"
+          pos="{MEM_XY[0] - 0.13:.3f} {MEM_XY[1] + 0.10:.3f} 0.018" material="postmat"/>
+
     <!-- ===================== WATER BIN (Stage 10 dip) =====================
          The dip is a BUBBLE TEST on a pressurised subassembly (3.6 -> 3.7), not a wash.
          No fluid is simulated: the "water" geom has contype 0 and exists so the render

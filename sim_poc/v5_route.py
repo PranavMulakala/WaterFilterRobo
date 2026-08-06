@@ -91,7 +91,9 @@ STEP_EVIDENCE = {
                                            "bowl; seating judged on the element (off-axis "
                                            "mm, base vs floor, upright). Was UNBACKED until "
                                            "2026-08-05 -- the capped bowl had no path in"),
-    "CAP_TIGHTEN":            ("MEASURED", "cap driven multi-turn, stalls on torque"),
+    "CAP_TIGHTEN":            ("MEASURED", "ARM places the cap (thread-start capture 4mm/4deg "
+                                           "modelled) and holds the driver; spindle advances "
+                                           "only while the wrist holds station; stalls on torque"),
     "LEAK_DIP":               ("PROXY",    "dip motion is real; BUBBLES ARE MODELLED FROM "
                                            "TORQUE, no fluid or gas is simulated"),
     "VERIFY_LEAK":            ("MEASURED", "camera must actually SEE bubbles to fail it"),

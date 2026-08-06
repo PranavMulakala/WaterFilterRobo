@@ -1001,3 +1001,30 @@ what we now understand.
   property of the VISIT SET, not the visit: thinning visits removes redundancy that was
   doing invisible work. Measure per-patch closest-approach before trusting any sparser
   pattern
+- 2026-08-05 | **Materialised a part inside the closed gripper and launched the bowl off
+  the bench.** The arm places a cap "blank"; landing inside the capture envelope swaps it
+  for the threaded cap engaged on its first thread. The swap originally ran WHILE THE JAWS
+  WERE STILL CLOSED at that spot: at some random cap phases the materialised spanner flat
+  intersected a finger body, and the contact explosion threw the whole free-body bowl
+  metres (seed 1882: bowl at (-1.9, -1.5)). Phase-dependent, so the single-seed test
+  passed and 4 of 10 fresh seeds failed. Fixed by ordering: set down, OPEN, RETRACT, then
+  capture. | ~45 min | NEVER swap/teleport geometry into a volume the gripper currently
+  occupies; sequence state changes to happen with the tool clear. And ONE SEED IS A SMOKE
+  TEST: the phase-dependent failure only appeared under the 10-seed battery
+- 2026-08-05 | **The keyframe trap, third appearance.** New cap-blank free joint; v5home
+  predates it; mj_resetDataKeyframe zeroed it and the blank spawned at the ORIGIN inside
+  the arm riser -- "grip slipped off the nest" was the only symptom. The gotcha list has
+  warned about exactly this since v2. | ~15 min | when adding ANY free body, set its qpos
+  from m.qpos0 explicitly after keyframe reset -- add it to the reset in the same commit
+  that adds the body
+- 2026-08-05 | **A cap is ungrippable three different ways before it is grippable one.**
+  Flat-bar grip: the 68 mm cylinder blocks jaw travel before the 6 mm flat. One-row edge
+  pinch: slips. Cylinder-centre grip: both rows fit ONLY at exact centre (20 mm part vs
+  18 mm row spacing), and a cylinder in flat jaws is a PIVOT -- with the flat making it
+  top-heavy it is an INVERTED pendulum that rolled loose during the hold and fell.
+  Solution: a PICK STEM (design-for-automation, same as the pad tool's shank), CoM well
+  below the grip line. Also: an in-loop IK servo tracking the descending cap re-created
+  the v2 planned-on-measured oscillation and was replaced by a stated 25 mm socket throw.
+  | ~1.5 h | grip features are DESIGNED, not found -- when three grasp strategies fail on
+  a part, change the PART (a stem costs nothing in sim and little in reality); and never
+  servo IK inside a physics loop against unsyncronised state

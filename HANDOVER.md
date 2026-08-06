@@ -11,7 +11,7 @@ five-minute version for whoever picks the project up next.
 | v5 TRIAGE | 97.5%, missed-hard 0.0% |
 | v5 CLEAN (full coverage, **default**) | 100% coverage, 0 missed, peak 32.9 N, 186.8 s |
 | **V6 targeted clean (opt-in)** | **0/24 residue fresh**, sabotage caught 15/15, ~75–120 s |
-| v5 MEMBRANE (V6 speeds) | insert 10/10 (worst seat 1.48/1.8 mm), tighten stalls, 10/10 caught, 0 false pass |
+| v5 MEMBRANE (V6-ARM) | **arm inserts element, places cap (10/10, worst 1.86/4 mm) and holds the driver**; stalls 10/10, sabotage caught 10/10, 0 false pass (1890–99) |
 | routing | compliance 28/28, right-route 26/28, **fully backed 22/28** — quote the last |
 | **full MEDIUM cycle** | **2:33 median (V6)** / 3:51 (v5 full-coverage) — true-1× videos exist for both |
 
@@ -20,7 +20,7 @@ five-minute version for whoever picks the project up next.
 1. Easy/Medium/Hard **names** are DrinkPrime's; the **boundaries are ours** (asked, unanswered).
 2. Targeted cleaning's dirt **locations** are ground truth standing in for camera
    localisation; the **residue check is a real camera** and catches sabotage 15/15.
-3. The membrane **cap is fixture-presented and driver-spun** — the arm inserts the element only.
+3. Membrane: **the ARM inserts the element, places the cap and holds the driver.** Thread-start *engagement* (4 mm/4° capture) and spindle reaction torque are modelled — the poses are real and enforced.
 4. HARD route = software decision, **no physical handoff (0/6)**; bubbles modelled from torque.
 
 ## Open with the founder (sent 2026-08-04 evening, unanswered)
