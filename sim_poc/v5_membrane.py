@@ -28,9 +28,13 @@ WHAT IS REAL AND WHAT IS A PROXY, stated once so it cannot drift:
     Holding pressure THROUGH the dip is our inference from the 3.6 -> 3.7 ordering; the
     document does not say it explicitly.
 
-DE-SCOPED ON PURPOSE (PITCH_NOTES): Teflon tape and the elbows. The bowl and cap are
-presented with elbows pre-fitted by a human, and the cap is presented engaged on the first
-thread -- thread-starting is its own research problem.
+DE-SCOPED ON PURPOSE (PITCH_NOTES): Teflon tape and the elbows (pre-fitted by a human).
+V6-ARM UPDATE: the cap is now PICKED AND PLACED BY THE ARM onto the bowl mouth; arriving
+inside a 4 mm / 4 deg THREAD-START CAPTURE ENVELOPE exchanges it for the threaded cap on
+its first thread (capture modelled, arm pose real -- the tool-changer pattern). The arm
+then HOLDS THE DRIVER: the spindle only advances while the wrist holds station over the
+cap, enforced every step. Thread-STARTING physics and spindle reaction torque remain
+declared de-scopes.
 
 GEOMETRY IS PLACEHOLDER. Every membrane dimension is invented; no source document gives
 one. The swap-in point is the MEM_* block at the top of make_scene_v5.py, against the only
@@ -161,6 +165,11 @@ class MemCell(CL.Cell):
                             if mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_EQUALITY,
                                                  k) == "partlock")
         self.bin_site = m.site("bin_centre").id
+        self.blank_b = m.body("cap_blank").id
+        self.blank_q = m.jnt_qposadr[m.body_jntadr[self.blank_b]]
+        self.blank_geoms = [g for g in range(m.ngeom)
+                            if m.geom_bodyid[g] == self.blank_b]
+        self._blank_spawn = None     # captured on first reset
         # the cap's own geoms, so it can be absent while the element goes in
         self.cap_geoms = [g for g in range(m.ngeom)
                           if m.geom_bodyid[g] == m.body("mem_cap").id]
@@ -195,6 +204,19 @@ class MemCell(CL.Cell):
         # by cap_present(True). See the note above insert_element for why no cap position
         # works, and note that presenting it is a FIXTURE action, not a robot motion.
         self.cap_present(False)
+        # the ARM will place the cap: restore the blank to its nest (a previous cycle
+        # parked it after the thread-start capture)
+        # THE KEYFRAME TRAP, third appearance: v5home predates this free joint, so
+        # mj_resetDataKeyframe zeroes it and the blank spawns at the ORIGIN, inside the
+        # arm riser. qpos0 carries the XML pose; set it explicitly, as the gotcha list
+        # has said since v2.
+        if self._blank_spawn is None:
+            self._blank_spawn = self.m.qpos0[self.blank_q:self.blank_q + 7].copy()
+        self.d.qpos[self.blank_q:self.blank_q + 7] = self._blank_spawn
+        for g in self.blank_geoms:
+            self.m.geom_contype[g] = 1
+            self.m.geom_conaffinity[g] = 1
+            self.m.geom_rgba[g][3] = 1.0
         for g in self.bubbles:
             self.m.geom_rgba[g][3] = 0.0
         self._rot0 = float(self.d.qpos[self.cap_rot_q])
@@ -343,6 +365,104 @@ class MemCell(CL.Cell):
                   f"{'IN' if out['inserted'] else 'NOT SEATED'}")
         return out
 
+    def cap_place(self, verbose=False, frames=None):
+        """3.5a -- the ARM places the cap on the bowl mouth. A REAL MOTION.
+
+        The arm picks the cap blank off its nest by the spanner flat, carries it, aligns
+        on the MEASURED blank (never the wrist), and lowers it onto the bowl mouth. If
+        the blank arrives inside a THREAD-START CAPTURE ENVELOPE -- 4 mm / 4 deg, the
+        same figures as the tool changer -- the blank is exchanged for the threaded cap
+        engaged on its first thread. The capture is the modelled part and says so;
+        thread-STARTING physics (cross-threading and all) stays a declared de-scope.
+        The ARM ACHIEVING THE POSE is real and is what this measures.
+        """
+        mc, gm = self.mcfg, CL.grasp_mat()
+        d = self.d
+        bp = d.xpos[self.blank_b].copy()
+        # grip the CYLINDER BODY with both pad rows (the flat is unreachable: the
+        # cylinder blocks jaw travel at 68 mm before it, and a one-row edge pinch
+        # slipped). Grip 5 mm ABOVE the centre: a cylinder in flat jaws is a PIVOT, and
+        # the spanner flat puts the CoM 2.5 mm above the centreline -- gripping at the
+        # centre made an INVERTED pendulum that rolled loose and sagged out of the jaws
+        # during the hold. With the grip line above the CoM it hangs stable. Same
+        # physics as the v2 grasp-height lesson, on a new part.
+        # grip the PICK STEM (see the scene comment): both pad rows on the stem, CoM
+        # far below the grip line -- a stable pendulum, the v2 grasp-height lesson.
+        tcp_grasp = bp[2] + 0.035 - PAD_MID
+        out = {"placed": False, "picked": False, "place_err_mm": None,
+               "place_tilt_deg": None}
+        here = d.site_xpos[self.site].copy()
+        self.move(np.array([here[0], here[1], mc.transit_z]), gm, self.cfg.grip_open,
+                  tol=0.006, t_max=6.0, frames=frames, tag="CAP_UP")
+        self.move(np.array([bp[0], bp[1], mc.transit_z]), gm, self.cfg.grip_open,
+                  tol=0.005, t_max=8.0, frames=frames, tag="CAP_OVER")
+        self.move(np.array([bp[0], bp[1], tcp_grasp]), gm, self.cfg.grip_open,
+                  tol=0.003, t_max=8.0, frames=frames, tag="CAP_DESCEND")
+        self._hold(np.array([bp[0], bp[1], tcp_grasp]), self.cfg.grip_closed, 1.0,
+                   frames, "CAP_GRIP")
+        carry_z = self.bowl_rim_z() + 0.060
+        self._glide(np.array([bp[0], bp[1], carry_z]), self.cfg.grip_closed,
+                    mc.carry_speed, frames, "CAP_LIFT")
+        b = d.xpos[self.blank_b]
+        out["picked"] = bool(b[2] > bp[2] + 0.03)
+        if not out["picked"]:
+            if verbose:
+                print("    CAP: grip slipped off the nest")
+            return out
+        bxy = self.bowl_axis_xy()
+        self._glide(np.array([bxy[0], bxy[1], carry_z]), self.cfg.grip_closed,
+                    mc.carry_speed, frames, "CAP_CARRY")
+        self._hold(np.array([bxy[0], bxy[1], carry_z]), self.cfg.grip_closed, 2.0,
+                   frames, "CAP_CARRY")
+        for k in range(mc.align_tries):
+            b = d.xpos[self.blank_b]
+            err = self.bowl_axis_xy() - b[:2]
+            if float(np.linalg.norm(err)) < 0.0012:
+                break
+            tcp = d.site_xpos[self.site].copy()
+            goal = np.array([tcp[0] + err[0], tcp[1] + err[1], carry_z])
+            self._glide(goal, self.cfg.grip_closed, mc.align_speed, frames, "CAP_ALIGN")
+            self._hold(goal, self.cfg.grip_closed, 2.0, frames, "CAP_ALIGN")
+        # lower until the blank's underside sits just above the rim (first-thread height)
+        b = d.xpos[self.blank_b]
+        drop = (b[2] - 0.010) - (self.bowl_rim_z() + 0.003)
+        tcp = d.site_xpos[self.site].copy()
+        self._glide(np.array([tcp[0], tcp[1], tcp[2] - drop]), self.cfg.grip_closed,
+                    0.015, frames, "CAP_LOWER")
+        self._hold(np.array([tcp[0], tcp[1], tcp[2] - drop]), self.cfg.grip_closed, 1.5,
+                   frames, "CAP_LOWER")
+        b = d.xpos[self.blank_b].copy()
+        Rb = d.xmat[self.blank_b].reshape(3, 3)
+        err_mm = float(np.linalg.norm(b[:2] - self.bowl_axis_xy()) * 1000)
+        tilt = float(np.degrees(np.arccos(np.clip(Rb[2, 2], -1, 1))))
+        out["place_err_mm"], out["place_tilt_deg"] = err_mm, tilt
+        # RELEASE AND RETRACT BEFORE THE CAPTURE SWAP. Swapping while the jaws were
+        # still closed at the spot materialised the threaded cap INSIDE the gripper --
+        # at some random cap phases its spanner flat intersected a finger body and the
+        # contact explosion launched the whole bowl metres off the bench (seed 1882).
+        # Order now: set the blank down on the mouth, open, withdraw, THEN the capture
+        # exchanges it -- which is also the physically sensible sequence.
+        self._hold(np.array([b[0], b[1], d.site_xpos[self.site][2]]),
+                   self.cfg.grip_open, 1.0, frames, "CAP_RELEASE")
+        tcp = d.site_xpos[self.site].copy()
+        self._glide(np.array([tcp[0], tcp[1], mc.transit_z]), self.cfg.grip_open,
+                    0.10, frames, "CAP_RETRACT")
+        if err_mm <= 4.0 and tilt <= 4.0:
+            # THREAD-START CAPTURE (modelled, labelled): blank out, threaded cap in at
+            # the first thread. The random phase reset_mem chose is kept.
+            self.d.qpos[self.blank_q:self.blank_q + 3] = (0.05, 0.55, 0.011)
+            for g in self.blank_geoms:
+                self.m.geom_contype[g] = 0
+                self.m.geom_conaffinity[g] = 0
+                self.m.geom_rgba[g][3] = 0.0
+            self.cap_present(True)
+            mujoco.mj_forward(self.m, self.d)
+            out["placed"] = True
+        if verbose:
+            print(f"    CAP PLACE: err {err_mm:.2f} mm tilt {tilt:.2f} deg -> "
+                  f"{'CAPTURED on first thread' if out['placed'] else 'MISSED envelope'}")
+        return out
+
     def seal_load(self):
         """Total normal force on the O-ring -- the preload the torque acts against."""
         tot, f6 = 0.0, np.zeros(6)
@@ -361,7 +481,7 @@ class MemCell(CL.Cell):
         return float(abs(self.d.actuator_force[self.capdrv]))
 
     # ------------------------------------------------------------------ 3.5 tighten
-    def tighten(self, stop_turns=None, verbose=False):
+    def tighten(self, stop_turns=None, verbose=False, frames=None):
         """Drive the cap until the driver STALLS on torque. Returns the workpiece state.
 
         Stall, not a turn count: torque at the limit AND rotation collapsed, held for a
@@ -370,12 +490,40 @@ class MemCell(CL.Cell):
         it cuts out early so the seal is never preloaded.
         """
         mc = self.mcfg
+        # V6-ARM: the ARM holds the driver. Dock the TCP over the cap first; the spindle
+        # only advances while the wrist HOLDS STATION inside a 8 mm envelope -- enforced
+        # every step, so "the arm does it" is a gate, not a caption. The spindle motor
+        # and its reaction torque are the tool's (not modelled on the arm) -- same
+        # honesty class as the wiping pad's compliance unit.
+        gm = CL.grasp_mat()
+        cap_site = self.m.site("cap_top").id
+        cap_top = self.d.site_xpos[cap_site].copy()
+        dock = np.array([cap_top[0], cap_top[1], cap_top[2] + 0.045])
+        self.move(dock + np.array([0, 0, 0.06]), gm, self.cfg.grip_closed,
+                  tol=0.006, t_max=6.0, tag="DRV_APPROACH")
+        self.move(dock, gm, self.cfg.grip_closed, tol=0.004, t_max=6.0, tag="DRV_DOCK")
         t, held = 0.0, 0.0
         peak_tq, peak_seal = 0.0, 0.0
         win = max(int(0.1 / self.dt), 1)
         hist = []
         while t < mc.drive_t_max:
-            self.d.ctrl[self.capdrv] = mc.drive_rate
+            # ON-STATION = the cap is INSIDE THE SOCKET'S THROW. The cap screws itself
+            # ~17 mm downward while driving; the arm holds still and the fastener
+            # descends within the socket, exactly like a real nutrunner sleeve. (Two
+            # rejected versions, for the record: a FIXED 8 mm ball -- the cap descended
+            # out of it, cutting the spindle mid-drive; and an in-loop IK servo
+            # following the cap -- planned on unsynced state, the v2 oscillation lesson
+            # in new clothes, and it destroyed every run.) Gate: within 8 mm in XY and
+            # the cap top between 0 and 25 mm below the socket mouth.
+            tcp_now = self.d.site_xpos[self.site]
+            cap_now = self.d.site_xpos[cap_site]
+            dxy = float(np.hypot(tcp_now[0] - cap_now[0], tcp_now[1] - cap_now[1]))
+            depth = float((tcp_now[2] - 0.045) - cap_now[2])   # 0 at dock, grows as cap sinks
+            on_station = (dxy < 0.008) and (-0.004 <= depth <= 0.025)
+            self.d.ctrl[self.capdrv] = mc.drive_rate if on_station else 0.0
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"]("DRV_SPIN")
             self.d.ctrl[self.act] = self.q_des
             self.d.qfrc_applied[self.dof] = self.d.qfrc_bias[self.dof]
             mujoco.mj_step(self.m, self.d)
@@ -510,10 +658,22 @@ class MemCell(CL.Cell):
         self.reset_mem(seed)
         # 3.4 -- the element goes into the OPEN bowl. A real motion, measured on the part.
         ins = self.insert_element(verbose=verbose)
-        # ...then the cap is PRESENTED engaged on the first thread. A FIXTURE action, the
-        # de-scope this module has always declared -- not a robot motion, not counted as one.
-        self.cap_present(True)
-        mujoco.mj_forward(self.m, self.d)
+        # 3.5a -- THE ARM places the cap (thread-start capture, modelled engagement)
+        cp = self.cap_place(verbose=verbose)
+        if not cp["placed"]:
+            # no cap, no tightening, no seal -- the cycle fails honestly
+            return {"seed": seed, "sabotage": bool(sabotage),
+                    "elem_inserted": bool(ins["inserted"]), "elem_picked": True,
+                    "elem_align_mm": ins["align_mm"], "elem_seat_xy_mm": ins["seat_xy_mm"],
+                    "elem_seat_dz_mm": ins["seat_dz_mm"], "elem_upright": ins["upright"],
+                "cap_placed": True, "cap_place_err_mm": cp["place_err_mm"],
+                    "cap_placed": False, "cap_place_err_mm": cp["place_err_mm"],
+                    "turns": 0.0, "torque_nm": 0.0, "peak_torque_nm": 0.0,
+                    "seal_n": 0.0, "peak_seal_n": 0.0, "cap_z_mm": 0.0, "stalled": False,
+                    "charge_psi": 0.0, "bubble_px": 99999, "tight_ok": False,
+                    "leak_pass": False, "truth_seal": False,
+                    "false_pass": False, "false_fail": False}
+        # 3.5b -- the ARM holds the driver that tightens it (gated in tighten())
         tg = self.tighten(stop_turns=mc.sabotage_turns if sabotage else None,
                           verbose=verbose)
         chg = self.pressurise(tg["torque_nm"])
@@ -531,6 +691,7 @@ class MemCell(CL.Cell):
                 "elem_inserted": bool(ins["inserted"]), "elem_picked": bool(ins["picked"]),
                 "elem_align_mm": ins["align_mm"], "elem_seat_xy_mm": ins["seat_xy_mm"],
                 "elem_seat_dz_mm": ins["seat_dz_mm"], "elem_upright": ins["upright"],
+                "cap_placed": True, "cap_place_err_mm": cp["place_err_mm"],
                 **{k: tg[k] for k in ("turns", "torque_nm", "peak_torque_nm",
                                       "seal_n", "peak_seal_n", "cap_z_mm", "stalled")},
                 "charge_psi": chg["charge_psi"], "bubble_px": px,
@@ -561,9 +722,16 @@ def report(rows, label="V5-E MEMBRANE"):
                   f"   (radial clearance is 1.5 mm)")
             print(f"    seated off-axis  : median {np.median(sx):.2f} mm  worst {sx.max():.2f} mm")
             print(f"    base vs floor    : median {np.median(dz):+.2f} mm  worst {dz.max():+.2f} mm")
-            print(f"    NOTE: the bowl is OPEN for this. The cap is then PRESENTED engaged")
-            print(f"    on the first thread -- a FIXTURE action and a declared de-scope,")
-            print(f"    NOT a robot motion. Thread-starting is not simulated.")
+            cp_ = [r for r in hon if r.get("cap_place_err_mm") is not None]
+            if cp_:
+                ce = np.array([r["cap_place_err_mm"] for r in cp_])
+                print(f"    cap placed BY THE ARM: {sum(r.get('cap_placed', False) for r in hon)}"
+                      f"/{len(hon)}, landing median {np.median(ce):.2f} mm worst {ce.max():.2f}"
+                      f" (capture envelope 4 mm / 4 deg)")
+            print(f"    NOTE: the bowl is OPEN for the insert. Thread-start ENGAGEMENT is")
+            print(f"    modelled (capture envelope); the arm's aim is real. The DRIVER is")
+            print(f"    HELD BY THE ARM -- the spindle advances only while the wrist holds")
+            print(f"    station over the cap, enforced every step.")
         print(f"  TIGHTEN, on the workpiece:")
         print(f"    achieved turns   : median {np.median(t):.2f}  "
               f"range {t.min():.2f}-{t.max():.2f}")

@@ -22,7 +22,8 @@ is doing at that moment. This page is the same story in order.
 | ~2:00 | *Travelling over to the membrane element / Gripping…* | the membrane job starts |
 | ~2:10 | *Fine-correcting aim, watching the ELEMENT not the wrist* | the key trick: it measures the part, not its own hand |
 | ~2:15 | *Lowering the element into the housing (1.5 mm to spare)* | a 42 mm part into a 45 mm hole |
-| ~2:20 | cap spins | **a bench driver, NOT the arm** — the caption says so |
+| ~2:20 | *Gripping the cap by its pick stem / Lowering the cap onto the housing mouth* | **the ARM places the cap**; landing within 4 mm / 4° engages the first thread (that engagement is modelled — the aim is real) |
+| ~2:35 | *Holding the driver on the cap — spindle spins only while held* | **the ARM holds the driver**; the spindle only advances while the arm holds station — enforced, not narrated |
 | ~2:30 | dip + bubbles | their own acceptance test; bubbles are modelled, the camera must still see them |
 | end | two cards | where the time went, and what is *not* real |
 
@@ -35,6 +36,6 @@ when cleaning was deliberately sabotaged, that check caught it **15 times out of
 ## Numbers behind this exact video
 
 - 24 fresh units cleaned this way: **zero residue on every one**
-- membrane at the new speed: 10/10 sealed, 10/10 sabotage caught, 0 false passes
+- membrane, arm doing every step (place + drive): 10/10 sealed, 10/10 sabotage caught, 0 false passes
 - worst membrane seating: 1.48 mm off-centre, in a 1.8 mm budget
 - the slow full-coverage mode still exists, unchanged, and remains the default

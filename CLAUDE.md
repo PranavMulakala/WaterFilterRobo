@@ -198,7 +198,7 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane headline**. Next free block: **1880+**.
+**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane (superseded)**; **1880–1889 V6-ARM development (burned)**; **1890–1899 V6-ARM membrane headline (arm places cap + holds driver)**. Next free block: **1900+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of
