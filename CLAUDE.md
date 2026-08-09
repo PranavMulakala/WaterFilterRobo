@@ -38,6 +38,67 @@ falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
+**V7-STROKE (2026-08-09) — CONTINUOUS-STROKE CLEANING. Full-coverage clean 186.8 → 137.3 s
+(1.36×) at 100% coverage, 0 missed of 256 on 16 fresh units (1920–1935), peak force
+32.15 N — BELOW the point raster's own 32.94 N — 100% in band, sabotage 10/10 caught,
+0/10 false verifies (1940–1949).** The arm no longer stops at all 323 raster points: it
+seats once per contiguous run and then SWEEPS the path under continuous flange
+compression, which is what the ACF was added for. `CleanConfig.stroke` (DEFAULT OFF —
+point mode is the published baseline and stays byte-identical).
+
+**This corrects an error of OURS, and the correction is the valuable part.** V6 measured
+that the cycle IS the raster and that per-point cost is FIXED rather than travel-bound —
+both true — then swept `speed`, which only moves the arm faster BETWEEN stops, got 9.6%,
+and concluded "feed rate is a dead lever". **The question never asked was whether to stop
+at all.** Each point is floored by TWO 0.20 s `wipe_stall_s` windows (the first sets the
+reference error, the second compares), so ~0.40 s of a ~0.52 s point is the arm standing
+still agreeing it has arrived.
+
+**THE ADVISOR'S ~2× WAS OPTIMISTIC AND THE REASON IS A MEASURED CLIFF.** It assumed the
+pad could sweep as fast as we liked. Swept on fresh 1900–1903, full coverage:
+
+| stroke_feed | cycle | coverage | missed | peak N |
+|---|---|---|---|---|
+| 0.05 m/s | 224.3 s | 100% | 0/71 | 34.55 |
+| **0.10 (now)** | **136.7 s** | **100%** | **0/71** | 34.66 → **32.15** with the gentle seat |
+| 0.15 | 112.0 s | 97.8% | **2** | 35.02 |
+| 0.20 | 102.0 s | 97.8% | **2** | 35.06 |
+| 0.30 | 94.9 s | 96.7% | **3** | 35.11 |
+
+The cause is TRACKING, not sampling: the pad's IN-PLANE departure from the commanded path
+grows with feed (median 3.2 → 3.8 mm, worst 18 → 21 mm), and a displaced band leaves a gap
+the raster geometry says should not exist. **Same lesson as `step_frac`, one level down —
+geometry is only a promise if the arm actually goes where the geometry says.**
+
+**THE FORCE PEAK IS IN THE SEAT, NOT THE SWEEP.** Logging every contact over 20 N with its
+phase put all six top events in the SEAT (driving into the surface at the start of a run,
+on face 180 where the back panel stands 10 mm proud), none in the sweep. Approaching
+contact at `stroke_seat_scale` 0.20× the sweep rate costs **0.6 s/unit** and takes the peak
+34.66 → **32.15 N**. *Driving INTO a surface and sliding ALONG one are different motions
+with different force budgets; one "speed" knob for both is what made V6 ask the wrong
+question.*
+
+**ROW PITCH: the cliff moves but we did NOT spend the margin.** Point mode is a LATTICE
+problem (worst gap at a cell centre, `step/√2`, cliff 1.414 R). A stroke sweeps a BAND, so
+the only gap is between rows and the cliff moves to 2.000 R. `row_frac` is nevertheless
+held at **1.20 R** — identical row geometry to the published raster — so the stroke result
+isolates one variable. Measured on 1910–1913, 1.70 R was the only wider pitch that held
+100%, and 1.85/2.00/2.20 all lost a patch: an **empirically ragged** band, not a clean
+slope, which is exactly why the geometric bound is not spent.
+
+**TARGETED + STROKE IS MEASURED AND REJECTED.** On fresh 2000–2015 it ran **98.2 s median —
+SLOWER than targeted alone (74.7 s)** — and one unit in 16 (seed 2006, in a re-clean round)
+produced **91.5 N**, twice the 45 N model-validity ceiling. Recorded, not shipped, not
+tuned past. **The two are SUBSTITUTES, not complements:** both remove the same per-point
+stall cost. Full coverage sweeps 5 long serpentines (7 runs, 9.5 m) so the per-run seat
+amortises; targeted leaves many short segments, each paying its own seat, so stroke ADDS
+seats instead of removing stops.
+
+**Honesty label that must travel with the stroke number:** our model removes soil on
+CONTACT, not on DWELL. At 100 mm/s any surface point spends **0.60 s** under the 60 mm pad
+versus ~1.0 s in point mode. A shorter rub is free here and would **not** be free with real
+cream. That is a modelling limit, not a result.
+
 **V6-SPEED (2026-08-05 evening) — TARGETED CLEANING + FAST MEMBRANE: full MEDIUM cycle
 231 s → 152.5 s median, at ZERO residue.** `CleanConfig.targeted` (DEFAULT OFF — full
 coverage stays the shipping mode; "all surfaces covered" is the customer's criterion).
@@ -198,7 +259,14 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane (superseded)**; **1880–1889 V6-ARM development (burned)**; **1890–1899 V6-ARM membrane headline (arm places cap + holds driver)**. Next free block: **1900+**.
+**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane (superseded)**; **1880–1889 V6-ARM development (burned)**; **1890–1899 V6-ARM membrane headline (arm places cap + holds driver)**;
+**1900–1907 V7 stroke FEED sweep** (1900–1903 used); **1910–1917 V7 ROW-PITCH sweep**
+(1910–1913 used, and re-used for the PAIRED point-vs-stroke check against the same units);
+**1920–1935 V7 stroke held-out validation — the published 16-unit number**;
+**1940–1949 V7 stroke sabotage battery**; **1950 BURNED** (a render probe printed its
+truth to the transcript — one command, one seed, gone); **1960–1999 VLM-vs-HSV paired
+triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**.
+Next free block: **2100+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of
@@ -329,6 +397,23 @@ script's `--seed0` default reproduces its published number rather than a spent r
 - `stats.json` — last eval output. See `RESULTS.md` for the current headline number.
 
 ## Hard rules
+- **PORTABILITY — THE ARM IS NOT DECIDED (added 2026-08-09).** There is a live chance we
+  move off the xArm7 to YAM (`TRADE_STUDY.md`, option D; the decision rule is that xArm7
+  stays the default unless Anirudh's reply carries **first-hand** YAM-under-load
+  evidence). Therefore:
+  1. **Do NOT re-run reachability or CELL_SPEC validation for YAM kinematics.** That is
+     wasted work until the arm is final. `v5_reach` and `v5_check_spec` stay xArm7-only.
+  2. **All NEW code plans in the PART/CELL frame, never the arm frame.** Feed rates are
+     tool-on-surface speeds, targets are pad points on a face, tolerances are process
+     tolerances. `v5_clean.stroke_run` is the worked example: `stroke_feed` is m/s of pad
+     along the surface, and the joint-rate limit is applied as a constraint on top rather
+     than being the unit the path is written in.
+  3. **Arm-specific constants live in ONE marked block.** `v5_clean.ArmProfile` (joint and
+     actuator names, IK seed/damping/gain/iterations, the setpoint rate limit, the
+     branch-jump thresholds, and datasheet reach/payload/repeatability). An arm swap is a
+     new profile plus one re-validation run, not a rewrite. Joint LIMITS and the mount
+     pose are deliberately NOT in the profile — they are read from the model, for the same
+     reason CELL_SPEC's numbers are read from the model.
 - After ANY controller or scene change, run `../venv/bin/python sim_poc2.py --eval 25`,
   `sim_poc3.py --eval 25` **and** `sim_poc4.py --eval 60 --seed0 200` from `sim_poc/`, and report both success rates
   against the recorded baselines (v2: 100% locked; v3: 100% full swap). **Never

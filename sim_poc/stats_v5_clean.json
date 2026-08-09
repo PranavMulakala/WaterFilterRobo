@@ -14,5 +14,9 @@
   "raster_infeasible": 144,
   "tilt_mean_deg": 11.737704918032787,
   "tilt_max_deg": 30.0,
-  "exact_normal_frac": 0.2
+  "exact_normal_frac": 0.2,
+  "mode": "point+full",
+  "stroke_feed": null,
+  "row_frac": 1.2,
+  "seed0": 900
 }

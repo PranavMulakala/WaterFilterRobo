@@ -32,3 +32,9 @@ datasets/
 .vscode/
 .idea/
 venv
+
+# V7 realtime render intermediates (rt_raw_*.mp4 is the untimed grab, rt_*.mp4 the
+# re-timed piece). Only the assembled clip in media/ is tracked.
+sim_poc/rt_raw_*.mp4
+sim_poc/rt_*.mp4
+sim_poc/concat_rt.txt

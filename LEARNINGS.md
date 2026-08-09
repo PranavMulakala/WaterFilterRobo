@@ -798,3 +798,25 @@ still fails. The final word always belongs to the check, never the plan.
 
 **Why it matters:** every fast path needs an independent judge. Our worst bug was our own
 speed tweak (cutting a settle pause) — fast changes must re-earn every number downstream.
+
+## 2026-08-09 — Wiping instead of pecking, and why it only bought 1.4x
+
+**What we built:** the arm now *sweeps* each face in one continuous motion instead of
+stopping at all 323 points. Full-coverage cleaning 3:07 → 2:17 per unit, with coverage
+still 100% on 16 fresh units (0 spots missed of 256), the hardest press *lower* than
+before (32.2 N vs 32.9 N), and sabotaged cleaning still caught 10 times out of 10.
+
+**The concept: a robot that stops to check has to prove it arrived; one that sweeps has
+to prove it stayed on the line.** Stopping at a point is safe because you can wait until
+the arm is measurably there. Sweeping removes that check, so the risk moves: the arm now
+lags behind the path it was told to follow, and a lagging arm drifts *sideways* on turns.
+We measured that drift — about 3 mm typically — and found it grows with speed until, past
+100 mm/s, the pad's swept band shifts enough to leave gaps. **So there is a speed cliff,
+and it is a cliff, not a slope: 100 mm/s misses nothing, 150 mm/s starts missing spots.**
+Two standard machining tricks keep it honest — slow down into corners, and let the path
+curve smoothly through the points rather than blending across them.
+
+**Why it matters:** we hoped for 2x and got 1.4x, because the advisor's estimate assumed
+the arm could sweep as fast as we liked. It can't — accuracy sets the speed limit, and
+the limit is a measured number, not a guess. Also worth knowing: this and last session's
+"only clean where the dirt is" attack the *same* wasted time, so doing both gains nothing.
