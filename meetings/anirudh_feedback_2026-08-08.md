@@ -46,6 +46,15 @@ industrial arms always publish it.
 **Action: finish the arm-count trade study (A/B/C, unfinished) with YAM as option D.**
 Answer the two-arm question with numbers rather than explaining our topology.
 
+> **DONE 2026-08-09 — `TRADE_STUDY.md`. Two numbers on this page are superseded by it.**
+> The **~1.4×** above came from the clean-vs-membrane split alone; with load/triage/verify
+> overheads and the class mix averaged in — and with V7's faster clean — a 2-arm pipeline
+> is worth **1.13×**. Neither figure is wrong for what it computed. And the framing turned
+> out to matter less than the volume: **one cell already does ~328 units/day against an
+> estimated 130–200 need**, so the arm-count question is moot in the expected range. The
+> YAM cost arithmetic survives intact but never changes the cell count — it is the same
+> cell with a cheaper arm, behind a decision rule fixed before his answer arrives.
+
 *Does he know we do everything at one station?* Probably not in detail — and it barely
 matters: two of his three points are topology-independent, and "two arms" is a sensible
 prior for any cell with one long station and one short one, which is exactly our imbalance.
