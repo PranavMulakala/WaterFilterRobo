@@ -278,6 +278,15 @@ class MemCell(CL.Cell):
         n = max(1, int(float(np.linalg.norm(tgt - p)) / (speed * self.dt)))
         for i in range(1, n + 1):
             self.step_to(p + (tgt - p) * i / n, CL.grasp_mat(), grip, 0.0, frames, tag)
+            # KEEP FILMING -- this is the membrane station's MAIN travel primitive (every
+            # carry, lift, descend and align goes through it) and it emitted nothing, so
+            # most of the membrane phase was simulated time with no frames. See
+            # v5_clean.dwell for why that shows up as judder in the CLEAN phase too:
+            # make_realtime stretches uniformly, so a gap anywhere is duplicated frames
+            # everywhere.
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    i % frames["every"] == 0:
+                frames["cb"](tag)
 
     def _hold(self, tgt, grip, s=2.5, frames=None, tag=""):
         """Hold until the carried element stops swinging."""
@@ -285,6 +294,13 @@ class MemCell(CL.Cell):
         while t < s:
             self.step_to(tgt, CL.grasp_mat(), grip, 0.0, frames, tag)
             t += self.dt
+            # KEEP FILMING. Same defect as v5_clean.dwell: step_to takes `frames` and
+            # never uses it, so every settle hold was simulated time with no frames --
+            # and make_realtime's uniform stretch turns those gaps into duplicated
+            # frames spread over the whole clip, i.e. judder during the MOVING parts.
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
             if t > 0.4 and self.elem_speed() < 0.01:
                 break
 

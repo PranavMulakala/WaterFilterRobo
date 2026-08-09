@@ -1286,10 +1286,24 @@ class Cell:
         return cleaned
 
     def dwell(self, s, mat, tgt, grip, index_deg=0.0, frames=None, tag=""):
+        """Hold station for S seconds -- AND KEEP FILMING.
+
+        `step_to` takes a `frames` argument and has never used it, so every dwell stepped
+        the simulation while capturing nothing: the 1.2 s indexer settles x4, the 1.4 s
+        top index, the 0.3 s settles and the unlatch -- 8.45 s of simulated time with
+        ZERO frames on a 137 s cycle. `make_realtime` then stretches the footage
+        uniformly to match the true clock, so those gaps come back as ~9% duplicated
+        frames smeared across the WHOLE clip. That is the judder: the arm appears to
+        stutter during motion because time that elapsed while it was standing still was
+        redistributed into the parts where it was moving.
+        """
         t = 0.0
         while t < s:
             self.step_to(tgt, mat, grip, index_deg, frames, tag)
             t += self.dt
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
 
     def surface_x(self, y, z):
         """X of the device surface at (y, z), by casting a ray from in front of it.
