@@ -198,11 +198,31 @@ def _wrap(s, n):
     return out[:2]
 
 
-def render_unit(seed, speed=1.0, out=None, v6=False):
+def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False):
     import dataclasses as _dc
     import v5_clean as _CL
-    c = RT.RouteCell(_dc.replace(_CL.CFG, targeted=True)) if v6 else RT.RouteCell()
+    # V7: stroke composes with targeted -- they are independent switches. The render
+    # path MUST construct the cell from the same CleanConfig the evaluation uses and
+    # call the EVALUATED methods; v5_video has twice filmed a stale system by drifting
+    # from that, and CLAUDE.md records both times.
+    _over = {}
     if v6:
+        _over["targeted"] = True
+    if stroke:
+        # FULL COVERAGE, deliberately. Stroke does NOT imply targeted: the two are
+        # substitutes (both remove the same per-point stall cost) and stacking them
+        # measured SLOWER than targeted alone, with one unit in 16 producing a 91.5 N
+        # contact outside the model's validity. Full-coverage stroke is what ships.
+        _over["stroke"] = True
+    c = RT.RouteCell(_dc.replace(_CL.CFG, **_over)) if _over else RT.RouteCell()
+    if stroke:
+        CAVEAT["CLEAN"] = (
+            "V7 CONTINUOUS STROKE, FULL COVERAGE: the pad is seated once per run and "
+            "then SWEPT along the path under continuous flange compression instead of "
+            "stopping at all 323 raster points. Every one of the five exposed faces is "
+            "still swept in full -- nothing is skipped -- and the residue check that "
+            "follows is a real camera.")
+    elif v6:
         CAVEAT["CLEAN"] = (
             "V6 TARGETED: wipes only where dirt was seen, then a camera re-checks and "
             "re-cleans if anything is left. Dirt LOCATIONS are ground truth standing in "
@@ -413,7 +433,8 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
     return out
 
 
-def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False):
+def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
+                  stroke=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -424,7 +445,7 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False):
     W_, G, B, A = (235, 240, 245), (150, 160, 175), (120, 200, 255), (255, 180, 90)
     clip = f"rt_{seed}.mp4"
     raw = f"rt_raw_{seed}.mp4"
-    _, marks, dur = render_unit(seed, 1.0, raw, v6=v6)
+    _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -494,7 +515,8 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False):
                    check=True, capture_output=True)
     print(f"\nwrote {out}   cycle {mm}:{ss:04.1f} at TRUE 1x")
     for name, d in sorted(merged.items(), key=lambda kv: -kv[1]):
-        print(f"    {name:<10} {d:7.1f} s  {d/dur*100:5.1f}%")
+        print(f"    {name:<10} {d:7.1f} s  {d/dur*100:5.1f}%"
+              if dur > 0 else f"    {name:<10} {d:7.1f} s")
     return out
 
 
@@ -505,6 +527,8 @@ if __name__ == "__main__":
                     help="one full cycle at TRUE 1x + timing cards")
     ap.add_argument("--v6", action="store_true",
                     help="film the V6 targeted cell (fast clean + fast membrane)")
+    ap.add_argument("--stroke", action="store_true",
+                    help="film the V7 continuous-stroke cell (implies targeted)")
     ap.add_argument("--reel", action="store_true",
                     help="title + one clip per route + stats + caveats -> one file")
     ap.add_argument("--speed", type=float, default=1.0,
@@ -512,13 +536,14 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     if a.realtime is not None:
-        make_realtime(a.realtime, a.out or ("../media/v6_cell_realtime.mp4"
-                                            if a.v6 else "../media/v5_cell_realtime.mp4"),
-                      v6=a.v6)
+        _dflt = ("../media/v7_cell_realtime.mp4" if a.stroke else
+                 "../media/v6_cell_realtime.mp4" if a.v6 else
+                 "../media/v5_cell_realtime.mp4")
+        make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
-        render_unit(a.render, a.speed, a.out)
+        render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke)
     else:
         ap.print_help()
         sys.exit(1)

@@ -831,14 +831,29 @@
          not load because the parts it screws onto were somewhere else. If you add a joint
          to this scene, THIS STRING IS PART OF THE CHANGE.
 
-         qpos layout (38): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         AND IT HAPPENED A FOURTH TIME IN V6-ARM (fixed 2026-08-09). `cap_blank`'s free
+         joint took nq from 38 to 45; the 38-value key zero-filled the rest and put the
+         cap blank at the world origin -- 20 contacts at spawn, buried in the arm riser
+         and the bench, on EVERY reset. `v5_membrane` papered over it by re-setting that
+         joint from `m.qpos0` after the reset, so the membrane numbers are unaffected;
+         `v5_clean` does not, so every cleaning run since b388669 has carried a trapped
+         body grinding through world geometry. `v5_check_scene` caught it and the failure
+         was left unread -- run the gates.
+
+         THE LESSON, AND WHY THE FIX IS HERE AND NOT IN THE CONSUMER: a per-consumer
+         `qpos0` patch fixes one caller and leaves the landmine armed for the next. The
+         keyframe is the single place every consumer already goes through.
+
+         qpos layout (45): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
                          | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
+                         | 7 cap_blank free
          ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
     <key name="v5home"
          qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0  0
                0.340 0.300 0.040 1 0 0 0  0 0
-               0.210 0.300 0.072 1 0 0 0"
+               0.210 0.300 0.072 1 0 0 0
+               0.210 0.400 0.046 1 0 0 0"
          ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0"/>
   </keyframe>
 </mujoco>

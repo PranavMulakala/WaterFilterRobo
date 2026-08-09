@@ -1028,3 +1028,60 @@ what we now understand.
   | ~1.5 h | grip features are DESIGNED, not found -- when three grasp strategies fail on
   a part, change the PART (a stem costs nothing in sim and little in reality); and never
   servo IK inside a physics loop against unsyncronised state
+- 2026-08-09 | **The keyframe trap, FOURTH appearance -- and this time the gate had already
+  caught it and nobody read the output.** `v5_check_scene.py` fails at HEAD with
+  "v5home has no interpenetration": V6-ARM's `cap_blank` free joint took nq from 38 to 45,
+  the 38-value key zero-filled the rest, and the blank spawned at the world ORIGIN with
+  20 contacts, buried in the arm riser and the bench, on EVERY reset. `v5_membrane` papered
+  over it by re-setting that joint from `m.qpos0` after the reset, so the membrane numbers
+  were fine and nothing looked wrong -- but `v5_clean` does not, so every cleaning run
+  since b388669 dragged a trapped body through world geometry. **It was not cosmetic:**
+  peak force read 33.9 N against the committed 32.94, and infeasible poses 136 against 144
+  -- the committed `stats_v5_clean.json` no longer reproduced. Fixed in the GENERATOR's
+  keyframe, not in the consumer. | ~40 min | A per-consumer `qpos0` patch fixes one caller
+  and leaves the landmine armed for the next -- fix it in the one place every consumer
+  already goes through. And RUN THE GATES BEFORE BELIEVING A BASELINE: the check that
+  would have caught this was written, committed, passing before, and simply not run
+- 2026-08-09 | **I measured my own new metric wrong THREE times, and each wrong answer was
+  plausible enough to act on.** Building continuous-stroke cleaning, "how far does the pad
+  depart the path it claims to sweep" read, in order: **40 mm** (distance to the nearest
+  KNOT -- 36 mm of that is just the segment length plus along-path lag, neither of which is
+  an error); **20 mm** (perpendicular, but decomposed about the SETPOINT's knot rather than
+  the knot the pad is actually nearest, which leaks `flange x sin(delta tilt)` of pure
+  flange travel into the "in-plane" number); and **28 mm of "normal error"** which is the
+  ACTIVE CONTACT FLANGE COMPRESSING BY DESIGN -- reporting a working spring as a defect,
+  the exact mistake the coupling-drift metric already documents one object further out.
+  A fourth reading of 0.01 mm came from my own diagnostic printing METRES with a mm label.
+  True answer: 3.7 mm median, ~20 mm worst, and the 150 mm outlier is the seat approach
+  before contact. | ~1.5 h | A NEW METRIC IS A NEW EXPERIMENT AND DESERVES A CONTROL. The
+  fix that finally worked was running the SAME metric through POINT mode, where the answer
+  had to be ~0 -- it read 0.02 mm, which proved the metric could distinguish the two modes
+  and made the stroke number believable. Measure the thing you already know the answer to
+- 2026-08-09 | **The toolpath is the PAD's, not the wrist's, and parametrising by the wrong
+  frame invented 195 corners out of 304 knots.** Each raster knot picks its own tilt from a
+  DISCRETE set and the pad hangs 105 mm off the wrist, so a one-step tilt change swings the
+  TCP by centimetres while the pad slides smoothly along the face. Arc length, feed rate,
+  corner detection and path error were all computed on the TCP polyline and were therefore
+  all measuring an artefact. | ~45 min | When a tool is offset from the flange, EVERY
+  path-frame quantity must be stated in the tool frame -- feed rate especially, because
+  "150 mm/s" of wrist is not 150 mm/s of pad and only one of them is the process spec
+- 2026-08-09 | **The force peak was in the SEAT, not the sweep -- so the obvious lever was
+  the wrong one.** Continuous stroke pushed peak contact 32.94 -> 34.66 N. The instinct is
+  to slow the sweep. Logging every contact over 20 N with its phase showed all six top
+  events were in the SEAT (driving into the surface at the start of a run, on face 180
+  where the back panel stands 10 mm proud), none in the sweep. Approaching contact at 0.20x
+  the sweep rate cost **0.6 s per unit** and took the peak to **32.15 N, BELOW the point
+  raster's own 32.94**. | ~30 min | Driving INTO a surface and sliding ALONG one are
+  different motions with different force budgets; a single "speed" knob for both is what
+  made V6's feed sweep answer the wrong question in the first place
+- 2026-08-09 | **Continuous stroke and targeted cleaning are SUBSTITUTES, not complements,
+  and stacking them made things worse in both directions.** Both attack the same cost --
+  the ~0.40 s of mandatory stall windows at each raster point. Full coverage sweeps 5 long
+  serpentines (7 runs, 9.5 m of path) so the per-run seat is paid 7 times and amortises.
+  Targeted leaves many short soil-adjacent segments, each of which pays its own seat, so
+  stroke ADDS seats instead of removing stops: targeted+stroke came out at **98.2 s median
+  vs V6 targeted+point's 74.7 s** -- slower -- and one unit in 16 (seed 2006, in a re-clean
+  round) produced a **91.5 N** contact, twice the 45 N model-validity ceiling. NOT SHIPPED,
+  and not tuned past. | ~1 h | Before combining two optimisations, ask what COST each one
+  removes. If it is the same cost, the second one has nothing left to take and you are
+  only paying its overheads

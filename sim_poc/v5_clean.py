@@ -51,6 +51,56 @@ from sim_poc2 import ik_step
 XML = "ufactory_xarm7/refurb_scene_v5.xml"
 
 
+# ============================================================================
+# ARM-SPECIFIC CONSTANTS -- THE ONLY BLOCK AN ARM SWAP HAS TO TOUCH
+# ============================================================================
+# PORTABILITY RULE (2026-08-09). There is a live possibility we move off the xArm7
+# (see TRADE_STUDY.md, option D). Everything else in this file is written in the
+# CELL/PART frame -- faces, pad radius, press depth, feed rate, coverage criteria --
+# and none of it mentions the arm. What genuinely depends on which arm is bolted to
+# the bench lives here, so a swap is a profile + one re-validation run, not a rewrite.
+#
+# What is deliberately NOT here, because it is not ours to type: joint LIMITS and the
+# mount pose are read from the model at load (`m.jnt_range`, `link_base`). A profile
+# that restated them could drift from the arm it claims to describe -- the same class
+# of bug as CELL_SPEC's numbers, which is why those are read from the model too.
+#
+# `reach_m` / `payload_kg` / `repeatability_mm` are NOT used by the controller. They
+# are here so the trade study and this cell quote one set of numbers, and so that
+# "YAM publishes no repeatability" is a visible None rather than a silent omission.
+@dataclass(frozen=True)
+class ArmProfile:
+    name: str = "xArm7"
+    joints: tuple = ("joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7")
+    acts: tuple = ("act1", "act2", "act3", "act4", "act5", "act6", "act7")
+    # IK seed. A 7-DoF null space needs a cold start that is already in the branch we
+    # want; a 6-DoF arm has no null space and this is just a starting guess.
+    q_cold: tuple = (0.0, -0.3, 0.0, 0.9, 0.0, 1.1, 0.0)
+    # Setpoint rate limit, rad per control step. 0.02 rad at the model's 2 ms timestep
+    # is 10 rad/s of COMMANDED joint rate -- far above what any real arm follows, which
+    # is the point: the physical arm lags it and the lag is what the ACF absorbs. On a
+    # slower arm this is the number that drops, and it is the one thing that would make
+    # the stroke feed rate below unreachable. See stroke_feed.
+    joint_rate: float = 0.02
+    # Branch-jump thresholds for the nearest-posture preference. A 7-DoF arm has a
+    # continuum of solutions per pose and picks a bad one if you let it; these bound
+    # how far the planner may travel between adjacent path knots. A 6-DoF arm has
+    # discrete branches instead of a continuum and would want smaller numbers.
+    max_joint_jump: float = 0.35
+    hard_joint_jump: float = 0.60
+    ik_damping: float = 0.08
+    ik_gain: float = 0.55
+    plan_iters: int = 220
+    # datasheet, for the trade study -- NOT used by any controller in this file
+    reach_m: float = 0.70
+    payload_kg: float = 3.5
+    repeatability_mm: float = 0.1
+
+
+XARM7 = ArmProfile()
+ARM = XARM7
+
+
 @dataclass(frozen=True)
 class CleanConfig:
     xml: str = XML
@@ -99,6 +149,88 @@ class CleanConfig:
     # prove a 2.4 mm gap band is closed, only that it is rarely hit. 1.414 is a cliff and
     # 1.30 sits 8% from it. Real surface variation, pad wear or fixture error would eat that.
     step_frac: float = 1.20         # raster step, in pad RADII
+    # --- V7 CONTINUOUS STROKE (2026-08-09). DEFAULT OFF: point mode above is the
+    #     published baseline and stays byte-identical while this is False.
+    #
+    # THE DIAGNOSIS THIS CORRECTS IS OUR OWN. V6 measured that the cycle IS the raster
+    # and that per-point cost is FIXED rather than travel-proportional -- both true --
+    # and then swept `speed`, which only moves the arm faster BETWEEN stops. It bought
+    # 9.6% and destabilised the contact model, so we wrote down "feed rate is a dead
+    # lever". The question never asked was whether to stop at all. Each point is floored
+    # by TWO 0.20 s `wipe_stall_s` windows (the first sets the reference error, the
+    # second compares against it), so ~0.40 s of a ~0.52 s point is the arm standing
+    # still deciding it has arrived. A raster of 323 such points is ~168 s of a 187 s
+    # cycle, and it is also exactly why the video looks like a bird pecking.
+    #
+    # WHAT CHANGES, PHYSICALLY. In point mode the pad is a stamp: approach, press,
+    # confirm arrival, retreat, repeat. In stroke mode it is a wipe -- the pad is
+    # seated once per contiguous run and then swept along the path under continuous
+    # flange compression, which is what the ACTIVE CONTACT FLANGE was added for. The
+    # flange is an 800 N/m spring over 30 mm, so normal force is set by commanded
+    # compression, not by arrival tolerance; a path that wanders half a millimetre off
+    # the surface costs 0.4 N instead of a stall.
+    #
+    # WHAT DOES *NOT* CHANGE, and this is the part that keeps the number honest: soil
+    # removal still requires MEASURED CONTACT FORCE over the patch (`wipe()`), the
+    # camera still decides acceptance, and the row pitch is unchanged. The speedup is
+    # bought by not stopping -- NOT by sampling less. See row_frac.
+    stroke: bool = False
+    # Tangential sweep speed of the PAD ALONG THE SURFACE, m/s. This is a tool-frame
+    # quantity on purpose: it is what a process engineer specifies for a wipe and it
+    # ports across arms, whereas `speed` above is a joint-space setpoint rate that
+    # means nothing off this arm. Swept on 1900-1907; see V5_PLAN "V7 STROKE SWEEP".
+    # 0.10, NOT 0.15. THERE IS A COVERAGE CLIFF IN FEED RATE AND IT IS SHARP. Measured
+    # on fresh 1900-1903, full coverage, everything else held:
+    #
+    #   0.05  224.3 s  100%   0 missed of 71
+    #   0.10  136.7 s  100%   0 missed          <- HERE
+    #   0.15  112.0 s  97.8%  2 missed          <- the cliff
+    #   0.20  102.0 s  97.8%  2 missed
+    #   0.30   94.9 s  96.7%  3 missed
+    #
+    # The cause is tracking, not sampling: the pad's IN-PLANE departure from the
+    # commanded path grows with feed (median 3.2 -> 3.8 mm, worst 18 -> 21 mm), and a
+    # displaced band leaves a gap the raster's geometry says should not be there. This
+    # is the SAME lesson as step_frac, one level down -- the geometry is only a promise
+    # if the arm actually goes where the geometry says.
+    stroke_feed: float = 0.10
+    # Trapezoidal ramp at each end of a run, m/s^2. Without it the first control step
+    # of a stroke demands a step change in velocity, which the rate limiter turns into
+    # a lag the pad drags through.
+    stroke_accel: float = 0.60
+    # A knot turning by more than this is a CORNER, not curvature: the spline gets a
+    # one-sided tangent there and the velocity plan slows to meet it. 25 deg is well
+    # below the 60-120 deg the serpentine's row reversals actually produce and well
+    # above the 0-5 deg an ordinary along-row knot shows, so nothing sits near the line.
+    stroke_corner_deg: float = 25.0
+    # SEAT RATE. The stroke's force peak is NOT in the sweep -- measured, it is in the
+    # SEAT, on face 180 (the back panel stands 10 mm proud, the geometry that has caused
+    # every large contact in this station's history), with the flange at 22.6 of its
+    # 30 mm. Driving into a surface and sliding along one are different motions with
+    # different force budgets, and the V6 feed sweep's mistake was treating them as one
+    # number. Approach contact at a fraction of the sweep rate; sweep at full rate.
+    # 0.20 -- and it costs 0.6 s per unit (0.5%) while taking the peak from 34.66 N to
+    # 32.15 N, BELOW the 32.94 N the point raster peaks at. Swept on seed 1900:
+    #   1.00 -> 136.66 s / 34.66 N | 0.50 -> 136.69 / 34.35
+    #   0.35 -> 136.95 s / 33.88 N | 0.20 -> 137.30 / 32.15
+    stroke_seat_scale: float = 0.20
+    # ROW PITCH, in pad radii. THIS IS THE ONLY COVERAGE-CRITICAL SPACING IN STROKE
+    # MODE and it is why `step_frac` alone is not enough any more.
+    #
+    #   point mode : coverage is a LATTICE problem. Worst uncovered spot is a cell
+    #                centre at step/sqrt(2), so the cliff is step <= 1.414 R.
+    #   stroke mode: coverage along a row is CONTINUOUS -- the pad sweeps a band of
+    #                half-width R -- so the only gap is BETWEEN rows, and the worst
+    #                uncovered spot is midway between two rows at pitch/2. The cliff
+    #                moves to pitch <= 2.000 R.
+    #
+    # We shipped 1.20 against a 1.414 cliff (18% margin) and explicitly declined 1.30
+    # (8%) because coverage failure is a RARE EVENT that a 16-unit run cannot disprove.
+    # The same reasoning applies here and the same margin is kept. 1.20 R is held as
+    # the DEFAULT -- identical row geometry to the published raster -- so the stroke
+    # result isolates one variable. The wider pitches the geometry allows are measured
+    # (`--row-sweep`) and reported, not shipped.
+    row_frac: float = 1.20
     # --- V6 TARGETED MODE (off by default; full coverage is the customer's criterion).
     # Visits only raster points within a pad radius of soil, and skips soil-free faces
     # entirely. HONESTY LABEL, printed every run it is used: soil locations are taken
@@ -163,9 +295,13 @@ class CleanConfig:
     # Joint-space continuity between adjacent raster points. 0.35 rad is comfortably
     # inside what the executor can cover in its 2.5 s budget at 0.02 rad/step, and well
     # above the 0.11-0.18 rad median step the geometry actually requires.
-    max_joint_jump: float = 0.35    # rad, per joint, between consecutive raster poses
+    # ARM-SPECIFIC: sourced from the profile, not typed here. Continuous strokes make a
+    # branch jump MORE dangerous, not less -- in point mode a jump wastes a point, in
+    # stroke mode it whips the pad across the device mid-wipe with the flange loaded.
+    arm: ArmProfile = ARM
+    max_joint_jump: float = ARM.max_joint_jump   # rad, per joint, between path knots
     # Above this, DECLINE the point instead of executing it. See plan_pad.
-    hard_joint_jump: float = 0.60   # rad, per joint -- refuse rather than swing
+    hard_joint_jump: float = ARM.hard_joint_jump  # rad, per joint -- refuse rather than swing
     wipe_stall_s: float = 0.20      # window over which progress is judged
     wipe_stall_m: float = 0.0005    # less closing than this, while in contact, is a stall
     # ...and 'in contact' has to mean SEATED, not grazing. contact_min_n is 0.5 N, which
@@ -227,9 +363,9 @@ def grasp_mat():
 #     constant, and reports the tilt it actually used against the limit.
 TILT_TOL_DEG = RE.TILT_TOL_DEG
 TILT_DIRS = RE.TILT_DIRS
-COLD = np.array([0.0, -0.3, 0.0, 0.9, 0.0, 1.1, 0.0])
+COLD = np.array(ARM.q_cold)          # arm-specific; see ArmProfile
 POS_TOL, ROT_TOL = 0.004, np.deg2rad(4)
-PLAN_ITERS = 220
+PLAN_ITERS = ARM.plan_iters          # arm-specific
 
 
 def tilted_mats(base):
@@ -260,11 +396,11 @@ class Cell:
         self.d = mujoco.MjData(self.m)
         self.ik = mujoco.MjData(self.m)
         m = self.m
-        self.jnt = [m.joint(f"joint{i}").id for i in range(1, 8)]
+        self.jnt = [m.joint(n).id for n in cfg.arm.joints]
         self.qadr = np.array([m.jnt_qposadr[j] for j in self.jnt])
         self.dof = np.array([m.jnt_dofadr[j] for j in self.jnt])
         self.rng_j = m.jnt_range[self.jnt].copy()
-        self.act = [m.actuator(f"act{i}").id for i in range(1, 8)]
+        self.act = [m.actuator(n).id for n in cfg.arm.acts]
         self.grip = m.actuator("gripper").id
         self.tt_act = m.actuator("tt").id
         self.tt_q = m.jnt_qposadr[m.joint("tt_rot").id]
@@ -366,6 +502,14 @@ class Cell:
         self.tilts = []
         self.q_warm = None
         self.face_unreachable = {}
+        self.stroke_len = 0.0
+        self.stroke_runs = 0
+        self.stroke_path_err = 0.0
+        self.stroke_lag = 0.0
+        self.stroke_norm_err = 0.0
+        self.stroke_corners = 0
+        self.stroke_track = []
+        self.device_shift = 0.0
         mujoco.mj_forward(m, d)
         self.q_des = d.qpos[self.qadr].copy()
         self.q_home = self.q_des.copy()
@@ -667,7 +811,8 @@ class Cell:
                 mujoco.mj_kinematics(m, self.plan)
                 mujoco.mj_comPos(m, self.plan)
                 dq, _ = ik_step(m, self.plan, self.site, tgt, mat, self.dof,
-                                damping=0.08, gain=0.55)
+                                damping=self.cfg.arm.ik_damping,
+                                gain=self.cfg.arm.ik_gain)
                 step = np.max(np.abs(dq))
                 if step > 0.12:
                     dq = dq * (0.12 / step)
@@ -729,7 +874,7 @@ class Cell:
         self._charge(tag, self.dt)
         dq, err = ik_step(m, self.ik, self.site, tgt, mat, self.dof)
         mx = np.max(np.abs(dq))
-        lim = 0.02 * self.cfg.speed
+        lim = self.cfg.arm.joint_rate * self.cfg.speed
         if mx > lim:
             dq *= lim / mx
         self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
@@ -776,7 +921,7 @@ class Cell:
         return cleaned
 
     def move_planned(self, q_goal, tgt, grip, index_deg=0.0, tol=0.004, t_max=6.0,
-                     wipe=False, log=None, frames=None, tag=""):
+                     wipe=False, log=None, frames=None, tag="", rate_scale=1.0):
         """Drive to a PLANNED joint configuration, waiting for the MEASURED TCP.
 
         The setpoint is the planner's configuration, so the arm is not re-deriving a
@@ -791,7 +936,11 @@ class Cell:
         while t < t_max:
             dq = q_goal - self.q_des
             mx = np.max(np.abs(dq))
-            lim = 0.02 * self.cfg.speed
+            # rate_scale defaults to 1.0, so every existing caller is unchanged. It
+            # exists so a stroke can APPROACH CONTACT GENTLY AND SWEEP FAST -- see
+            # stroke_seat_scale. Those are different motions and V6's feed sweep
+            # conflated them.
+            lim = self.cfg.arm.joint_rate * self.cfg.speed * rate_scale
             if mx > lim:
                 dq = dq * (lim / mx)
             self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
@@ -827,6 +976,313 @@ class Cell:
             self.budget["dur"].setdefault(tag, []).append(t)
             if t >= t_max - 1e-9:
                 self.budget["timeout"][tag] = self.budget["timeout"].get(tag, 0) + 1
+        return cleaned
+
+    # ------------------------------------------------- V7: continuous stroke
+    def plan_runs(self, pad_pts, base_mat, pad_rel, q_seed, gap_m):
+        """Plan a whole face's path up front; split it into CONTIGUOUS RUNS.
+
+        Returns [[(q, tgt, mat, tilt), ...], ...]. A run is a stretch the pad can sweep
+        without lifting: consecutive knots that are both feasible AND adjacent on the
+        path. A knot the planner refuses (branch jump, collision, limit) ENDS the run
+        rather than being bridged, because bridging it is precisely the swing that
+        `plan_pad` refuses to execute in point mode -- and doing it while the flange is
+        loaded drags the pad across the device instead of merely wasting a point.
+
+        PLANNING THE FACE BEFORE TOUCHING IT is the one real behavioural difference
+        from point mode, and it has a cost worth naming: point mode re-probes the
+        surface after every point, so it tracks a device that shifts under the pad,
+        while a stroke commits to a surface measured before the run started. That is
+        why `device_shift_mm` is measured and reported -- if the device moved more than
+        the flange can absorb, this assumption is the first thing to suspect.
+        """
+        runs, cur, q = [], [], q_seed
+        prev_pt = None
+        for pt, contiguous in pad_pts:
+            self.raster_planned += 1
+            got = self.plan_pad(pt, base_mat, pad_rel, q)
+            if got is None:
+                self.raster_infeasible += 1
+                if cur:
+                    runs.append(cur)
+                cur, prev_pt = [], None
+                continue
+            q_pt, mat_pt, tilt_pt, tgt = got
+            far = prev_pt is not None and float(np.linalg.norm(pt - prev_pt)) > gap_m
+            if cur and (not contiguous or far):
+                runs.append(cur)
+                cur = []
+            q = q_pt
+            self.q_warm = q_pt
+            self.tilts.append(tilt_pt)
+            cur.append((q_pt, tgt, mat_pt, tilt_pt, pt))
+            prev_pt = pt
+        if cur:
+            runs.append(cur)
+        return runs
+
+    @staticmethod
+    def _corners(P, sharp_deg=25.0):
+        """Per-knot turn angle, and which knots are CORNERS rather than path curvature.
+
+        MEASURED, not assumed. A serpentine's row reversal is not a gentle bend: on the
+        front face 17 of 58 knots turn by more than 60 degrees and the worst is 120.5.
+        Treating those as ordinary interpolation points is what produced an 8-10 mm bow
+        in PURE GEOMETRY, before any dynamics -- the spline rounds the corner off the
+        face and the pad never sweeps it.
+        """
+        n = len(P)
+        turn = np.zeros(n)
+        for i in range(1, n - 1):
+            a, b = P[i] - P[i - 1], P[i + 1] - P[i]
+            na, nb = np.linalg.norm(a), np.linalg.norm(b)
+            if na < 1e-9 or nb < 1e-9:
+                turn[i] = 180.0
+                continue
+            turn[i] = float(np.degrees(np.arccos(np.clip(a @ b / (na * nb), -1.0, 1.0))))
+        return turn, turn > sharp_deg
+
+    @staticmethod
+    def _vel_plan(s_knot, P, sharp, feed, accel):
+        """Per-knot speed caps, then a two-pass look-ahead. Standard CNC, for the
+        standard reason.
+
+        A single trapezoid over the whole run ramps in and out at the ENDS and then
+        drives every interior corner at full feed. The arm cannot turn 120 degrees at
+        150 mm/s, so it cuts the corner -- and a cut corner on a wiping path is an
+        uncleaned corner. The cap is the component of velocity that SURVIVES the turn,
+        cos(phi): straight ahead keeps all of it, a right angle keeps none.
+
+        The two passes make the caps reachable: backward asks "can I still slow to that
+        cap in the distance remaining", forward asks "can I have sped up that much by
+        then". Without them the profile is a wish rather than a plan.
+        """
+        n = len(P)
+        seg = np.diff(s_knot)
+        v = np.full(n, float(feed))
+        v[0] = v[-1] = 0.0
+        for i in range(1, n - 1):
+            a, b = P[i] - P[i - 1], P[i + 1] - P[i]
+            na, nb = np.linalg.norm(a), np.linalg.norm(b)
+            if na < 1e-9 or nb < 1e-9:
+                v[i] = 0.0
+                continue
+            c = float(np.clip(a @ b / (na * nb), -1.0, 1.0))
+            # Floor at 8% rather than 0. A true stop at every row reversal is both slow
+            # and unnecessary -- the corner only has to be slow enough that the arm's
+            # lag through it stays inside what the flange absorbs.
+            v[i] = feed * max(0.08, c) if sharp[i] else feed * max(0.5, c)
+        for i in range(n - 2, -1, -1):
+            v[i] = min(v[i], float(np.sqrt(v[i + 1] ** 2 + 2 * accel * seg[i])))
+        for i in range(n - 1):
+            v[i + 1] = min(v[i + 1], float(np.sqrt(v[i] ** 2 + 2 * accel * seg[i])))
+        return v
+
+    @staticmethod
+    def _catmull(Q, s_knot, s, sharp=None):
+        """Joint vector at arc length S, Catmull-Rom through the planned knots.
+
+        WHY A SPLINE AND NOT A POLYLINE. Linear interpolation between knots is C0: the
+        commanded joint VELOCITY steps discontinuously at every knot, which is the same
+        pecking signature one level down -- the rate limiter turns each step into a
+        lag the loaded pad drags through. Catmull-Rom is C1 and, crucially, INTERPOLATES
+        its control points, so the path still passes exactly through every configuration
+        the planner checked for collisions and limits. A B-spline would smooth better
+        and pass through none of them; that trade is not available here, because a
+        posture that was never collision-checked is a posture that may be inside the
+        cabinet.
+
+        Between knots the curve can bow slightly off the straight Cartesian row. That
+        bow is measured, not assumed -- see stroke_path_error_mm in the run row -- and
+        it is absorbed by the flange, which is a spring, at 800 N/m per mm.
+        """
+        n = len(Q)
+        i = int(np.searchsorted(s_knot, s, side="right") - 1)
+        i = max(0, min(i, n - 2))
+        span = s_knot[i + 1] - s_knot[i]
+        t = 0.0 if span <= 1e-12 else float((s - s_knot[i]) / span)
+        t = min(max(t, 0.0), 1.0)
+        p1, p2 = Q[i], Q[i + 1]
+        # ONE-SIDED TANGENTS AT A CORNER. Collapsing the outside control point onto the
+        # corner knot zeroes the tangent there, so the curve arrives and leaves along
+        # the actual path instead of blending across the turn. This is what removes the
+        # geometric bow; the velocity plan then removes the dynamic one.
+        p0 = p1 if (sharp is not None and sharp[i]) else Q[max(i - 1, 0)]
+        p3 = p2 if (sharp is not None and sharp[i + 1]) else Q[min(i + 2, n - 1)]
+        t2, t3 = t * t, t * t * t
+        return 0.5 * ((2 * p1) + (-p0 + p2) * t
+                      + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
+                      + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+
+    def stroke_run(self, run, grip, index_deg=0.0, frames=None, tag="", log=None):
+        """Seat once, then SWEEP the whole run without stopping.
+
+        The feed rate is specified on the PAD ALONG THE SURFACE and converted to a path
+        parameter here, so it is an arm-independent statement about the process. The
+        actuator rate limit is still honoured exactly: when a step would demand more
+        joint travel than the arm may command, the ARC ADVANCE is scaled back rather
+        than the setpoint being clipped. Clipping the setpoint instead would let the
+        commanded path fall progressively behind the parameter -- the executor would
+        believe it had swept ground it never reached, which is the failure mode that
+        makes a coverage number a fiction.
+        """
+        cfg = self.cfg
+        m, d = self.m, self.d
+        if len(run) == 1:
+            return self.move_planned(run[0][0], run[0][1], grip, index_deg=index_deg,
+                                     tol=cfg.wipe_tol, t_max=3.5, wipe=True, log=log,
+                                     tag=tag, frames=frames,
+                                     rate_scale=cfg.stroke_seat_scale)
+        # 1) SEAT. Entering contact is unchanged from point mode -- same planned pose,
+        #    same stall criterion -- so the press that starts a stroke is the press this
+        #    station has always measured. Only what happens AFTER contact is new.
+        cleaned = self.move_planned(run[0][0], run[0][1], grip, index_deg=index_deg,
+                                    tol=cfg.wipe_tol, t_max=3.5, wipe=True, log=log,
+                                    tag=tag, frames=frames,
+                                    rate_scale=cfg.stroke_seat_scale)
+        Q = np.array([k[0] for k in run], float)
+        T = np.array([k[1] for k in run], float)          # TCP targets (what IK solved)
+        # THE TOOLPATH IS THE PAD'S, NOT THE WRIST'S. Every knot picks its own tilt out
+        # of a DISCRETE set, and the pad hangs 105 mm off the wrist, so a one-step change
+        # of tilt swings the TCP by centimetres while the pad slides smoothly along the
+        # face. Measured on the front face: parametrising by TCP arc length flagged 195
+        # of 304 knots as >25 deg "corners" and reported 20 mm of path error, all of it
+        # an artefact of reading the wrong frame. Feed rate, corner detection and path
+        # error are all statements about the PAD ON THE SURFACE.
+        P = np.array([k[4] for k in run], float)          # pad points -- the real path
+        seg = np.linalg.norm(np.diff(P, axis=0), axis=1)
+        s_knot = np.concatenate([[0.0], np.cumsum(seg)])
+        L = float(s_knot[-1])
+        if L < 1e-6:
+            return cleaned
+        lim = cfg.arm.joint_rate * cfg.speed
+        a = cfg.stroke_accel
+        turn, sharp = self._corners(P, cfg.stroke_corner_deg)
+        v_knot = self._vel_plan(s_knot, P, sharp, cfg.stroke_feed, a)
+        N = np.array([k[2][:, 2] for k in run], float)   # surface normal at each knot
+        v_min = 0.02 * cfg.stroke_feed
+        s, t = 0.0, 0.0
+        t_max = 3.0 + 4.0 * L / max(cfg.stroke_feed, 1e-6)
+        err_max, lag_max, nrm_max = 0.0, 0.0, 0.0
+        while s < L and t < t_max:
+            # LOOK-AHEAD profile: accelerate away from the last knot's cap, and stay
+            # slow enough to still meet the next one's. sqrt(v^2 + 2 a d) is the fastest
+            # speed reachable over d, and equally the fastest that can be given back.
+            i_v = int(np.searchsorted(s_knot, s, side="right") - 1)
+            i_v = max(0, min(i_v, len(P) - 2))
+            v = min(cfg.stroke_feed,
+                    np.sqrt(v_knot[i_v] ** 2 + 2 * a * max(s - s_knot[i_v], 0.0)),
+                    np.sqrt(v_knot[i_v + 1] ** 2 + 2 * a * max(s_knot[i_v + 1] - s, 0.0)))
+            v = max(v, v_min)
+            ds = v * self.dt
+            q_try = self._catmull(Q, s_knot, s + ds, sharp)
+            dq = q_try - self.q_des
+            mx = float(np.max(np.abs(dq)))
+            if mx > lim:
+                # back the ARC off, not the setpoint: the path stays exact and only the
+                # speed gives way. One proportional pass is enough -- the map from arc
+                # length to joint travel is locally linear at these spacings.
+                ds *= lim / mx
+                q_try = self._catmull(Q, s_knot, s + ds, sharp)
+                dq = q_try - self.q_des
+                mx = float(np.max(np.abs(dq)))
+                if mx > lim:
+                    dq *= lim / mx
+                    q_try = self.q_des + dq
+            s += ds
+            self.q_des = np.clip(q_try, self.rng_j[:, 0], self.rng_j[:, 1])
+            d.ctrl[self.act] = self.q_des
+            d.ctrl[self.grip] = grip
+            d.ctrl[self.tt_act] = np.deg2rad(index_deg)
+            d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
+            mujoco.mj_step(m, d)
+            t += self.dt
+            cleaned += self.wipe()
+            if log is not None:
+                log.append(self.pad_contact_force())
+            # PERPENDICULAR deviation from the commanded path, not distance to the
+            # nearest knot. The first version measured the latter and read 40 mm, almost
+            # all of which was the 36 mm segment length plus the arm's along-path lag --
+            # neither of which is an error. Lag ALONG the path costs nothing (the pad
+            # sweeps the same ground, later); departure ACROSS it is what lifts the pad
+            # off the surface, and it is the only one the flange has to absorb.
+            k = int(np.searchsorted(s_knot, s, side="right") - 1)
+            k = max(0, min(k, len(P) - 2))
+            # DECOMPOSE ABOUT THE SEGMENT THE PAD IS ACTUALLY ON, not the one the
+            # setpoint has reached. The flange compresses along the TOOL axis, and the
+            # tool tilts by up to 30 deg and changes tilt at ~30% of knots, so using the
+            # setpoint knot's normal leaks up to `flange x sin(delta tilt)` of pure
+            # flange travel into the "in-plane" number. That is what made this metric
+            # read 20.5 mm while the pad was in fact tracking the path to 0.01 mm.
+            # +-8 segments covers far more lag than the arm ever shows and still cannot
+            # snap to a neighbouring row, which sits a full row pitch away.
+            tcp_now = d.geom_xpos[self.pad_face]
+            dev, dvec, kbest = np.inf, None, k
+            for kk in range(max(k - 8, 0), min(k + 9, len(P) - 1)):
+                ab = P[kk + 1] - P[kk]
+                den = float(ab @ ab)
+                u_ = 0.0 if den < 1e-12 else float(np.clip((tcp_now - P[kk]) @ ab / den,
+                                                           0.0, 1.0))
+                w = tcp_now - (P[kk] + u_ * ab)
+                if float(np.linalg.norm(w)) < dev:
+                    dev, dvec, kbest = float(np.linalg.norm(w)), w, kk
+            # SPLIT IT, AND ONLY ONE HALF IS AN ERROR.
+            #   IN-PLANE  -- did the pad sweep the ground it claims to? This is the
+            #                coverage number, and distance to the POLYLINE (not to a
+            #                knot) already excludes along-path lag, which costs nothing.
+            #   NORMAL    -- this is the ACTIVE CONTACT FLANGE COMPRESSING. It is
+            #                supposed to be about `press` (12 mm) and reporting it as
+            #                "path error" made a working spring look like a defect --
+            #                exactly the mistake the coupling-drift metric already
+            #                documents one object further in. The normal direction is
+            #                spoken for by the FORCE band, which is measured.
+            if dvec is not None:
+                nof = float(dvec @ N[kbest])
+                ipl = float(np.linalg.norm(dvec - nof * N[kbest]))
+            else:
+                nof, ipl = 0.0, dev
+            err_max = max(err_max, ipl)
+            nrm_max = max(nrm_max, abs(nof))
+            lag_max = max(lag_max, dev)
+            self.stroke_track.append(ipl)
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
+        # 2) CATCH-UP at the far end. The setpoint reaches the last knot before the
+        #    physical arm does; without this the final knot of every run is swept by a
+        #    pad that is still tens of mm behind it. Bounded, ONCE PER RUN rather than
+        #    once per point -- which is the whole saving -- and it still wipes.
+        hold = 0.0
+        while hold < 0.30:
+            dq = Q[-1] - self.q_des
+            mx = float(np.max(np.abs(dq)))
+            if mx > lim:
+                dq *= lim / mx
+            self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
+            d.ctrl[self.act] = self.q_des
+            d.ctrl[self.grip] = grip
+            d.ctrl[self.tt_act] = np.deg2rad(index_deg)
+            d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
+            mujoco.mj_step(m, d)
+            hold += self.dt
+            t += self.dt
+            cleaned += self.wipe()
+            if log is not None:
+                log.append(self.pad_contact_force())
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
+            if float(np.linalg.norm(d.site_xpos[self.site] - T[-1])) < cfg.wipe_tol:
+                break
+        self.stroke_path_err = max(self.stroke_path_err, err_max)
+        self.stroke_lag = max(self.stroke_lag, lag_max)
+        self.stroke_norm_err = max(self.stroke_norm_err, nrm_max)
+        self.stroke_corners += int(sharp.sum())
+        self.stroke_len += L
+        self.stroke_runs += 1
+        if self.budget is not None:
+            self._charge(tag, t)
+            self.budget["dur"].setdefault(tag, []).append(t)
         return cleaned
 
     def dwell(self, s, mat, tgt, grip, index_deg=0.0, frames=None, tag=""):
@@ -912,6 +1368,14 @@ class Cell:
             self.tilts = []
             self.q_warm = None
             self.face_unreachable = {}
+            self.stroke_len = 0.0
+            self.stroke_runs = 0
+            self.stroke_path_err = 0.0
+            self.stroke_lag = 0.0
+            self.stroke_norm_err = 0.0
+            self.stroke_corners = 0
+            self.stroke_track = []
+            self.device_shift = 0.0
             # DRIVE HOME FIRST. verify() parks the arm (teleport, camera clearance), and
             # entering the plan chain from PARK put the first face's corner points into
             # a tilt branch that presses edge-first -- the same patch failed every
@@ -1065,7 +1529,11 @@ class Cell:
             v_hi = (z1 - ph) - zc
             u_lim = hw - ph
             step = cfg.step_frac * cfg.pad_radius
-            rows = max(int(np.ceil((v_hi - v_lo) / step)) + 1, 2)
+            # ROW pitch is a separate knob in stroke mode and the SAME one in point
+            # mode: `row_frac` defaults to `step_frac`, so the shipped stroke config
+            # rasters exactly the row geometry the published number was measured on.
+            row_step = (cfg.row_frac * cfg.pad_radius) if cfg.stroke else step
+            rows = max(int(np.ceil((v_hi - v_lo) / row_step)) + 1, 2)
             cols = max(int(np.ceil(2 * u_lim / step)) + 1, 2)
             # targeted: keep only points with soil within a pad radius (in-plane).
             # Grid spacing <= R*sqrt(2) guarantees every soil location is within R of
@@ -1108,47 +1576,90 @@ class Cell:
                       f"v [{v_lo:.3f},{v_hi:.3f}]")
                 for p_ in _face_soil:
                     print(f"          soil {np.round(p_,3)}")
-            for r in range(rows):
-                v = v_lo + (v_hi - v_lo) * r / (rows - 1)
-                order = range(cols) if r % 2 == 0 else reversed(range(cols))
-                for c in order:
-                    if keep is not None and (r, c) not in keep:
-                        continue
-                    u = -u_lim + 2 * u_lim * c / (cols - 1)
-                    # PROBE THE SURFACE PER POINT with a ray, instead of assuming one
-                    # plane for the whole face. A single plane from the geom extents was
-                    # inconsistent between mirror-symmetric orientations (0.4536 at index
-                    # 90 vs 0.4800 at 270), because a rotated box's X-extent is not its
-                    # presented face -- so the pad was commanded short of the surface and
-                    # did not touch for 29% of the raster. A ray gives the ACTUAL surface
-                    # at this point, and handles the proud back panel for free.
-                    # COUNT what gets skipped. A `continue` here used to be invisible:
-                    # the point contributed no wipe and no force sample, so a raster that
-                    # never ran a third of its points still reported healthy contact.
-                    # Anything the station declines to attempt has to show up in the
-                    # numbers, or the metric is measuring the subset that succeeded.
-                    self.raster_planned += 1
-                    hit = self.surface_x(cy + u, zc + v)
-                    if hit is None:
-                        self.raster_skipped += 1
-                        continue
-                    pad_pt = np.array([hit - cfg.pad_thick_half + cfg.press,
-                                       cy + u, zc + v])
-                    # PLAN the point before driving at it, and let it TILT. The target
-                    # moves with the tilt, because the pad is offset from the wrist: the
-                    # pad face has to land on pad_pt whatever angle the tool arrives at.
-                    warm = self.q_warm if self.q_warm is not None else self.q_des
-                    got = self.plan_pad(pad_pt, tm, pad_rel, warm)
-                    if got is None:
-                        self.raster_infeasible += 1
-                        continue
-                    q_pt, mat_pt, tilt_pt, tgt = got
-                    self.q_warm = q_pt
-                    self.tilts.append(tilt_pt)
-                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open, index_deg=deg,
-                                                 tol=cfg.wipe_tol, t_max=2.5, wipe=True,
-                                                 log=forces, tag=f"WIPE {deg:.0f}",
-                                                 frames=frames)
+            if cfg.stroke:
+                # ONE CONTINUOUS SERPENTINE PER FACE. The row-to-row transition is part
+                # of the PATH, not a separate move: the pad stays seated and sweeps the
+                # row step in v, which is coverage rather than dead time. Everything the
+                # point raster does per point -- probe the surface, plan a tilt, refuse a
+                # branch jump -- still happens per KNOT; the only thing removed is the
+                # arm standing still at each one waiting to agree it has arrived.
+                pad_pts, contiguous = [], False
+                for r in range(rows):
+                    v = v_lo + (v_hi - v_lo) * r / (rows - 1)
+                    order = range(cols) if r % 2 == 0 else reversed(range(cols))
+                    for c in order:
+                        if keep is not None and (r, c) not in keep:
+                            contiguous = False
+                            continue
+                        u = -u_lim + 2 * u_lim * c / (cols - 1)
+                        self.raster_planned += 1
+                        hit = self.surface_x(cy + u, zc + v)
+                        if hit is None:
+                            self.raster_skipped += 1
+                            contiguous = False
+                            continue
+                        pad_pts.append((np.array([hit - cfg.pad_thick_half + cfg.press,
+                                                  cy + u, zc + v]), contiguous))
+                        contiguous = True
+                # the probe above is charged to raster_planned; plan_runs must not
+                # double-count it
+                self.raster_planned -= len(pad_pts)
+                dev0 = self.d.xpos[self.cab_bodyid].copy()
+                warm = self.q_warm if self.q_warm is not None else self.q_des
+                for rn in self.plan_runs(pad_pts, tm, pad_rel, warm,
+                                         1.8 * max(step, row_step)):
+                    cleaned += self.stroke_run(rn, cfg.grip_open, index_deg=deg,
+                                               frames=frames, tag=f"WIPE {deg:.0f}",
+                                               log=forces)
+                # A STROKE COMMITS TO A SURFACE MEASURED BEFORE IT STARTED. Point mode
+                # re-probes after every point and so tracks a device that shifts; this
+                # does not. Measure the shift so the assumption is falsifiable rather
+                # than merely stated -- the flange absorbs 0.8 N per mm, so a shift of a
+                # millimetre is nothing and a shift of ten is the first suspect.
+                self.device_shift = max(self.device_shift, float(np.linalg.norm(
+                    self.d.xpos[self.cab_bodyid] - dev0)) * 1000)
+            else:
+                for r in range(rows):
+                    v = v_lo + (v_hi - v_lo) * r / (rows - 1)
+                    order = range(cols) if r % 2 == 0 else reversed(range(cols))
+                    for c in order:
+                        if keep is not None and (r, c) not in keep:
+                            continue
+                        u = -u_lim + 2 * u_lim * c / (cols - 1)
+                        # PROBE THE SURFACE PER POINT with a ray, instead of assuming one
+                        # plane for the whole face. A single plane from the geom extents was
+                        # inconsistent between mirror-symmetric orientations (0.4536 at index
+                        # 90 vs 0.4800 at 270), because a rotated box's X-extent is not its
+                        # presented face -- so the pad was commanded short of the surface and
+                        # did not touch for 29% of the raster. A ray gives the ACTUAL surface
+                        # at this point, and handles the proud back panel for free.
+                        # COUNT what gets skipped. A `continue` here used to be invisible:
+                        # the point contributed no wipe and no force sample, so a raster that
+                        # never ran a third of its points still reported healthy contact.
+                        # Anything the station declines to attempt has to show up in the
+                        # numbers, or the metric is measuring the subset that succeeded.
+                        self.raster_planned += 1
+                        hit = self.surface_x(cy + u, zc + v)
+                        if hit is None:
+                            self.raster_skipped += 1
+                            continue
+                        pad_pt = np.array([hit - cfg.pad_thick_half + cfg.press,
+                                           cy + u, zc + v])
+                        # PLAN the point before driving at it, and let it TILT. The target
+                        # moves with the tilt, because the pad is offset from the wrist: the
+                        # pad face has to land on pad_pt whatever angle the tool arrives at.
+                        warm = self.q_warm if self.q_warm is not None else self.q_des
+                        got = self.plan_pad(pad_pt, tm, pad_rel, warm)
+                        if got is None:
+                            self.raster_infeasible += 1
+                            continue
+                        q_pt, mat_pt, tilt_pt, tgt = got
+                        self.q_warm = q_pt
+                        self.tilts.append(tilt_pt)
+                        cleaned += self.move_planned(q_pt, tgt, cfg.grip_open, index_deg=deg,
+                                                     tol=cfg.wipe_tol, t_max=2.5, wipe=True,
+                                                     log=forces, tag=f"WIPE {deg:.0f}",
+                                                     frames=frames)
             # SPOT PASS: any patch on this face the lattice pass left dirty gets a
             # visit aimed AT THE PATCH, not at the nearest lattice point. Measured cause:
             # at high tilt the pad presses with an edge, its face plane 29.5 mm off the
@@ -1254,8 +1765,9 @@ class Cell:
             prel = Rn.T @ (self.d.geom_xpos[self.pad_face] - tcp_n)
             hx, hy = self.m.geom_size[cg][0], self.m.geom_size[cg][1]
             step = cfg.step_frac * cfg.pad_radius
+            row_step = (cfg.row_frac * cfg.pad_radius) if cfg.stroke else step
             ux, uy = hx - cfg.pad_half, hy - cfg.pad_half
-            rows = max(int(np.ceil(2 * ux / step)) + 1, 2)
+            rows = max(int(np.ceil(2 * ux / row_step)) + 1, 2)
             cols = max(int(np.ceil(2 * uy / step)) + 1, 2)
             keep_top = None
             if cfg.targeted and not getattr(self, "_reclean_full", False):
@@ -1276,28 +1788,54 @@ class Cell:
                         if 0 <= rb < rows:
                             for c_ in range(lo_, hi_ + 1):
                                 keep_top.add((rb, c_))
-            for r in range(rows):
-                du = -ux + 2 * ux * r / (rows - 1)
-                order = range(cols) if r % 2 == 0 else reversed(range(cols))
-                for cc in order:
-                    if keep_top is not None and (r, cc) not in keep_top:
-                        continue
-                    dv = -uy + 2 * uy * cc / (cols - 1)
-                    pad_pt = np.array([cx + du, cyy + dv,
-                                       ztop + cfg.pad_thick_half - cfg.press])
-                    self.raster_planned += 1
-                    warm = self.q_warm if self.q_warm is not None else self.q_des
-                    got = self.plan_pad(pad_pt, tmt, prel, warm)
-                    if got is None:
-                        self.raster_infeasible += 1
-                        continue
-                    q_pt, mat_pt, tilt_pt, tgt = got
-                    self.q_warm = q_pt
-                    self.tilts.append(tilt_pt)
-                    cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
-                                                 index_deg=top_deg, tol=cfg.wipe_tol,
-                                                 t_max=2.5, wipe=True, log=forces,
-                                                 tag="WIPE top", frames=frames)
+            if cfg.stroke:
+                # The top face needs no surface probe -- it is a single flat plane at
+                # ztop, already read from the model -- so its path is the serpentine
+                # lattice directly.
+                pad_pts, contiguous = [], False
+                for r in range(rows):
+                    du = -ux + 2 * ux * r / (rows - 1)
+                    order = range(cols) if r % 2 == 0 else reversed(range(cols))
+                    for cc in order:
+                        if keep_top is not None and (r, cc) not in keep_top:
+                            contiguous = False
+                            continue
+                        dv = -uy + 2 * uy * cc / (cols - 1)
+                        pad_pts.append((np.array([cx + du, cyy + dv,
+                                                  ztop + cfg.pad_thick_half - cfg.press]),
+                                        contiguous))
+                        contiguous = True
+                dev0 = self.d.xpos[self.cab_bodyid].copy()
+                warm = self.q_warm if self.q_warm is not None else self.q_des
+                for rn in self.plan_runs(pad_pts, tmt, prel, warm,
+                                         1.8 * max(step, row_step)):
+                    cleaned += self.stroke_run(rn, cfg.grip_open, index_deg=top_deg,
+                                               frames=frames, tag="WIPE top", log=forces)
+                self.device_shift = max(self.device_shift, float(np.linalg.norm(
+                    self.d.xpos[self.cab_bodyid] - dev0)) * 1000)
+            else:
+                for r in range(rows):
+                    du = -ux + 2 * ux * r / (rows - 1)
+                    order = range(cols) if r % 2 == 0 else reversed(range(cols))
+                    for cc in order:
+                        if keep_top is not None and (r, cc) not in keep_top:
+                            continue
+                        dv = -uy + 2 * uy * cc / (cols - 1)
+                        pad_pt = np.array([cx + du, cyy + dv,
+                                           ztop + cfg.pad_thick_half - cfg.press])
+                        self.raster_planned += 1
+                        warm = self.q_warm if self.q_warm is not None else self.q_des
+                        got = self.plan_pad(pad_pt, tmt, prel, warm)
+                        if got is None:
+                            self.raster_infeasible += 1
+                            continue
+                        q_pt, mat_pt, tilt_pt, tgt = got
+                        self.q_warm = q_pt
+                        self.tilts.append(tilt_pt)
+                        cleaned += self.move_planned(q_pt, tgt, cfg.grip_open,
+                                                     index_deg=top_deg, tol=cfg.wipe_tol,
+                                                     t_max=2.5, wipe=True, log=forces,
+                                                     tag="WIPE top", frames=frames)
             # spot pass -- same reason as the side faces
             if cfg.targeted:
                 mujoco.mj_forward(self.m, self.d)
@@ -1376,7 +1914,21 @@ class Cell:
                 "tilt_mean": float(np.mean(self.tilts)) if self.tilts else 0.0,
                 "tilt_max": float(np.max(self.tilts)) if self.tilts else 0.0,
                 "tilt_zero_frac": float(np.mean([t == 0.0 for t in self.tilts]))
-                                  if self.tilts else 0.0}
+                                  if self.tilts else 0.0,
+                # V7 stroke. Zero in point mode, which is how a stroke row is told apart
+                # from a point row in the stats file without a separate schema.
+                "stroke": bool(cfg.stroke),
+                "stroke_runs": int(self.stroke_runs),
+                "stroke_len_m": float(self.stroke_len),
+                "stroke_inplane_err_mm": float(self.stroke_path_err * 1000),
+                "stroke_track_med_mm": float(np.median(self.stroke_track) * 1000)
+                                       if self.stroke_track else 0.0,
+                "stroke_track_p99_mm": float(np.percentile(self.stroke_track, 99)
+                                             * 1000) if self.stroke_track else 0.0,
+                "stroke_total_dev_mm": float(self.stroke_lag * 1000),
+                "stroke_flange_mm": float(self.stroke_norm_err * 1000),
+                "stroke_corners": int(self.stroke_corners),
+                "device_shift_mm": float(self.device_shift)}
 
 
 def run_with_backstop(cell, seed, max_recleans=2, frames=None):
@@ -1460,6 +2012,32 @@ def report(rows):
     cd = np.array([r.get("coupling_drift_mm", 0.0) for r in ok]) if ok else np.array([0.0])
     print(f"  coupling drift  : {cd.mean():.2f} mm mean, {cd.max():.2f} mm worst "
           f"(tool changer; the flange stroke is separate and expected)")
+    if ok and any(r.get("stroke") for r in ok):
+        sr = int(np.mean([r.get("stroke_runs", 0) for r in ok]))
+        sl = float(np.mean([r.get("stroke_len_m", 0.0) for r in ok]))
+        pe = max(r.get("stroke_inplane_err_mm", 0.0) for r in ok)
+        ds = max(r.get("device_shift_mm", 0.0) for r in ok)
+        fl = max(r.get("stroke_flange_mm", 0.0) for r in ok)
+        cn = int(np.mean([r.get("stroke_corners", 0) for r in ok]))
+        print(f"  CONTINUOUS STROKE: {sr} runs/unit, {sl:.2f} m of swept pad path, "
+              f"{cn} corners slowed, device shift {ds:.2f} mm")
+        tmd = float(np.mean([r.get("stroke_track_med_mm", 0.0) for r in ok]))
+        t99 = max(r.get("stroke_track_p99_mm", 0.0) for r in ok)
+        print(f"                    IN-PLANE departure from the commanded path: median "
+              f"{tmd:.1f} mm, p99 {t99:.1f} mm, worst {pe:.1f} mm")
+        print(f"                    <- the coverage-relevant one, on a {CFG.pad_radius*1000:.0f} mm "
+              f"pad radius. A max alone hides this distribution.")
+        print(f"                    worst NORMAL offset {fl:.1f} mm -- this is the "
+              f"ACTIVE CONTACT FLANGE compressing,")
+        print(f"                    which is what it is for (press is "
+              f"{CFG.press*1000:.0f} mm). The normal direction is judged by the FORCE")
+        print("                    band above, not by this number.")
+        print(f"                    dwell per surface point under the 60 mm pad at "
+              f"{CFG.stroke_feed*1000:.0f} mm/s = {0.060/CFG.stroke_feed:.2f} s")
+        print("                    (point mode gives ~2 visits x ~0.5 s ~ 1.0 s. Our model")
+        print("                     removes soil on CONTACT, not on dwell, so a shorter")
+        print("                     rub is free here and would NOT be free with real cream.")
+        print("                     That is a modelling limit, not a result -- flag it.)")
     print("\n  Coverage is of ALL FIVE faces -- the back panel carries soil too, since the")
     print("  indexer reaches it. No fluid or chemistry is simulated: what is verified is")
     print("  that the soil the camera could see is gone.")
@@ -1475,10 +2053,21 @@ def report(rows):
             "raster_planned": int(rp), "raster_skipped": int(rs),
             "raster_infeasible": int(ri), "tilt_mean_deg": float(tm_.mean()),
             "tilt_max_deg": float(tx.max()),
-            "exact_normal_frac": float(tz.mean())}
+            "exact_normal_frac": float(tz.mean()),
+            **({"stroke_runs": int(np.mean([r.get("stroke_runs", 0) for r in ok])),
+                "stroke_len_m": float(np.mean([r.get("stroke_len_m", 0.0) for r in ok])),
+                "stroke_track_med_mm": float(np.mean([r.get("stroke_track_med_mm", 0.0)
+                                                      for r in ok])),
+                "stroke_track_p99_mm": float(max(r.get("stroke_track_p99_mm", 0.0)
+                                                 for r in ok)),
+                "stroke_inplane_worst_mm": float(max(r.get("stroke_inplane_err_mm", 0.0)
+                                                     for r in ok)),
+                "stroke_flange_mm": float(max(r.get("stroke_flange_mm", 0.0) for r in ok)),
+                "device_shift_mm": float(max(r.get("device_shift_mm", 0.0) for r in ok))}
+               if ok and any(r.get("stroke") for r in ok) else {})}
 
 
-def falsify(n, seed0):
+def falsify(n, seed0, cfg=CFG):
     """V5-D: the same unit cleaned honestly and cleaned NOT AT ALL, verified both ways.
 
     PAIRED, deliberately. Each seed is run twice -- once with the wipe working and once
@@ -1494,7 +2083,7 @@ def falsify(n, seed0):
         seed = seed0 + k
         rec = {"seed": seed}
         for sab in (False, True):
-            c = Cell()
+            c = Cell(cfg)
             c.sabotage = sab
             r = c.run(seed)
             v = c.verify()
@@ -1553,9 +2142,16 @@ def falsify(n, seed0):
           "sabotage_caught": sab_caught,
           "residual_total": all_left, "residual_on_top": top_left,
           "would_escape": len(blind), "rows": rows}
-    with open("stats_v5_verify.json", "w") as f:
+    # PROTECT THE PUBLISHED BASELINE, same reason as stats_v5_clean.json: the committed
+    # stats_v5_verify.json is V5-D's recorded 10/10 on the point-mode station.
+    _tag = ("_stroke" if cfg.stroke else "") + ("_targeted" if cfg.targeted else "")
+    out = f"stats_v5_verify{_tag}.json"
+    st["mode"] = ("stroke" if cfg.stroke else "point") + \
+                 ("+targeted" if cfg.targeted else "+full")
+    st["seed0"] = seed0
+    with open(out, "w") as f:
         json.dump(st, f, indent=2)
-    print("\nwrote stats_v5_verify.json")
+    print(f"\nwrote {out}")
     return st
 
 
@@ -1594,8 +2190,14 @@ def time_budget(seed, cfg=CFG):
                       ("tool latch/unlatch", latch)):
         t = sum(grp.values())
         print(f"    {name:<26} {t:8.2f} s  {t/total*100:5.1f}%")
-    print(f"  raster points executed {len(pts)}  median {np.median(pts):.3f} s  "
+    unit = "stroke runs" if cfg.stroke else "raster points"
+    print(f"  {unit} executed {len(pts)}  median {np.median(pts):.3f} s  "
           f"mean {np.mean(pts):.3f} s  hit t_max {tmo}/{len(pts)}")
+    if cfg.stroke:
+        print(f"  swept path {r['stroke_len_m']:.2f} m in {r['stroke_runs']} runs at "
+              f"{cfg.stroke_feed*1000:.0f} mm/s | worst path error "
+              f"{r['stroke_path_err_mm']:.1f} mm | device shift "
+              f"{r['device_shift_mm']:.2f} mm")
     print(f"  per face: " + "  ".join(f"{k.split()[-1]}={v:.1f}s"
                                       for k, v in sorted(stroke.items())))
     # per-point cost per face -- if one face is dearer PER POINT, the cause is pose, not
@@ -1637,13 +2239,21 @@ def sweep(param, values, n, seed0, out, base=None):
                "in_band_worst": float(min(r["in_band"] for r in rs)),
                "tilt_max": float(max(r["tilt_max"] for r in rs)),
                "raster": int(rs[0]["raster_planned"]),
-               "skipped": int(sum(r["raster_skipped"] for r in rs))}
+               "skipped": int(sum(r["raster_skipped"] for r in rs)),
+               "track_med_mm": float(np.mean([r.get("stroke_track_med_mm", 0.0)
+                                              for r in rs])),
+               "track_p99_mm": float(max(r.get("stroke_track_p99_mm", 0.0) for r in rs)),
+               "track_max_mm": float(max(r.get("stroke_inplane_err_mm", 0.0) for r in rs)),
+               "flange_mm": float(max(r.get("stroke_flange_mm", 0.0) for r in rs)),
+               "runs": int(rs[0].get("stroke_runs", 0))}
         rows.append(row)
         print(f"  {param}={v:<6} cycle {total:7.2f}s  raster {row['raster']:4d}  "
               f"cov {row['cov_mean']*100:5.1f}% (worst {row['cov_worst']*100:5.1f}%)  "
               f"missed {row['missed']:3d}/{row['soil']:3d}  "
               f"fmax {row['f_max']:5.2f}N  in-band {row['in_band_worst']*100:5.1f}%  "
-              f"tilt {row['tilt_max']:4.1f}deg")
+              f"tilt {row['tilt_max']:4.1f}deg"
+              + (f"  track {row['track_med_mm']:4.1f}/{row['track_p99_mm']:5.1f}/"
+                 f"{row['track_max_mm']:5.1f}mm" if cfg.stroke else ""))
     with open(out, "w") as f:
         json.dump({"param": param, "n": n, "seed0": seed0, "rows": rows}, f, indent=2)
     print(f"\nwrote {out}")
@@ -1672,15 +2282,50 @@ if __name__ == "__main__":
                     help="step_frac to hold fixed during --feed-sweep")
     ap.add_argument("--validate", type=int, metavar="N", dest="validate",
                     help="V6: run N units at each candidate stride on held-out seeds")
+    # --- V7 continuous stroke
+    ap.add_argument("--stroke", action="store_true",
+                    help="V7: sweep each face as continuous strokes instead of "
+                         "stopping at every raster point")
+    ap.add_argument("--targeted", action="store_true",
+                    help="V6 targeted cleaning (soil-adjacent bands only)")
+    ap.add_argument("--feed", type=float, default=None,
+                    help="V7: stroke_feed in m/s (default %.2f)" % CleanConfig.stroke_feed)
+    ap.add_argument("--stroke-sweep", type=int, metavar="N", dest="stroke_sweep",
+                    help="V7: sweep stroke_feed over N units each")
+    ap.add_argument("--row-sweep", type=int, metavar="N", dest="row_sweep",
+                    help="V7: sweep row_frac (the only coverage-critical spacing in "
+                         "stroke mode) over N units each -- finds the 2.0 R cliff")
     a = ap.parse_args()
+    import dataclasses as _dc
+    _over = {}
+    if a.stroke:
+        _over["stroke"] = True
+    if a.targeted:
+        _over["targeted"] = True
+    if a.feed is not None:
+        _over["stroke_feed"] = a.feed
+    CFGX = _dc.replace(CFG, **_over) if _over else CFG
+    # PROTECT THE PUBLISHED BASELINE. `stats_v5_clean.json` is the recorded
+    # full-coverage point-mode number the whole station is measured against; a stroke
+    # or targeted run must never land in it.
+    _tag = ("_stroke" if CFGX.stroke else "") + ("_targeted" if CFGX.targeted else "")
+    STATS = f"stats_v5_clean{_tag}.json"
     if a.validate:
         import dataclasses as _dc
         for sf in (1.20, 1.30):
             print(f"\n--- HELD-OUT VALIDATION, step_frac {sf}, seeds "
                   f"{a.seed0}-{a.seed0+a.validate-1} ---")
             sweep("step_frac", [sf], a.validate, a.seed0, f"validate_{sf}.json")
+    elif a.stroke_sweep:
+        sweep("stroke_feed", [0.05, 0.10, 0.15, 0.20, 0.30], a.stroke_sweep, a.seed0,
+              "sweep_stroke_feed.json", base=_dc.replace(CFGX, stroke=True))
+    elif a.row_sweep:
+        # The geometric cliff for a swept band is pitch <= 2.000 R, not the lattice's
+        # 1.414 R. Measure where it actually falls before believing the geometry.
+        sweep("row_frac", [1.20, 1.50, 1.70, 1.85, 2.00, 2.20], a.row_sweep, a.seed0,
+              "sweep_row.json", base=_dc.replace(CFGX, stroke=True))
     elif a.budget is not None:
-        time_budget(a.budget)
+        time_budget(a.budget, CFGX)
     elif a.stride_sweep:
         sweep("step_frac", [0.95, 1.10, 1.20, 1.30, 1.414], a.stride_sweep,
               a.seed0, "sweep_stride.json")
@@ -1691,22 +2336,27 @@ if __name__ == "__main__":
         sweep("speed", [1.0, 1.5, 2.0, 3.0, 4.0], a.feed_sweep, a.seed0,
               "sweep_feed.json", base=_dc.replace(CFG, step_frac=a.at_stride))
     elif a.sabotage:
-        falsify(a.sabotage, a.seed0)
+        falsify(a.sabotage, a.seed0, CFGX)
     elif a.run is not None:
-        c = Cell()
+        c = Cell(CFGX)
         r = c.run(a.run, verbose=True)
         print(r)
     elif a.eval:
-        c = Cell()
+        c = Cell(CFGX)
         rows = []
         for k in range(a.eval):
             rows.append(c.run(a.seed0 + k))
             print(f"  seed {a.seed0+k}: cov {rows[-1]['coverage']*100:5.1f}%  "
                   f"picked={rows[-1]['picked']}  fmax {rows[-1]['f_max']:.1f} N")
         st = report(rows)
-        with open("stats_v5_clean.json", "w") as f:
+        st["mode"] = ("stroke" if CFGX.stroke else "point") + \
+                     ("+targeted" if CFGX.targeted else "+full")
+        st["stroke_feed"] = CFGX.stroke_feed if CFGX.stroke else None
+        st["row_frac"] = CFGX.row_frac if CFGX.stroke else CFGX.step_frac
+        st["seed0"] = a.seed0
+        with open(STATS, "w") as f:
             json.dump(st, f, indent=2)
-        print("\nwrote stats_v5_clean.json")
+        print(f"\nwrote {STATS}")
     else:
         ap.print_help()
         sys.exit(1)
