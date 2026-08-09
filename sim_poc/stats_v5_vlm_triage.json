@@ -1,0 +1,454 @@
+{
+  "n": 40,
+  "hsv": {
+    "n": 40,
+    "acc": 0.975,
+    "missed_hard": 0.0,
+    "false_easy": 0.03571428571428571,
+    "over_treat": 0.0
+  },
+  "vlm": {
+    "n": 40,
+    "acc": 0.975,
+    "missed_hard": 0.07142857142857142,
+    "false_easy": 0.0,
+    "over_treat": 0.0
+  },
+  "hsv_confusion": {
+    "easy": {
+      "easy": 12,
+      "medium": 0,
+      "hard": 0
+    },
+    "medium": {
+      "easy": 1,
+      "medium": 13,
+      "hard": 0
+    },
+    "hard": {
+      "easy": 0,
+      "medium": 0,
+      "hard": 14
+    }
+  },
+  "vlm_confusion": {
+    "easy": {
+      "easy": 12,
+      "medium": 0,
+      "hard": 0
+    },
+    "medium": {
+      "easy": 0,
+      "medium": 14,
+      "hard": 0
+    },
+    "hard": {
+      "easy": 0,
+      "medium": 1,
+      "hard": 13
+    }
+  },
+  "rows": [
+    {
+      "idx": 0,
+      "seed": 1982,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 6,
+      "n_scr": 16,
+      "n_soil": 5,
+      "vlm": "hard"
+    },
+    {
+      "idx": 1,
+      "seed": 1969,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 20,
+      "n_soil": 18,
+      "vlm": "medium"
+    },
+    {
+      "idx": 2,
+      "seed": 1988,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 9,
+      "n_scr": 9,
+      "n_soil": 28,
+      "vlm": "hard"
+    },
+    {
+      "idx": 3,
+      "seed": 1993,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 11,
+      "n_soil": 15,
+      "vlm": "medium"
+    },
+    {
+      "idx": 4,
+      "seed": 1991,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 18,
+      "n_scr": 14,
+      "n_soil": 17,
+      "vlm": "hard"
+    },
+    {
+      "idx": 5,
+      "seed": 1972,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 9,
+      "n_scr": 19,
+      "n_soil": 6,
+      "vlm": "hard"
+    },
+    {
+      "idx": 6,
+      "seed": 1980,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 0,
+      "n_soil": 24,
+      "vlm": "easy"
+    },
+    {
+      "idx": 7,
+      "seed": 1979,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 2,
+      "n_soil": 15,
+      "vlm": "easy"
+    },
+    {
+      "idx": 8,
+      "seed": 1999,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 15,
+      "n_soil": 21,
+      "vlm": "medium"
+    },
+    {
+      "idx": 9,
+      "seed": 1960,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 12,
+      "n_scr": 5,
+      "n_soil": 14,
+      "vlm": "hard"
+    },
+    {
+      "idx": 10,
+      "seed": 1986,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 1,
+      "n_soil": 20,
+      "vlm": "easy"
+    },
+    {
+      "idx": 11,
+      "seed": 1995,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 11,
+      "n_soil": 21,
+      "vlm": "medium"
+    },
+    {
+      "idx": 12,
+      "seed": 1984,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 0,
+      "n_soil": 13,
+      "vlm": "easy"
+    },
+    {
+      "idx": 13,
+      "seed": 1974,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 14,
+      "n_scr": 20,
+      "n_soil": 6,
+      "vlm": "hard"
+    },
+    {
+      "idx": 14,
+      "seed": 1994,
+      "truth": "medium",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 9,
+      "n_soil": 13,
+      "vlm": "medium"
+    },
+    {
+      "idx": 15,
+      "seed": 1997,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 11,
+      "n_scr": 9,
+      "n_soil": 7,
+      "vlm": "hard"
+    },
+    {
+      "idx": 16,
+      "seed": 1978,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 6,
+      "n_scr": 22,
+      "n_soil": 20,
+      "vlm": "medium"
+    },
+    {
+      "idx": 17,
+      "seed": 1966,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 21,
+      "n_soil": 16,
+      "vlm": "medium"
+    },
+    {
+      "idx": 18,
+      "seed": 1987,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 1,
+      "n_soil": 31,
+      "vlm": "easy"
+    },
+    {
+      "idx": 19,
+      "seed": 1965,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 1,
+      "n_soil": 12,
+      "vlm": "easy"
+    },
+    {
+      "idx": 20,
+      "seed": 1961,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 9,
+      "n_soil": 20,
+      "vlm": "medium"
+    },
+    {
+      "idx": 21,
+      "seed": 1971,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 11,
+      "n_soil": 15,
+      "vlm": "medium"
+    },
+    {
+      "idx": 22,
+      "seed": 1996,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 8,
+      "n_scr": 22,
+      "n_soil": 13,
+      "vlm": "hard"
+    },
+    {
+      "idx": 23,
+      "seed": 1970,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 12,
+      "n_soil": 8,
+      "vlm": "medium"
+    },
+    {
+      "idx": 24,
+      "seed": 1975,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 6,
+      "n_scr": 14,
+      "n_soil": 25,
+      "vlm": "hard"
+    },
+    {
+      "idx": 25,
+      "seed": 1983,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 1,
+      "n_scr": 0,
+      "n_soil": 22,
+      "vlm": "easy"
+    },
+    {
+      "idx": 26,
+      "seed": 1992,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 1,
+      "n_soil": 34,
+      "vlm": "easy"
+    },
+    {
+      "idx": 27,
+      "seed": 1964,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 9,
+      "n_soil": 20,
+      "vlm": "medium"
+    },
+    {
+      "idx": 28,
+      "seed": 1977,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 0,
+      "n_soil": 30,
+      "vlm": "easy"
+    },
+    {
+      "idx": 29,
+      "seed": 1967,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 15,
+      "n_scr": 17,
+      "n_soil": 13,
+      "vlm": "hard"
+    },
+    {
+      "idx": 30,
+      "seed": 1963,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 10,
+      "n_scr": 16,
+      "n_soil": 12,
+      "vlm": "hard"
+    },
+    {
+      "idx": 31,
+      "seed": 1968,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 13,
+      "n_scr": 7,
+      "n_soil": 23,
+      "vlm": "hard"
+    },
+    {
+      "idx": 32,
+      "seed": 1998,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 11,
+      "n_soil": 15,
+      "vlm": "medium"
+    },
+    {
+      "idx": 33,
+      "seed": 1976,
+      "truth": "hard",
+      "hsv": "hard",
+      "n_dent": 17,
+      "n_scr": 15,
+      "n_soil": 1,
+      "vlm": "hard"
+    },
+    {
+      "idx": 34,
+      "seed": 1962,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 0,
+      "n_soil": 16,
+      "vlm": "easy"
+    },
+    {
+      "idx": 35,
+      "seed": 1985,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 1,
+      "n_soil": 22,
+      "vlm": "easy"
+    },
+    {
+      "idx": 36,
+      "seed": 1981,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 0,
+      "n_scr": 10,
+      "n_soil": 10,
+      "vlm": "medium"
+    },
+    {
+      "idx": 37,
+      "seed": 1990,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 16,
+      "n_soil": 15,
+      "vlm": "medium"
+    },
+    {
+      "idx": 38,
+      "seed": 1973,
+      "truth": "medium",
+      "hsv": "medium",
+      "n_dent": 1,
+      "n_scr": 16,
+      "n_soil": 10,
+      "vlm": "medium"
+    },
+    {
+      "idx": 39,
+      "seed": 1989,
+      "truth": "easy",
+      "hsv": "easy",
+      "n_dent": 0,
+      "n_scr": 2,
+      "n_soil": 26,
+      "vlm": "easy"
+    }
+  ],
+  "label": "Claude-as-VLM reading rendered PNGs; NOT a deployed model. Class boundaries are ours, not DrinkPrime's."
+}

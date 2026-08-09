@@ -381,6 +381,18 @@ script's `--seed0` default reproduces its published number rather than a spent r
   assertions (patches on-face and outward-facing, flush cover, indexer carries the device
   and its pools, pad rests on its post, no spawn interpenetration). The scene LOADED FINE
   through all five V5-A bugs; loading is not validation.
+- `sim_poc/v5_vlm_triage.py` + `RESULTS_VLM_TRIAGE.md` — **[demo] VLM-vs-HSV triage,
+  run BLIND.** `--render N --seed0 S` writes shuffled `u00.png…` plus a separate
+  `key.json`; grade into `vlm.json`; `--score` joins them. **Result on 40 paired fresh
+  units (1960–1999): both 97.5%. The VLM removed HSV's one false-easy and added one
+  MISSED-HARD** — it traded the safe error for the unsafe one, and missed-hard is the
+  metric this project leads with. Two discordant pairs, one each way: **no statistical
+  evidence of any accuracy difference (McNemar p = 1.0)**, and the run cannot distinguish
+  0% missed-hard from ~20%. **The blinding is load-bearing, not ceremony** — the grader
+  wrote the harness and can read `sample_condition`, so images carry no seed and no class,
+  the render loop prints the INDEX ONLY, and answers are committed before the key is
+  opened. Seed 1950 was burned by a probe that printed its truth before the protocol
+  existed; that is the leak the design prevents.
 - `sim_poc/v5_check_spec.py` — **run after ANY scene change.** Asserts all 39 numbers in
   `CELL_SPEC.md` against the live model, plus the joint limits against the UFACTORY
   datasheet. CELL_SPEC's entire value is that its numbers were read from the model rather
