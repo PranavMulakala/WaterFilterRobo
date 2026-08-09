@@ -381,6 +381,21 @@ script's `--seed0` default reproduces its published number rather than a spent r
   assertions (patches on-face and outward-facing, flush cover, indexer carries the device
   and its pools, pad rests on its post, no spawn interpenetration). The scene LOADED FINE
   through all five V5-A bugs; loading is not validation.
+- `sim_poc/trade_study.py` + `TRADE_STUDY.md` — **the arm-count decision artifact, options
+  A/B/C/D.** A CALCULATOR, not a spreadsheet in prose: every economic number in the doc is
+  produced here, and the two things we are waiting on are single constants at the top
+  (`YAM_LOAD_EVIDENCE`, `DAILY_VOLUME`). **Every number carries a source tag —
+  `[measured]` / `[published]` (with URL) / `[assumed]` (with a range) — and there are no
+  untagged numbers.** Headline: **one xArm7 cell does ~328 units/day against an estimated
+  130–200 need, so the arm-count question is moot at the expected volume.** B (2-arm
+  pipeline) is worth only **1.13×** for 2× the arms because a pipeline runs at its slowest
+  station — and **the faster V7 made cleaning, the worse B got.** C (fixed brushes) is the
+  real throughput lever ($71 per unit/day vs $130) and is gated by one measured number: a
+  **64.1 mm radial swing per quarter turn** on a 180×250 mm box against our **30 mm**
+  flange — plus it cleans BLIND, which costs the per-patch evidence that is the product.
+  D (YAM) needs its unknowns priced as risk: our 32.1 N sustained wipe is **3.28 kg
+  equivalent = 82% of a YAM Ultra's rating before the tool**, and **YAM publishes no
+  repeatability at all** against our ±0.5 mm-class needs.
 - `sim_poc/v5_vlm_triage.py` + `RESULTS_VLM_TRIAGE.md` — **[demo] VLM-vs-HSV triage,
   run BLIND.** `--render N --seed0 S` writes shuffled `u00.png…` plus a separate
   `key.json`; grade into `vlm.json`; `--score` joins them. **Result on 40 paired fresh

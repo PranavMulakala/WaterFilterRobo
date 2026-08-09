@@ -1085,3 +1085,23 @@ what we now understand.
   and not tuned past. | ~1 h | Before combining two optimisations, ask what COST each one
   removes. If it is the same cost, the second one has nothing left to take and you are
   only paying its overheads
+- 2026-08-09 | **The blind protocol caught its own leak, one seed too late.** Setting up the
+  VLM-vs-HSV triage comparison, a throwaway probe to check image resolution printed
+  `{'seed': 1950, 'truth': 'hard', 'pred': 'hard', ...}` straight into the session
+  transcript -- the grader (me) now knew one unit's answer before grading it. One command,
+  one seed, and the whole experiment would have been quietly contaminated if 1950 had
+  stayed in the set. Fixed by shifting the range to 1960-1999, burning 1950 in the ledger,
+  and changing the render loop to print the INDEX ONLY, never the seed. | ~10 min | When
+  the grader and the harness author are the same agent, EVERY print statement is a
+  potential leak -- design the output, not just the input. And a leak found before the run
+  costs one seed; found after, it costs the result
+- 2026-08-09 | **A trade study is a program, not a document.** First draft put the economics
+  in prose tables. Every input we are actually waiting on (the founder's volume, Anirudh's
+  YAM evidence) would have meant hand-editing a dozen derived numbers, and CELL_SPEC
+  already records what happens to typed numbers: they decay silently. Rewrote it as
+  `trade_study.py` with the two unknowns as named constants at the top and the doc's
+  tables generated from it. Immediately paid for itself: switching the assumed clean time
+  from the targeted mode to the shipping full-coverage stroke moved capacity 468 -> 328
+  units/day and the 2-arm gain 1.20x -> 1.13x, and both propagated everywhere for free.
+  | ~30 min | If a document contains arithmetic that depends on an unknown, the arithmetic
+  belongs in code and the document belongs downstream of it

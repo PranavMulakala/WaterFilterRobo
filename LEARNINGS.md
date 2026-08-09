@@ -820,3 +820,40 @@ curve smoothly through the points rather than blending across them.
 the arm could sweep as fast as we liked. It can't — accuracy sets the speed limit, and
 the limit is a measured number, not a guess. Also worth knowing: this and last session's
 "only clean where the dirt is" attack the *same* wasted time, so doing both gains nothing.
+
+## 2026-08-09 — Two graders, the same score, opposite mistakes
+
+**What we built:** a blind head-to-head between our hand-tuned colour thresholds and a
+general vision model, on 40 fresh units, same images, same rubric. Both got 39 of 40.
+
+**The concept: how often you are wrong matters far less than *which way* you are wrong.**
+Our two errors were not equivalent. The threshold sent a unit needing work down the easy
+path — it goes out with scratches nobody fixed. The vision model sent a badly dented unit
+back onto the line — and dents are the one damage no later stage repairs. Same headline
+accuracy, and one of those is much worse than the other. It is why we always report
+"missed-hard" first and accuracy second. Both mistakes landed on units sitting exactly on a
+class boundary *we invented*, which is its own warning.
+
+**Why it matters:** with 40 units and one error each, there is no evidence either grader is
+better — we can detect a big difference and nothing subtle. The useful finding is cheaper
+than a winner: the vision model matched a classifier that was *fitted to our synthetic
+defects*, without being fitted to anything. That is the property that might survive real
+photographs of real scuffed plastic, and it is worth nothing until someone tests it there.
+
+## 2026-08-09 — Two arms are not twice as fast
+
+**What we built:** the arm-count decision, as a calculator rather than an argument, with
+every number tagged as measured, published, or assumed.
+
+**The concept: a production line runs at the speed of its slowest station, not the average
+one.** Splitting our work across two arms sounds like 2x. It isn't: cleaning takes 137
+seconds and the membrane job takes 44, so the second arm finishes early and waits. The pair
+runs about 1.13x as fast for twice the arm cost. The counter-intuitive part: **every hour we
+spend making the single arm faster at cleaning makes splitting *less* attractive**, because
+it widens the gap between the two stations. If you truly need more output, two complete
+independent cells give a clean 2x for the same two arms.
+
+**Why it matters:** the question we were asked ("how many arms?") turned out to be settled
+by a number we already had. One cell does ~330 units a day; the plant probably needs
+130–200. The arm is not the bottleneck, so the interesting decision was never the arm — and
+noticing that was worth more than optimising any of the options.
