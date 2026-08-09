@@ -198,7 +198,8 @@ def _wrap(s, n):
     return out[:2]
 
 
-def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False):
+def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
+                physical=False):
     import dataclasses as _dc
     import v5_clean as _CL
     # V7: stroke composes with targeted -- they are independent switches. The render
@@ -208,6 +209,12 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False):
     _over = {}
     if v6:
         _over["targeted"] = True
+    if physical:
+        # PUBLISHED ARM LIMITS. Our default setpoint rate is 0.02 rad per 2 ms step =
+        # 10 rad/s, and UFACTORY publish 180 deg/s (3.14 rad/s) and 1 m/s at the TCP.
+        # Measured consequence of the default: repositioning moves fling the pad at up
+        # to 3.0 m/s. Contact motion is unaffected (the sweep runs at 93 mm/s median).
+        _over["arm"] = _dc.replace(_CL.ARM, joint_rate=3.1416 * 0.002)
     if stroke:
         # FULL COVERAGE, deliberately. Stroke does NOT imply targeted: the two are
         # substitutes (both remove the same per-point stall cost) and stacking them
@@ -434,7 +441,7 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
 
 
 def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
-                  stroke=False):
+                  stroke=False, physical=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -445,7 +452,8 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
     W_, G, B, A = (235, 240, 245), (150, 160, 175), (120, 200, 255), (255, 180, 90)
     clip = f"rt_{seed}.mp4"
     raw = f"rt_raw_{seed}.mp4"
-    _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke)
+    _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke,
+                                physical=physical)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -529,6 +537,9 @@ if __name__ == "__main__":
                     help="film the V6 targeted cell (fast clean + fast membrane)")
     ap.add_argument("--stroke", action="store_true",
                     help="film the V7 continuous-stroke cell (implies targeted)")
+    ap.add_argument("--physical", action="store_true",
+                    help="clamp the setpoint rate to the arm's PUBLISHED 180 deg/s "
+                         "instead of the 10 rad/s default")
     ap.add_argument("--reel", action="store_true",
                     help="title + one clip per route + stats + caveats -> one file")
     ap.add_argument("--speed", type=float, default=1.0,
@@ -539,11 +550,13 @@ if __name__ == "__main__":
         _dflt = ("../media/v7_cell_realtime.mp4" if a.stroke else
                  "../media/v6_cell_realtime.mp4" if a.v6 else
                  "../media/v5_cell_realtime.mp4")
-        make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke)
+        make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke,
+                      physical=a.physical)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
-        render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke)
+        render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke,
+                    physical=a.physical)
     else:
         ap.print_help()
         sys.exit(1)

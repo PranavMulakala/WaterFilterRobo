@@ -1105,3 +1105,30 @@ what we now understand.
   units/day and the 2-arm gain 1.20x -> 1.13x, and both propagated everywhere for free.
   | ~30 min | If a document contains arithmetic that depends on an unknown, the arithmetic
   belongs in code and the document belongs downstream of it
+- 2026-08-09 | **The video judder was three functions that accept a `frames` argument and
+  never use it.** `v5_clean.step_to`, and therefore every `dwell()`; `v5_membrane._hold`;
+  and `v5_membrane._glide` -- the membrane station's MAIN travel primitive, so most of that
+  phase filmed nothing. Net: ~37 s of a 183 s cycle was simulated with ZERO frames captured.
+  `make_realtime` then stretches the footage UNIFORMLY to make the runtime equal the true
+  cycle time, so gaps that occurred while the arm was STANDING STILL came back as
+  duplicated frames spread over the parts where it was MOVING. Measured stretch factor
+  1.253 -> **1.005** after the fix; 25% of output frames were duplicates, now ~0. Physics
+  untouched -- the cycle time is identical to the decimal before and after. | ~40 min |
+  An unused parameter is a silent bug when the caller believes it does something. The tell
+  was in the code all along: `make_realtime`'s own comment says "frames are not grabbed at
+  a uniform simulated cadence" and treats that as a fact of life instead of a defect
+- 2026-08-09 | **The arm was flinging the tool at 3.0 m/s and nobody had ever measured it.**
+  Pranav's "it's flailing half the time" on the V7 clip was a real observation, not an
+  aesthetic one. Logging pad speed per control step and splitting by phase: the SWEEP is
+  well-behaved (p50 93 mm/s against a commanded 100, max 283), but every REPOSITIONING move
+  is not -- SAFE p95 1500 mm/s, TO TOP max **3020 mm/s**, RETRACT max 2069, and the seat
+  approach 894. Cause: the setpoint rate limit is 0.02 rad per 2 ms step = **10 rad/s**,
+  while UFACTORY publish **180 deg/s (3.14 rad/s)** and **1 m/s at the TCP** -- so the
+  non-contact moves are ~3x faster than the arm can physically go, and have been since that
+  constant was first written (v5, v6 and v7 all inherit it). Clamping to the published rate:
+  coverage still 100%, peak force **32.15 -> 27.35 N**, clean cycle 137.3 -> 144.3 s
+  (point mode 186.8 -> 180.8 s, i.e. FASTER). | ~1 h | **Nobody had ever plotted a speed.**
+  Every metric this station reports is about CONTACT -- force, coverage, tilt -- so the
+  free-space motion was never in any number, never in any assertion, and only became
+  visible when a human watched it. Add the boring kinematic check: does the tool ever
+  exceed what the datasheet says the arm can do?
