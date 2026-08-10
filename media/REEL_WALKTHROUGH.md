@@ -1,5 +1,15 @@
 # `v5_cell_reel.mp4` — what you are looking at, minute by minute
 
+> ## ⚠️ SUPERSEDED — 2026-08-10
+> **This clip films the arm running ~3× faster than a real xArm7 can move** (peak tool
+> speed 3020 mm/s against a published 1 m/s; peak joint 327 °/s against 180 °/s). The
+> published speed limits were adopted on 2026-08-10 and every cleaning number was
+> re-baselined. **Do not show this clip as current.** The current true-1× clip is
+> `media/v7_clean_stroke_realtime.mp4` (3:11.9, full-coverage continuous stroke).
+>
+> See `HANDOVER.md` → RETRACTIONS and `DECISIONS.md`.
+
+
 Companion to `media/v5_cell_reel.mp4` (5:57, **1.5× speed**, stamped top-right on every
 frame). Regenerate with `v5_video.py --reel --speed 1.5`; the chapter list below is printed
 by that command and also written to `sim_poc/reel_chapters.txt`.

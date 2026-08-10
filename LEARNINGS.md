@@ -857,3 +857,26 @@ independent cells give a clean 2x for the same two arms.
 by a number we already had. One cell does ~330 units a day; the plant probably needs
 130–200. The arm is not the bottleneck, so the interesting decision was never the arm — and
 noticing that was worth more than optimising any of the options.
+
+## 2026-08-10 — Telling a robot to go slower is not the same as making it go slower
+
+**What we built:** the arm now obeys the speed its own datasheet publishes. Free-space
+moves were reaching 3.0 m/s against a rated 1 m/s, and 327°/s against a rated 180°/s.
+
+**The concept: a position-controlled robot does not follow the speed you command — it
+chases the *gap* between where it is and where you told it to be.** So capping how fast we
+moved the *target* changed almost nothing: whenever the planner handed over a pose far from
+the arm, the servo sprinted to close that gap, and sprinting is exactly what it is built to
+do. What actually worked was capping the *gap itself* — never let the target get more than
+a set distance ahead of the real arm. That is what industrial controllers call a following-
+error limit, and a real one faults the machine when the gap grows too large, rather than
+flooring it. Tool speed needed a separate fix again, because "how fast the hand moves
+through space" is a different quantity from "how fast each joint turns".
+
+**Why it matters:** it made the cell *better*, not just more honest — the hardest press
+dropped from 33 N to 24 N, because an arm that arrives more slowly lands more gently. It
+also cost us something real: our fast cleaning mode stopped meeting its own quality bar and
+had to be withdrawn, along with a cycle time we had already quoted. **And nothing in our
+test suite could have caught any of this** — every number we measure is about the moment of
+contact, so the arm flying between jobs was invisible to all of it. A person watched the
+video and said "it's flailing". That was the whole detection mechanism.

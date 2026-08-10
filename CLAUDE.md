@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **32.9 N** inside the **45 N** model-validity ceiling. **V6: 254.7 s → 186.8 s/unit (1.36×)** — see below |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **23.9 N** inside the **45 N** ceiling (was 32.9 before the 2026-08-10 arm-speed clamp). **V7 continuous stroke: 180.9 → 146.6 s/unit** — see below |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
 | V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
@@ -38,10 +38,14 @@ falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
-**V7-STROKE (2026-08-09) — CONTINUOUS-STROKE CLEANING. Full-coverage clean 186.8 → 137.3 s
-(1.36×) at 100% coverage, 0 missed of 256 on 16 fresh units (1920–1935), peak force
-32.15 N — BELOW the point raster's own 32.94 N — 100% in band, sabotage 10/10 caught,
-0/10 false verifies (1940–1949).** The arm no longer stops at all 323 raster points: it
+**V7-STROKE (2026-08-09, RE-BASELINED 2026-08-10 under the arm-speed clamp) —
+CONTINUOUS-STROKE CLEANING. Full-coverage clean 180.9 → 146.6 s (1.23× on the station,
+1.18× on the full MEDIUM cycle: 3:46.2 → 3:11.9) at 100% coverage, 0 missed of 256 on 16
+fresh units (1920–1935), peak force 22.04 N — BELOW the point raster's own 23.93 N — 100%
+in band, sabotage 10/10 caught, 0/10 false verifies (1940–1949).** *All numbers in this
+block below the sweep table are PRE-CLAMP and are kept because the reasoning they support
+is unchanged; the shipping figures are the ones in this paragraph and in the re-baseline
+table further down.* The arm no longer stops at all 323 raster points: it
 seats once per contiguous run and then SWEEPS the path under continuous flange
 compression, which is what the ACF was added for. `CleanConfig.stroke` (DEFAULT OFF —
 point mode is the published baseline and stays byte-identical).
@@ -86,8 +90,9 @@ isolates one variable. Measured on 1910–1913, 1.70 R was the only wider pitch 
 100%, and 1.85/2.00/2.20 all lost a patch: an **empirically ragged** band, not a clean
 slope, which is exactly why the geometric bound is not spent.
 
-**TARGETED + STROKE IS MEASURED AND REJECTED.** On fresh 2000–2015 it ran **98.2 s median —
-SLOWER than targeted alone (74.7 s)** — and one unit in 16 (seed 2006, in a re-clean round)
+**TARGETED + STROKE IS MEASURED AND REJECTED** (and as of 2026-08-10 targeted mode itself
+is withdrawn — see the clamp block above). On fresh 2000–2015 it ran **98.2 s median —
+SLOWER than targeted alone (74.7 s, pre-clamp)** — and one unit in 16 (seed 2006, in a re-clean round)
 produced **91.5 N**, twice the 45 N model-validity ceiling. Recorded, not shipped, not
 tuned past. **The two are SUBSTITUTES, not complements:** both remove the same per-point
 stall cost. Full coverage sweeps 5 long serpentines (7 runs, 9.5 m) so the per-run seat
@@ -99,43 +104,60 @@ CONTACT, not on DWELL. At 100 mm/s any surface point spends **0.60 s** under the
 versus ~1.0 s in point mode. A shorter rub is free here and would **not** be free with real
 cream. That is a modelling limit, not a result.
 
-**THE FREE-SPACE MOVES ARE ~3× FASTER THAN THE REAL ARM CAN GO. OPEN DECISION, NOT YET
-ADOPTED (2026-08-09).** Found by watching the video, not by any metric — **every number
-this station reports is about CONTACT (force, coverage, tilt), so free-space motion appears
-in none of them.** Pad speed logged per control step and split by phase:
+**ARM SPEED LIMITS ADOPTED 2026-08-10 — and this RE-BASELINED every cleaning number.**
+Found by a human watching the video, **not by any metric**: every number this station
+reports is about CONTACT (force, coverage, tilt), so free-space motion appeared in no
+number, no assertion and no gate. Measured before: peak joint **5.71 rad/s (327 °/s)**
+against a published 180 °/s, and peak tool **3020 mm/s** against a published 1 m/s.
+Pre-existing across v5, v6 and v7.
 
-| phase | p50 | p99 | max |
-|---|---|---|---|
-| the SWEEP itself | 93 | 139 | 283 mm/s |
-| SEAT into contact | 64 | 850 | 894 mm/s |
-| reposition SAFE | 165 | 2501 | 2651 mm/s |
-| reposition TO TOP | 128 | 3005 | **3020 mm/s** |
+**IT TOOK THREE FIXES, AND THE FIRST TWO WERE WRONG IN INSTRUCTIVE WAYS.**
 
-UFACTORY publish **180 °/s per joint (3.14 rad/s) and 1 m/s at the TCP**; `ARM.joint_rate`
-is 0.02 rad per 2 ms step = **10 rad/s**. So repositioning runs at ~3× the published joint
-rate and 3× the published TCP speed. **PRE-EXISTING — v5, v6 and v7 all inherit it.**
-Contact motion is unaffected, so coverage/force/tilt stand; the ~20 s of repositioning
-inside every cycle time is optimistic. Clamping is **one line in `ArmProfile`** (exactly
-what that block is for) and measures:
+1. **Clamping the SETPOINT rate is not clamping the ARM.** With `ARM.joint_rate` held to
+   the published 3.14 rad/s the measured joint speed was still **5.71 rad/s**. A position
+   servo does not track the setpoint's velocity, it chases the setpoint's ERROR — so when
+   the planner hands over a configuration the arm is far from, the servo sprints.
+2. **`ARM.max_follow_err` (0.25 rad) is what actually bounds joint speed** → 2.46 rad/s
+   (141 °/s), 22% inside the rating. **DO NOT tighten it to chase the tool-speed figure:
+   the force cliff is at 0.14 rad (89.5 N, twice the validity ceiling), and 0.15 sits 7%
+   from it.** This project already refused 8% margin on a merely-missed-spot failure.
+3. **Tool speed is a CARTESIAN quantity and needs a Cartesian governor** (`_advance`
+   scales the setpoint increment by `|J dq|/dt`, commanding `max_tcp_speed *
+   tcp_cmd_margin` = 0.80 m/s). Peak tool **3020 → 1063 mm/s**; the residual 6% is servo
+   overshoot on 0.16% of steps, all in free-space moves.
 
-| | cycle | coverage | peak force |
-|---|---|---|---|
-| stroke, as shipped | 137.3 s | 100% | 32.15 N |
-| **stroke, physical** | **144.3 s** | **100%** | **27.35 N** |
-| point, as shipped | 186.8 s | 100% | 32.94 N |
-| **point, physical** | **180.8 s** | **100%** | 33.45 N |
+**THE RE-BASELINE — and the clamp made the cell BETTER, not just more honest:**
 
-It costs 7 s on stroke, makes point mode FASTER, and LOWERS peak force — better on every
-accuracy metric. Not adopted only because it re-baselines every published cleaning/route
-number. `v5_video.py --physical` renders with the published limits.
+| | before | after |
+|---|---|---|
+| peak joint speed | 5.71 rad/s (327 °/s) | **2.46 (141 °/s)** ✓ |
+| peak tool speed | 3020 mm/s | **1063 mm/s** ✓ |
+| point clean (900–907) | 186.8 s, 100%, 0/129, **32.94 N** | 180.9 s, 100%, 0/129, **23.93 N** |
+| stroke clean (1920–35) | 137.3 s, 100%, 0/256, **32.15 N** | 146.6 s, 100%, 0/256, **22.04 N** |
+| mean press tilt | 11.7° | **8.5°** |
+| exact-normal presses | 20.0% | **36.3%** |
+| stroke sabotage (1940–49) | 10/10 caught, 0 false | unchanged |
+| membrane (1890–99) | 10/10, 0 false pass | unchanged (element align 0.39 → 0.79 mm, bound 1.5) |
+| route (1700–27) | 28/28 · 26/28 · 22/28 | **byte-identical** |
 
-**AND THE VIDEO BUG BEHIND THE SAME REPORT:** `v5_clean.step_to` (hence every `dwell()`),
-`v5_membrane._hold` and `v5_membrane._glide` all accept a `frames` argument and **never
-emitted any**, so ~37 s of a 183 s cycle filmed nothing. `make_realtime` stretches footage
-UNIFORMLY to make runtime equal cycle time, so gaps that happened while the arm stood
-still came back as **duplicated frames during the moving parts** — the judder. Stretch
-factor 1.253 → **1.005** after the fix; physics untouched (same cycle time to the decimal).
-**If you add a stepping loop, emit frames from it.**
+**Peak contact force nearly HALVED (32.9 → 23.9 N) and the press geometry improved** —
+slower approaches land more gently, and better tracking means the planner's smaller-tilt
+solutions are actually reachable.
+
+**TARGETED CLEANING IS WITHDRAWN UNDER THE CLAMP.** Re-validated on its own published
+seeds (1840–47 + 1860–75): **1 of 24 units left residue and FAILED verify** (seed 1844,
+402.9 s, backstop exhausted at 2 re-cleans) and one unit hit **98.67 N**. Its published
+claim was 0/24 residue. **The 2:33 headline is RETRACTED** — not "2:33 became X", but *the
+configuration that produced it no longer meets its own acceptance bar*. Full coverage is
+the shipping mode and is clean. Same failure signature as targeted+stroke (91.5 N) and the
+follow-err cliff: **sparse visits plus a rate-limited approach break the stall detector.**
+
+**Every stepping loop now calls `_tcp_tick()`, `report()` asserts peak joint speed HARD
+against the datasheet and peak tool speed with a documented 10% servo-overshoot
+allowance, and `v5_check_spec.py` asserts the config statically.** *Measure from VELOCITY
+STATE, never position differences* — the first version of this metric differenced pad
+positions and read **51 m/s**, because the cell teleports several times per cycle (verify
+parks the arm, `couple()` snaps the weld, the membrane station materialises the cap).
 
 **V6-SPEED (2026-08-05 evening) — TARGETED CLEANING + FAST MEMBRANE: full MEDIUM cycle
 231 s → 152.5 s median, at ZERO residue.** `CleanConfig.targeted` (DEFAULT OFF — full

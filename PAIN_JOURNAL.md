@@ -1132,3 +1132,41 @@ what we now understand.
   free-space motion was never in any number, never in any assertion, and only became
   visible when a human watched it. Add the boring kinematic check: does the tool ever
   exceed what the datasheet says the arm can do?
+- 2026-08-10 | **Clamping the setpoint rate did not clamp the arm, and I nearly shipped
+  believing it had.** Set `ARM.joint_rate` to the published 3.14 rad/s, re-measured, and the
+  MEASURED joint speed was still **5.71 rad/s** and the tool **1871 mm/s**. A position servo
+  does not track its setpoint's velocity, it chases the setpoint's ERROR — so every time the
+  planner handed over a configuration the arm was far from (following error up to 0.787 rad
+  = 45 deg), the servo sprinted. All the over-speed steps were inside the big repositioning
+  moves: TO FACE 464 steps, TO TOP 136, RETURN 79, APPROACH 39 — 0.79% of the cycle. Fixed
+  with a following-error clamp (`max_follow_err`), which is what real controllers use and
+  what they FAULT on. | ~45 min | The commanded quantity and the measured quantity are
+  different quantities. If a limit matters, assert it on the MEASURED one — I had already
+  written the measurement and still reasoned about the command
+- 2026-08-10 | **My own speed metric read 51 m/s because this cell teleports.** First version
+  of `_tcp_tick` differenced the pad's position between control steps. But `verify()` parks
+  the arm by writing qpos, `couple()` snaps the tool in on a weld, and the membrane station
+  materialises the cap and teleports the assembly into the dip bin — and a position
+  difference across a teleport is a discontinuity, not a speed. Rewrote it on
+  `mj_objectVelocity` and `qvel`, which come from the velocity state that a qpos teleport
+  does not touch. | ~20 min | **Second time in two days I built a metric that measured an
+  artefact** (the first differenced against the wrong knot). Same fix both times: run the
+  new metric where you already know the answer. A cell that teleports needs velocity-state
+  measurements, never finite differences
+- 2026-08-10 | **The Cartesian speed governor differenced against the wrong reference and
+  the arm never reached the tool changer** — 233 mm short of a 4 mm capture envelope, so
+  `run()` took its `not latched` early-return and the caller died on a missing dict key.
+  I computed `dq = q_new - q_MEASURED`, which is the standing following error, so `|J dq|/dt`
+  read metres per second on EVERY step and the governor scaled every command down by that
+  factor. The commanded Cartesian speed is how far the SETPOINT moves per step:
+  `dq = q_new - q_des`. | ~25 min | A rate is a difference between two things one timestep
+  apart. If the two things are not one timestep apart, it is not a rate
+- 2026-08-10 | **The honest speed limit cost us a shipping mode and an externally-quoted
+  number.** Targeted cleaning, re-validated under the clamp on its own published seeds, left
+  residue on **1 of 24** units and failed verification on one (seed 1844: 402.9 s, backstop
+  exhausted at two re-cleans) with one **98.67 N** contact — against a published claim of
+  0/24 residue. Withdrawn, and the **2:33** cycle time retracted with it. Third appearance of
+  the same signature: sparse visits + a rate-limited approach break the stall detector
+  (targeted+stroke hit 91.5 N, follow-err 0.14 hit 89.5 N). | ~30 min | A speed change is
+  not a knob, it is a change to the contact regime — and the modes that break are the ones
+  that were already relying on the approach being fast enough to trip a stall
