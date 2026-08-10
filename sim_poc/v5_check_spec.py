@@ -178,13 +178,48 @@ def main():
           f"({np.degrees(lo):.0f}..{np.degrees(hi):.0f} deg; the cycle commands 0..360)")
     bad += not good
 
+    # --- SPEED LIMITS. Added 2026-08-10 after the controller was found commanding 10 rad/s
+    #     against a published 3.14, reaching 3020 mm/s at the tool against a published
+    #     1 m/s. NOTHING CAUGHT IT FOR THREE PHASES OF WORK because every other number this
+    #     cell reports is about CONTACT -- force, coverage, tilt -- so free-space motion was
+    #     in no metric, no assertion and no gate. A human watching the video caught it.
+    #     This is the cheap static half (does the CONFIG obey the datasheet); the measured
+    #     half is asserted per-run in v5_clean.report() against the real peak tool speed.
+    import v5_clean as _CL
+    arm = _CL.ARM
+    rate_rad_s = arm.joint_rate / m.opt.timestep
+    good = rate_rad_s <= arm.max_joint_rate_rad_s + 1e-6
+    print(f"  {'PASS' if good else 'FAIL'}  setpoint rate {rate_rad_s:.2f} rad/s is within "
+          f"the arm's published {arm.max_joint_rate_rad_s:.2f} rad/s "
+          f"({np.degrees(arm.max_joint_rate_rad_s):.0f} deg/s)")
+    bad += not good
+
+    # Kinematic worst case: every joint slewing at the limit, each contributing its own
+    # moment arm to the tool. Conservative by construction (real configurations cannot
+    # align every axis favourably at once), so passing it is a real guarantee and failing
+    # it is only a warning that the BOUND is loose -- which is why it prints the margin.
+    mujoco.mj_resetDataKeyframe(m, d, m.key("v5home").id)
+    mujoco.mj_forward(m, d)
+    tcp = d.site_xpos[m.site("link_tcp").id]
+    worst = 0.0
+    for i in range(1, 8):
+        j = m.joint(f"joint{i}").id
+        anchor = d.xanchor[j]
+        axis = d.xaxis[j]
+        r = np.linalg.norm(np.cross(axis, tcp - anchor))
+        worst += r * arm.max_joint_rate_rad_s
+    good = worst <= arm.max_tcp_speed * 3.0
+    print(f"  {'PASS' if good else 'WARN'}  worst-case tool speed bound {worst:.2f} m/s at "
+          f"the home pose (published TCP limit {arm.max_tcp_speed:.2f} m/s; this bound sums "
+          f"all 7 joints slewing at once, so it is loose by design)")
+
     print()
     if bad:
         print(f"CELL_SPEC CHECK: {bad} MISMATCH(ES) -- update CELL_SPEC.md to match the "
               f"model.\nDo NOT relax these assertions; the spec is what the real cell "
               f"gets built from.")
         return 1
-    print(f"CELL_SPEC CHECK: ALL {len(checks) + len(DATASHEET_LIMITS) + 2} VALUES MATCH")
+    print(f"CELL_SPEC CHECK: ALL {len(checks) + len(DATASHEET_LIMITS) + 3} VALUES MATCH")
     return 0
 
 

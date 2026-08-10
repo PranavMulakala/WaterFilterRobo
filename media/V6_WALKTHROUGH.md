@@ -1,5 +1,20 @@
 # `v6_cell_realtime.mp4` — what each part of the video shows
 
+> ## ⚠️ SUPERSEDED — 2026-08-10
+> **This clip films the arm running ~3× faster than a real xArm7 can move** (peak tool
+> speed 3020 mm/s against a published 1 m/s; peak joint 327 °/s against 180 °/s). The
+> published speed limits were adopted on 2026-08-10 and every cleaning number was
+> re-baselined. **Do not show this clip as current.** The current true-1× clip is
+> `media/v7_clean_stroke_realtime.mp4` (3:11.9, full-coverage continuous stroke).
+> 
+> **AND the mode it films — TARGETED cleaning — is WITHDRAWN.** Under the
+> speed clamp it left residue on 1 of 24 units and failed verification on one,
+> against a published claim of 0/24. **The 2:33 figure in the line below is
+> RETRACTED.**
+
+> See `HANDOVER.md` → RETRACTIONS and `DECISIONS.md`.
+
+
 **2 min 33 s of robot time, played at true speed — the clip's length IS the cycle time.**
 Every frame carries a plain-English caption (the STEP line, top-left) saying what the arm
 is doing at that moment. This page is the same story in order.

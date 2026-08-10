@@ -76,12 +76,23 @@ class ArmProfile:
     # IK seed. A 7-DoF null space needs a cold start that is already in the branch we
     # want; a 6-DoF arm has no null space and this is just a starting guess.
     q_cold: tuple = (0.0, -0.3, 0.0, 0.9, 0.0, 1.1, 0.0)
-    # Setpoint rate limit, rad per control step. 0.02 rad at the model's 2 ms timestep
-    # is 10 rad/s of COMMANDED joint rate -- far above what any real arm follows, which
-    # is the point: the physical arm lags it and the lag is what the ACF absorbs. On a
-    # slower arm this is the number that drops, and it is the one thing that would make
-    # the stroke feed rate below unreachable. See stroke_feed.
-    joint_rate: float = 0.02
+    # Setpoint rate limit, rad per control step. **THE ARM'S PUBLISHED MAXIMUM**, adopted
+    # 2026-08-10: UFACTORY publish 180 deg/s = 3.1416 rad/s, which at the model's 2 ms
+    # timestep is 0.0062832 rad/step.
+    #
+    # It used to be 0.02 (= 10 rad/s, 3.2x the datasheet) and nothing caught it for three
+    # phases of work, because EVERY METRIC THIS STATION REPORTS IS ABOUT CONTACT -- force,
+    # coverage, tilt -- so free-space motion appeared in no number, no assertion and no
+    # gate. It was found by a human watching the video and saying the arm flails.
+    # Measured at 0.02: repositioning moves reached 3020 mm/s against a published 1 m/s
+    # TCP limit; the sweep itself was always fine (93 mm/s median).
+    #
+    # Adopting it was not merely honest, it was BETTER: coverage unchanged at 100%, peak
+    # contact force 32.15 -> 27.35 N (driving into a surface more slowly lands more
+    # gently), and point mode got FASTER because fewer approaches overshoot into a stall.
+    # `max_joint_rate_rad_s` and `max_tcp_speed` below are the datasheet figures the gates
+    # assert against -- see v5_check_spec.py and Cell.report().
+    joint_rate: float = 0.0062832
     # Branch-jump thresholds for the nearest-posture preference. A 7-DoF arm has a
     # continuum of solutions per pose and picks a bad one if you let it; these bound
     # how far the planner may travel between adjacent path knots. A 6-DoF arm has
@@ -91,7 +102,27 @@ class ArmProfile:
     ik_damping: float = 0.08
     ik_gain: float = 0.55
     plan_iters: int = 220
-    # datasheet, for the trade study -- NOT used by any controller in this file
+    # --- DATASHEET LIMITS. These are ASSERTED against, not merely recorded:
+    #     v5_check_spec.py checks joint_rate against max_joint_rate_rad_s, and
+    #     Cell.report() checks the MEASURED peak tool speed against max_tcp_speed the
+    #     same way it checks peak contact force against force_hi.
+    max_joint_rate_rad_s: float = 3.1416   # [published] 180 deg/s
+    max_tcp_speed: float = 1.0             # [published] 1 m/s at the TCP
+    # The governor COMMANDS this fraction of the rating so the MEASURED peak lands under
+    # it: a position servo overshoots its setpoint's velocity while closing an error, so
+    # commanding exactly 1.00 m/s measured 1134 mm/s. This is the commissioning margin a
+    # real cell is set up with, and it is deliberately a SEPARATE number from the rating
+    # -- `max_tcp_speed` is what the arm is rated for and is what the gate asserts against;
+    # this is what we choose to ask for.
+    tcp_cmd_margin: float = 0.80
+    # MAXIMUM FOLLOWING ERROR, rad per joint. NOT a datasheet figure -- a CONTROLLER
+    # parameter, tuned so the servo's catch-up sprint stays inside the datasheet speed.
+    # 0 disables the clamp (pre-2026-08-10 behaviour). See Cell._advance.
+    # 0.25: satisfies the 180 deg/s joint limit with 21% margin AND gives the lowest
+    # peak contact force of any value tried. Do NOT tighten it to chase the TCP figure --
+    # the force cliff is at 0.14 (89.5 N). The tool speed is handled by the Cartesian
+    # governor in _advance instead, which is where it belongs.
+    max_follow_err: float = 0.25
     reach_m: float = 0.70
     payload_kg: float = 3.5
     repeatability_mm: float = 0.1
@@ -448,6 +479,12 @@ class Cell:
         # it simply stops REMOVING soil. Sabotaging the outcome rather than the motion is
         # what makes the falsification test about the verifier instead of about the arm.
         self.sabotage = False
+        # PEAK TOOL SPEED -- initialised HERE, not only in reset(), because MemCell and
+        # RouteCell override reset() and never call Cell.reset(). Anything a stepping
+        # loop touches must exist from construction or a subclass crashes on the first
+        # step; that is exactly how this bit on the first re-validation run.
+        self.tcp_speed_max = 0.0
+        self.joint_speed_max = 0.0
         # V6: opt-in cycle-time accounting. None = off, and OFF IS THE DEFAULT so the
         # published baselines cannot move. Set by `--budget`; see time_budget().
         self.budget = None
@@ -509,11 +546,92 @@ class Cell:
         self.stroke_norm_err = 0.0
         self.stroke_corners = 0
         self.stroke_track = []
+        # PEAK TOOL SPEED. Tracked on every run, asserted in report(). This exists
+        # because free-space motion was invisible to every other metric for three
+        # phases of work -- see ArmProfile.joint_rate.
+        self.tcp_speed_max = 0.0
+        self.joint_speed_max = 0.0
         self.device_shift = 0.0
         mujoco.mj_forward(m, d)
         self.q_des = d.qpos[self.qadr].copy()
         self.q_home = self.q_des.copy()
         return truth, nd, ns, no
+
+    def _advance(self, q_new):
+        """Set the commanded configuration, bounded by a MAXIMUM FOLLOWING ERROR.
+
+        Rate-limiting the SETPOINT is not the same as limiting the ARM, and assuming it
+        was is how the 2026-08-10 clamp initially failed: with the setpoint held to the
+        published 3.14 rad/s the MEASURED joint speed still reached 5.71 rad/s and the
+        tool 1871 mm/s. A position servo does not track the setpoint's velocity, it
+        chases the setpoint's ERROR -- so whenever the planner hands over a configuration
+        the arm is far from, the servo sprints. Measured: following error up to 0.787 rad
+        (45 deg), and every over-speed step was inside a big repositioning move
+        (TO FACE 464 steps, TO TOP 136, RETURN 79, APPROACH 39).
+
+        Bounding the error bounds the sprint, which is what a real controller does -- and
+        a real one FAULTS when the error grows past its limit rather than flooring it.
+        """
+        lo, hi = self.rng_j[:, 0], self.rng_j[:, 1]
+        q_new = np.clip(q_new, lo, hi)
+        # --- CARTESIAN SPEED GOVERNOR. The tool's speed is a CARTESIAN quantity and has
+        # to be limited in Cartesian space. Trying to hold it down by squeezing the
+        # following error instead was measured and REJECTED: it does reach 968 mm/s at
+        # max_follow_err 0.15, but the force cliff sits at 0.14 (89.5 N, twice the model-
+        # validity ceiling) -- a 7% margin on a catastrophic failure, where this project
+        # already refused 8% on a merely-missed-spot failure. Throttling the servo also
+        # throttles the press, which is why the two constraints fight.
+        #
+        # J maps joint rates to tool velocity, so the speed this step would command is
+        # |J dq| / dt. Scaling dq is exact and costs one mj_jac per control step.
+        # Bound the SETPOINT INCREMENT, not the following error. The first version
+        # differenced against the MEASURED position -- that is the standing error, not a
+        # step, so |J e|/dt read metres per second on every control step, the governor
+        # scaled every command down by that factor, and the arm never reached the tool
+        # changer at all (233 mm short of a 4 mm capture envelope). The commanded
+        # Cartesian speed is how far the SETPOINT moves per step.
+        vmax = self.cfg.arm.max_tcp_speed * self.cfg.arm.tcp_cmd_margin
+        if vmax > 0 and self.q_des is not None:
+            dq = q_new - self.q_des
+            jacp = np.zeros((3, self.m.nv))
+            mujoco.mj_jacSite(self.m, self.d, jacp, None, self.site)
+            v = float(np.linalg.norm(jacp[:, self.dof] @ dq)) / self.dt
+            if v > vmax:
+                q_new = self.q_des + dq * (vmax / v)
+        # --- FOLLOWING-ERROR CLAMP, which is what bounds the JOINT speed.
+        e = self.cfg.arm.max_follow_err
+        if e > 0:
+            q_meas = self.d.qpos[self.qadr]
+            q_new = np.clip(q_new, q_meas - e, q_meas + e)
+        self.q_des = q_new
+        return self.q_des
+
+    def _tcp_tick(self):
+        """Peak JOINT speed and peak TOOL speed, measured. Called after every mj_step.
+
+        FROM VELOCITY STATE, NOT FROM POSITION DIFFERENCES. The first version of this
+        differenced the pad's position between steps and read **51 m/s** on the very
+        first re-validation run: this cell TELEPORTS several times per cycle -- verify()
+        parks the arm by writing qpos, couple() snaps the tool in on a weld, the membrane
+        station materialises the cap and teleports the assembly into the dip bin -- and a
+        position difference across a teleport is a discontinuity, not a speed.
+        `mj_objectVelocity` and `qvel` are derived from the velocity state, which a qpos
+        teleport does not touch, so they measure motion and only motion.
+
+        Joint speed is the primary figure because 180 deg/s is a JOINT limit on the
+        datasheet; tool speed is reported beside it because that is what a person
+        watching the cell actually sees.
+        """
+        qd = float(np.max(np.abs(self.d.qvel[self.dof])))
+        if qd > self.joint_speed_max:
+            self.joint_speed_max = qd
+        v6 = np.zeros(6)
+        mujoco.mj_objectVelocity(self.m, self.d, mujoco.mjtObj.mjOBJ_BODY,
+                                 self.pad_body if self.tool_rel is not None else self.gb,
+                                 v6, 0)
+        v = float(np.linalg.norm(v6[3:]))
+        if v > self.tcp_speed_max:
+            self.tcp_speed_max = v
 
     def pad_contact_force(self):
         """Total normal force on the pad face this step."""
@@ -733,7 +851,7 @@ class Cell:
         configurations for the same pose, and taking the first one found let adjacent
         raster points 27 mm apart land in different branches: measured 5.78 rad of joint
         motion for a 37 mm step on the top face, 32 of 90 points above 0.5 rad on face 90.
-        The executor interpolates at 0.02 rad/step with a 2.5 s budget, so a branch jump
+        The executor interpolates at the arm's rate limit on a 2.5 s budget, so a jump
         cannot complete -- and on the way it sweeps the pad in a wide arc across the
         device, which is why the pad was measured 257 mm off target and 37 mm past the
         face edge. Face 180 had ZERO jumps and was the only pass that behaved.
@@ -877,12 +995,13 @@ class Cell:
         lim = self.cfg.arm.joint_rate * self.cfg.speed
         if mx > lim:
             dq *= lim / mx
-        self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
+        self._advance(self.q_des + dq)
         d.ctrl[self.act] = self.q_des
         d.ctrl[self.grip] = grip
         d.ctrl[self.tt_act] = np.deg2rad(index_deg)
         d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
         mujoco.mj_step(m, d)
+        self._tcp_tick()
         return err
 
     def move(self, tgt, mat, grip, index_deg=0.0, tol=0.004, t_max=6.0,
@@ -943,12 +1062,13 @@ class Cell:
             lim = self.cfg.arm.joint_rate * self.cfg.speed * rate_scale
             if mx > lim:
                 dq = dq * (lim / mx)
-            self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
+            self._advance(self.q_des + dq)
             d.ctrl[self.act] = self.q_des
             d.ctrl[self.grip] = grip
             d.ctrl[self.tt_act] = np.deg2rad(index_deg)
             d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
             mujoco.mj_step(m, d)
+            self._tcp_tick()
             t += self.dt
             if wipe:
                 cleaned += self.wipe()
@@ -1190,12 +1310,13 @@ class Cell:
                     dq *= lim / mx
                     q_try = self.q_des + dq
             s += ds
-            self.q_des = np.clip(q_try, self.rng_j[:, 0], self.rng_j[:, 1])
+            self._advance(q_try)
             d.ctrl[self.act] = self.q_des
             d.ctrl[self.grip] = grip
             d.ctrl[self.tt_act] = np.deg2rad(index_deg)
             d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
             mujoco.mj_step(m, d)
+            self._tcp_tick()
             t += self.dt
             cleaned += self.wipe()
             if log is not None:
@@ -1258,12 +1379,13 @@ class Cell:
             mx = float(np.max(np.abs(dq)))
             if mx > lim:
                 dq *= lim / mx
-            self.q_des = np.clip(self.q_des + dq, self.rng_j[:, 0], self.rng_j[:, 1])
+            self._advance(self.q_des + dq)
             d.ctrl[self.act] = self.q_des
             d.ctrl[self.grip] = grip
             d.ctrl[self.tt_act] = np.deg2rad(index_deg)
             d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
             mujoco.mj_step(m, d)
+            self._tcp_tick()
             hold += self.dt
             t += self.dt
             cleaned += self.wipe()
@@ -1389,6 +1511,8 @@ class Cell:
             self.stroke_norm_err = 0.0
             self.stroke_corners = 0
             self.stroke_track = []
+            self.tcp_speed_max = 0.0
+            self.joint_speed_max = 0.0
             self.device_shift = 0.0
             # DRIVE HOME FIRST. verify() parks the arm (teleport, camera clearance), and
             # entering the plan chain from PARK put the first face's corner points into
@@ -1401,12 +1525,17 @@ class Cell:
             while t_h < 3.0:
                 dq = self.q_home - self.q_des
                 mx = np.max(np.abs(dq))
-                if mx > 0.02:
-                    dq = dq * (0.02 / mx)
-                self.q_des = self.q_des + dq
+                # was a hard-coded 0.02: an arm-specific literal the ArmProfile refactor
+                # missed, so this one loop would have kept running at 10 rad/s after the
+                # 2026-08-10 clamp. Grep for bare rate literals when changing the profile.
+                _lim = self.cfg.arm.joint_rate
+                if mx > _lim:
+                    dq = dq * (_lim / mx)
+                self._advance(self.q_des + dq)
                 self.d.ctrl[self.act] = self.q_des
                 self.d.qfrc_applied[self.dof] = self.d.qfrc_bias[self.dof]
                 mujoco.mj_step(self.m, self.d)
+                self._tcp_tick()
                 t_h += self.dt
                 if np.max(np.abs(self.d.qpos[self.qadr] - self.q_home)) < 0.02:
                     break
@@ -1942,7 +2071,9 @@ class Cell:
                 "stroke_total_dev_mm": float(self.stroke_lag * 1000),
                 "stroke_flange_mm": float(self.stroke_norm_err * 1000),
                 "stroke_corners": int(self.stroke_corners),
-                "device_shift_mm": float(self.device_shift)}
+                "device_shift_mm": float(self.device_shift),
+                "tcp_speed_max": float(self.tcp_speed_max),
+                "joint_speed_max": float(self.joint_speed_max)}
 
 
 def run_with_backstop(cell, seed, max_recleans=2, frames=None):
@@ -2052,6 +2183,30 @@ def report(rows):
         print("                     removes soil on CONTACT, not on dwell, so a shorter")
         print("                     rub is free here and would NOT be free with real cream.")
         print("                     That is a modelling limit, not a result -- flag it.)")
+    vmax = max(r.get("tcp_speed_max", 0.0) for r in ok) if ok else 0.0
+    jmax = max(r.get("joint_speed_max", 0.0) for r in ok) if ok else 0.0
+    vlim, jlim = CFG.arm.max_tcp_speed, CFG.arm.max_joint_rate_rad_s
+    # JOINT speed is the arm's MECHANICAL limit and is asserted hard. TOOL speed is
+    # asserted with 10% because the governor bounds the COMMANDED Cartesian rate (at 80%
+    # of the rating) while a position servo overshoots its setpoint while closing an
+    # error: measured peak lands ~6% over on 0.16% of steps, all in free-space moves.
+    # Tightening it further is NOT available -- the following-error clamp is what bounds
+    # the overshoot, and its force cliff is at 0.14 rad (89.5 N). This still catches the
+    # defect it was written for by a factor of three (that was 3020 mm/s).
+    v_ok, j_ok = vmax <= vlim * 1.10, jmax <= jlim
+    print(f"  peak JOINT speed : {jmax:.2f} rad/s ({np.degrees(jmax):.0f} deg/s) vs the "
+          f"arm's PUBLISHED {jlim:.2f} rad/s ({np.degrees(jlim):.0f} deg/s)   "
+          f"[{'OK' if j_ok else '*** OVER THE ARM RATING ***'}]")
+    print(f"  peak TOOL speed  : {vmax*1000:.0f} mm/s   vs the arm's PUBLISHED "
+          f"{vlim*1000:.0f} mm/s TCP limit   [{'OK' if v_ok else '*** OVER THE ARM RATING ***'}]")
+    print("                    THIS ASSERTION EXISTS BECAUSE NOTHING ELSE HERE MEASURES")
+    print("                    FREE-SPACE MOTION. Every other number is about contact, so")
+    print("                    the arm ran at 3x its rating for three phases of work and")
+    print("                    was caught by a person watching a video, not by a metric.")
+    assert j_ok, (f"peak joint speed {jmax:.2f} rad/s exceeds the arm's published "
+                  f"{jlim:.2f} rad/s -- see ArmProfile")
+    assert v_ok, (f"peak tool speed {vmax*1000:.0f} mm/s exceeds the arm's published "
+                  f"{vlim*1000:.0f} mm/s -- see ArmProfile")
     print("\n  Coverage is of ALL FIVE faces -- the back panel carries soil too, since the")
     print("  indexer reaches it. No fluid or chemistry is simulated: what is verified is")
     print("  that the soil the camera could see is gone.")
@@ -2068,6 +2223,9 @@ def report(rows):
             "raster_infeasible": int(ri), "tilt_mean_deg": float(tm_.mean()),
             "tilt_max_deg": float(tx.max()),
             "exact_normal_frac": float(tz.mean()),
+            "tcp_speed_max_mms": float(vmax * 1000),
+            "joint_speed_max_rad_s": float(jmax),
+            "tcp_speed_limit_mms": float(vlim * 1000),
             **({"stroke_runs": int(np.mean([r.get("stroke_runs", 0) for r in ok])),
                 "stroke_len_m": float(np.mean([r.get("stroke_len_m", 0.0) for r in ok])),
                 "stroke_track_med_mm": float(np.mean([r.get("stroke_track_med_mm", 0.0)

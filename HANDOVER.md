@@ -10,14 +10,14 @@ own evidence.
 |---|---|
 | v2 insert / v3 swap / v4 refurb loop | 100% / 100% / 86.7% — byte-locked baselines |
 | v5 TRIAGE | 97.5% on 120 fresh units, missed-hard 0.0%, false-easy 2.5% |
-| v5 CLEAN — full coverage, point raster | 100% coverage, 0 missed of 129, peak 32.9 N under a 45 N ceiling, **186.8 s** |
-| **V7 CLEAN — full coverage, CONTINUOUS STROKE (default)** | **100% on 16 fresh units, 0 missed of 256, peak 32.15 N (below point mode), 100% in band, sabotage 10/10, 0 false verifies — 137.3 s (1.36×)** |
-| **V6 targeted clean** (opt-in, point raster) | **0/24 residue on fresh units**, sabotage caught 15/15, **~75–120 s** |
-| targeted + stroke | **MEASURED AND REJECTED** — 98.2 s median (slower than targeted alone) and a 91.5 N contact on 1 of 16 |
+| v5 CLEAN — full coverage, point raster | 100% coverage, 0 missed of 129, peak **23.9 N** under a 45 N ceiling, **180.9 s** |
+| **V7 CLEAN — full coverage, CONTINUOUS STROKE (default)** | **100% on 16 fresh units, 0 missed of 256, peak 22.0 N (below point mode), 100% in band, sabotage 10/10, 0 false verifies — 146.6 s (1.23× on the station)** |
+| ~~V6 targeted clean~~ | **WITHDRAWN 2026-08-10.** Under the arm-speed clamp it left residue on **1 of 24** units and failed verify on one (seed 1844, backstop exhausted), with one **98.67 N** contact. Its published claim was 0/24. |
+| targeted + stroke | **MEASURED AND REJECTED** (pre-clamp) — 98.2 s median, slower than targeted alone, and a 91.5 N contact on 1 of 16 |
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10 |
 | **V6-ARM membrane** | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
-| routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 |
-| **full MEDIUM cycle** | **2:44.5** (V6-ARM targeted) / **3:03** (V7 full-coverage stroke; was 3:51 on the point raster). True-1× videos for both |
+| routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
+| **full MEDIUM cycle** | **3:11.9** (V7 full-coverage stroke) / **3:46.2** (point raster). True-1× videos for both. *The 2:33 / 2:44.5 targeted figures are RETRACTED — see below.* |
 
 ## The five honesty labels that must travel with any demo
 
@@ -53,78 +53,79 @@ without them no speedup claim has a denominator. He has also **not watched the v
    it traded the safe error for the unsafe one, and missed-hard is the metric we lead with.
    Two discordant pairs, one each way: **no statistical evidence of any difference**
    (McNemar p = 1.0). `RESULTS_VLM_TRIAGE.md`.
-3. **TRADE STUDY — DONE.** `TRADE_STUDY.md` + `sim_poc/trade_study.py`. Headline: **one
-   xArm7 cell does ~328 units/day; the estimated need is 130–200.** The arm-count question
-   is moot at the expected volume. Two arms in a pipeline are worth **1.13×**, not 2× —
-   and V7 made that *worse*, not better. Fixed brushes are the real lever ($71 vs $130 per
-   unit/day) but clean blind. YAM stays option D behind a pre-committed decision rule.
+3. **TRADE STUDY — DONE, AND NOW CLOSED.** `TRADE_STUDY.md` +
+   `sim_poc/trade_study.py` stay as the record; the workstream is **CANCELLED**.
+   **PRODUCTION ARM = xArm7, FINAL (2026-08-10) — see `DECISIONS.md`.** Anirudh confirmed
+   **no first-hand YAM experience**, so the pre-committed decision rule resolved to xArm7;
+   his own industrial shortlist (UR / Elite / UFACTORY) independently contained ours. YAM
+   is re-scoped to a future **teleop / data bench**, which is what it is actually sold for.
+   Purchase remains gated on founder funding. The study's own headline made it moot anyway:
+   one cell does ~328 units/day against a 130–200 need.
 
 ## Next steps, ranked
 
-1. **DECIDE: clamp the arm to its published speed?** ← the only open technical decision.
-   Found 2026-08-09 by Pranav watching the video and saying the arm "flails". He was
-   right, and no metric we had could have caught it — every number this station reports is
-   about CONTACT (force, coverage, tilt), so free-space motion appears in none of them.
-   Measured, split by phase:
-
-   | phase | p50 | p99 | max |
-   |---|---|---|---|
-   | the sweep itself | 93 | 139 | 283 mm/s |
-   | seat into contact | 64 | 850 | 894 mm/s |
-   | reposition SAFE | 165 | 2501 | 2651 mm/s |
-   | reposition TO TOP | 128 | 3005 | **3020 mm/s** |
-
-   UFACTORY publish **180 °/s per joint and 1 m/s at the TCP**; we command 10 rad/s. This
-   is PRE-EXISTING — v5, v6 and v7 all inherit the constant. Clamping to the published
-   rate is **one line in `ArmProfile`** (which is what that block exists for) and measures:
-
-   | | cycle | coverage | peak force |
-   |---|---|---|---|
-   | stroke, as shipped | 137.3 s | 100% | 32.15 N |
-   | **stroke, physical** | **144.3 s** | **100%** | **27.35 N** |
-   | point, as shipped | 186.8 s | 100% | 32.94 N |
-   | **point, physical** | **180.8 s** | **100%** | 33.45 N |
-
-   So it costs 7 s on stroke, makes point mode *faster*, and LOWERS peak force. **It is
-   better on every accuracy metric.** Not adopted because it re-baselines every published
-   cleaning/route number (~2 h of re-validation). `v5_video.py --physical` renders it;
-   `media/v7_physical_speed.mp4` is that clip. **If in doubt, adopt it** — the current
-   numbers are optimistic in a way a customer could check against a datasheet.
-2. **Chase the founder.** Still unanswered since 2026-08-04, and the "cleans the filter
+1. **Chase the founder.** Still unanswered since 2026-08-04, and the "cleans the filter
    with a solution" question can still invalidate v5 CLEAN entirely.
-3. **If throughput ever becomes the constraint, option C (fixed brushes) is the lever** —
-   but it cleans blind, which costs us the per-patch evidence that is the actual product.
-4. If the founder stays silent, consider building the **v4-style solution dip** as a hedge —
+2. If the founder stays silent, consider building the **v4-style solution dip** as a hedge —
    it is closer to the funding bar's literal wording than anything in v5.
+3. **If throughput ever becomes the constraint**, option C (fixed brushes) is the lever —
+   but it cleans blind, which costs the per-patch evidence that is the actual product.
+   Parked, not open: see `DECISIONS.md`.
 
-## Consistency check against numbers already quoted — one flag, no retraction
+## RETRACTIONS — 2026-08-10, from adopting the arm's published speed limits
 
-Nothing shown to the founder or Anirudh is retracted. Two things are superseded and one
-was temporarily unreproducible; all three are recorded rather than silently overwritten.
+**One number quoted externally is RETRACTED outright and two are superseded.** Recorded
+here rather than silently overwritten.
 
-1. **FLAG — a published number was temporarily unreproducible, and is now restored.**
-   `stats_v5_clean.json` (100% coverage, 0 missed, **peak 32.94 N**) was measured at
-   `ffd1781`, *before* `cap_blank` existed. From `b388669` through `5b14b0e` the keyframe
-   bug perturbed every cleaning run and the same command returned **33.9 N** and 136
-   infeasible poses instead of 144. **The published figure was always the right one** — the
-   scene was wrong, not the number — and after the keyframe fix `--eval 8` reproduces it
-   exactly. **One committed artifact was carrying the bad figure: `stats_v5_route.json`
-   was regenerated at `b388669` and recorded `f_max` 33.947 N on every cleaned unit. It
-   now reads 32.935 N. Every route HEADLINE is unchanged** — compliance 28/28, right-route
-   26/28, end-to-end 26/28, fully-backed 22/28, false-easy 0, missed-hard 0, clean verified
-   22/22, leak 10/10 — so nothing derived from that file needs restating; only the force
-   margin was ~1 N pessimistic. Membrane (10/10, 0 false pass) reproduces byte-identically.
-2. **SUPERSEDED (internal, not shown to anyone).** `meetings/anirudh_feedback_2026-08-08.md`
-   estimates a 2-arm pipeline at **~1.4×** from the clean-vs-membrane split alone. The
-   trade study computes **1.13×** under a fuller model (load/triage/verify overheads,
-   averaged over the class mix, and the faster V7 clean). Both are stated; the 1.4× was
-   never wrong for what it computed.
-3. **SUPERSEDED.** "Full MEDIUM cycle 3:51" for full-coverage cleaning is now **3:03**
-   (`media/v7_clean_stroke_realtime.mp4`, true 1×). The V6 targeted headline (2:33) is
-   unchanged — V7 does not help that mode and was measured not to.
+### 1. RETRACTED: **"2:33 per unit"** (and the 2:44.5 V6-ARM variant)
+
+That figure was the full MEDIUM cycle with **targeted cleaning**. Re-validated on its own
+published seeds (1840–47 + 1860–75) under the clamp, that mode **no longer meets its own
+acceptance bar**: **1 of 24 units left residue and failed verification** (seed 1844 —
+402.9 s, coverage 96%, backstop exhausted at two re-cleans) and one unit reached **98.67 N**,
+twice the 45 N model-validity ceiling. Its published claim was **0/24 residue**.
+
+**This is not "2:33 became a bigger number".** The configuration that produced 2:33 is
+withdrawn. If anyone has been shown 2:33, the correction is: *the fast cleaning mode was
+withdrawn when we adopted the arm's real speed limits; the shipping mode is full coverage
+at **3:11.9**.* Same failure signature as targeted+stroke (91.5 N) and the follow-error
+cliff — **sparse visits plus a rate-limited approach break the stall detector**, and that
+is now a known interaction, not a mystery.
+
+### 2. SUPERSEDED: **"3:51"** → **3:46.2** (full-coverage point raster)
+
+Barely moved, and *downward* — slower approaches overshoot less, so fewer points run to
+their timeout. No claim depended on the difference.
+
+### 3. SUPERSEDED: **"3:03"** → **3:11.9** (V7 full-coverage stroke, quoted internally only,
+committed 2026-08-09). The V7 gain is now **1.23× on the cleaning station / 1.18× on the
+full cycle**, down from 1.36×, because the clamp made point mode faster and stroke slower.
+
+### What got BETTER, and it is the part worth quoting
+
+| | before | after |
+|---|---|---|
+| peak contact force, point | 32.94 N | **23.93 N** |
+| peak contact force, stroke | 32.15 N | **22.04 N** |
+| mean press tilt | 11.7° | **8.5°** |
+| exact-normal presses | 20.0% | **36.3%** |
+| peak joint speed | 5.71 rad/s (327 °/s) | **2.46 (141 °/s)**, 22% inside the rating |
+| peak tool speed | 3020 mm/s | **1063 mm/s** |
+
+**Peak force nearly halved and the press geometry improved.** Slower approaches land more
+gently, and better tracking makes the planner's smaller-tilt solutions reachable. Coverage,
+missed spots, sabotage catch, false verifies, membrane and every route headline are
+unchanged; `stats_v5_route.json` is byte-identical.
+
+### Earlier flag, still true
+
+`stats_v5_clean.json` was temporarily unreproducible between `b388669` and `5b14b0e` (the
+`cap_blank` keyframe bug) and `stats_v5_route.json` carried its inflated 33.947 N. Both
+fixed 2026-08-09; every route headline was unchanged then too.
 
 ## Traps that will bite you first
 
+- **Peak joint speed and peak tool speed are ASSERTED in `report()` and `v5_check_spec.py`.** They exist because free-space motion was in no metric for three phases of work. Do not relax them.
 - Any bare `--eval` overwrites a committed baseline. Every default `--seed0` reproduces its
   published number. **Seed ledger: next free 2100+.**
 - **Never** raise `CleanConfig.speed` — 9.6% at best, and the contact model goes
