@@ -99,6 +99,44 @@ CONTACT, not on DWELL. At 100 mm/s any surface point spends **0.60 s** under the
 versus ~1.0 s in point mode. A shorter rub is free here and would **not** be free with real
 cream. That is a modelling limit, not a result.
 
+**THE FREE-SPACE MOVES ARE ~3× FASTER THAN THE REAL ARM CAN GO. OPEN DECISION, NOT YET
+ADOPTED (2026-08-09).** Found by watching the video, not by any metric — **every number
+this station reports is about CONTACT (force, coverage, tilt), so free-space motion appears
+in none of them.** Pad speed logged per control step and split by phase:
+
+| phase | p50 | p99 | max |
+|---|---|---|---|
+| the SWEEP itself | 93 | 139 | 283 mm/s |
+| SEAT into contact | 64 | 850 | 894 mm/s |
+| reposition SAFE | 165 | 2501 | 2651 mm/s |
+| reposition TO TOP | 128 | 3005 | **3020 mm/s** |
+
+UFACTORY publish **180 °/s per joint (3.14 rad/s) and 1 m/s at the TCP**; `ARM.joint_rate`
+is 0.02 rad per 2 ms step = **10 rad/s**. So repositioning runs at ~3× the published joint
+rate and 3× the published TCP speed. **PRE-EXISTING — v5, v6 and v7 all inherit it.**
+Contact motion is unaffected, so coverage/force/tilt stand; the ~20 s of repositioning
+inside every cycle time is optimistic. Clamping is **one line in `ArmProfile`** (exactly
+what that block is for) and measures:
+
+| | cycle | coverage | peak force |
+|---|---|---|---|
+| stroke, as shipped | 137.3 s | 100% | 32.15 N |
+| **stroke, physical** | **144.3 s** | **100%** | **27.35 N** |
+| point, as shipped | 186.8 s | 100% | 32.94 N |
+| **point, physical** | **180.8 s** | **100%** | 33.45 N |
+
+It costs 7 s on stroke, makes point mode FASTER, and LOWERS peak force — better on every
+accuracy metric. Not adopted only because it re-baselines every published cleaning/route
+number. `v5_video.py --physical` renders with the published limits.
+
+**AND THE VIDEO BUG BEHIND THE SAME REPORT:** `v5_clean.step_to` (hence every `dwell()`),
+`v5_membrane._hold` and `v5_membrane._glide` all accept a `frames` argument and **never
+emitted any**, so ~37 s of a 183 s cycle filmed nothing. `make_realtime` stretches footage
+UNIFORMLY to make runtime equal cycle time, so gaps that happened while the arm stood
+still came back as **duplicated frames during the moving parts** — the judder. Stretch
+factor 1.253 → **1.005** after the fix; physics untouched (same cycle time to the decimal).
+**If you add a stepping loop, emit frames from it.**
+
 **V6-SPEED (2026-08-05 evening) — TARGETED CLEANING + FAST MEMBRANE: full MEDIUM cycle
 231 s → 152.5 s median, at ZERO residue.** `CleanConfig.targeted` (DEFAULT OFF — full
 coverage stays the shipping mode; "all surfaces covered" is the customer's criterion).
