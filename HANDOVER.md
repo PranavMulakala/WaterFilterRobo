@@ -17,7 +17,7 @@ own evidence.
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10 |
 | **V6-ARM membrane** | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 |
-| **full MEDIUM cycle** | **2:11–2:45** (V6-ARM) / 3:51 (v5 full-coverage). True-1× videos for both |
+| **full MEDIUM cycle** | **2:44.5** (V6-ARM targeted) / **3:03** (V7 full-coverage stroke; was 3:51 on the point raster). True-1× videos for both |
 
 ## The five honesty labels that must travel with any demo
 
@@ -30,6 +30,11 @@ own evidence.
 4. HARD route = software decision, **no physical handoff (0/6 implemented)**.
 5. Leak result is a **measured image of a modelled outcome**: torque → `seal_holds` →
    bubbles → camera. A damaged O-ring at full torque would pass. Not independently falsified.
+6. **The arm's FREE-SPACE moves are ~3× faster than the real xArm7 can go.** The setpoint
+   rate limit is 10 rad/s against a published 180 °/s (3.14 rad/s), and the pad reaches
+   **3.0 m/s** against a published 1 m/s TCP limit. **Contact motion is unaffected** (the
+   sweep runs at 93 mm/s median), so coverage/force/tilt are all sound — but the ~20 s of
+   repositioning inside every cycle time is optimistic. See next step 1.
 
 ## Open with the founder — sent 2026-08-04 evening, STILL UNANSWERED as of 2026-08-09
 
@@ -56,11 +61,35 @@ without them no speedup claim has a denominator. He has also **not watched the v
 
 ## Next steps, ranked
 
-1. **A REAL BUG WAS FOUND AND FIXED THIS SESSION — check the gates before trusting a
-   baseline.** `v5_check_scene.py` was FAILING at HEAD: V6-ARM's `cap_blank` free joint
-   was missing from the `v5home` keyframe, so it spawned at the world origin inside the
-   arm riser on every reset. It moved the committed cleaning numbers (peak force 32.94 →
-   33.9 N). Fourth occurrence of this exact trap. Fixed in the generator's keyframe.
+1. **DECIDE: clamp the arm to its published speed?** ← the only open technical decision.
+   Found 2026-08-09 by Pranav watching the video and saying the arm "flails". He was
+   right, and no metric we had could have caught it — every number this station reports is
+   about CONTACT (force, coverage, tilt), so free-space motion appears in none of them.
+   Measured, split by phase:
+
+   | phase | p50 | p99 | max |
+   |---|---|---|---|
+   | the sweep itself | 93 | 139 | 283 mm/s |
+   | seat into contact | 64 | 850 | 894 mm/s |
+   | reposition SAFE | 165 | 2501 | 2651 mm/s |
+   | reposition TO TOP | 128 | 3005 | **3020 mm/s** |
+
+   UFACTORY publish **180 °/s per joint and 1 m/s at the TCP**; we command 10 rad/s. This
+   is PRE-EXISTING — v5, v6 and v7 all inherit the constant. Clamping to the published
+   rate is **one line in `ArmProfile`** (which is what that block exists for) and measures:
+
+   | | cycle | coverage | peak force |
+   |---|---|---|---|
+   | stroke, as shipped | 137.3 s | 100% | 32.15 N |
+   | **stroke, physical** | **144.3 s** | **100%** | **27.35 N** |
+   | point, as shipped | 186.8 s | 100% | 32.94 N |
+   | **point, physical** | **180.8 s** | **100%** | 33.45 N |
+
+   So it costs 7 s on stroke, makes point mode *faster*, and LOWERS peak force. **It is
+   better on every accuracy metric.** Not adopted because it re-baselines every published
+   cleaning/route number (~2 h of re-validation). `v5_video.py --physical` renders it;
+   `media/v7_physical_speed.mp4` is that clip. **If in doubt, adopt it** — the current
+   numbers are optimistic in a way a customer could check against a datasheet.
 2. **Chase the founder.** Still unanswered since 2026-08-04, and the "cleans the filter
    with a solution" question can still invalidate v5 CLEAN entirely.
 3. **If throughput ever becomes the constraint, option C (fixed brushes) is the lever** —
@@ -97,15 +126,19 @@ was temporarily unreproducible; all three are recorded rather than silently over
 ## Traps that will bite you first
 
 - Any bare `--eval` overwrites a committed baseline. Every default `--seed0` reproduces its
-  published number. **Seed ledger: next free 1900+.**
+  published number. **Seed ledger: next free 2100+.**
 - **Never** raise `CleanConfig.speed` — 9.6% at best, and the contact model goes
   non-monotonic (108 N through a 45 N ceiling at speed 1.5/2.0, clean again at 3.0/4.0).
 - **Never** shorten the 1.2 s indexer dwell. Angle-arrived ≠ settled; a 4 s "saving" broke
   coverage in BOTH modes and cost most of a session to find.
 - Adding any free body? Set its qpos from `m.qpos0` in the **same commit** — `v5home`
-  predates them and `mj_resetDataKeyframe` spawns them at the origin. (Happened 3×.)
+  predates them and `mj_resetDataKeyframe` spawns them at the origin. (Happened **4×** —
+  the fourth was `cap_blank`, and `v5_check_scene.py` had been failing on it unread.)
 - Never materialise/teleport geometry into space the gripper currently occupies.
 - `v5_video` render paths may only **add frame callbacks**. A duplicated physics loop has
-  rotted and silently filmed a stale system **twice**.
+  rotted and silently filmed a stale system **twice**. And the inverse bit us on
+  2026-08-09: `step_to`, `_hold` and `_glide` all *accept* `frames` and never emitted
+  any, so ~37 s of a 183 s cycle filmed nothing and the uniform re-time turned that into
+  25% duplicated frames. **If you add a stepping loop, emit frames from it.**
 - Never text-extract the QC PDFs — render them.
 - `venv` is gitignored; rebuild with `./setup.sh` (Python 3.9 has no MuJoCo wheel).
