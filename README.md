@@ -108,7 +108,7 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | **v5 TRIAGE — grade a whole unit** | **97.5%** on 120 fresh units; **missed-hard 0.0%**, false-easy 2.5% |
 | ~~V6 TARGETED CLEAN~~ | **WITHDRAWN 2026-08-10** — under the arm's published speed limits it left residue on **1 of 24** units and failed verification on one, against a published claim of 0/24. Its **2:33** cycle time is retracted. |
 | **V7 CLEAN — continuous stroke (shipping)** | **100%** coverage on 16 fresh units, **0 missed of 273**, peak **22.6 N**, sabotage **10/10**, **0** false verifies; clean **108.1 s**, full cycle **2:34.9** |
-| **V8 SOLUTION station — charged pad (opt-in)** | the arm **dips its pad in detergent solution** before cleaning and re-dips when the charge runs low, per DrinkPrime Stage 3. **100%** coverage on 16 fresh units, **0 missed of 252**, peak **22.6 N**, **1 dip/unit**, **0.00 s** of dry-pad contact; clean **114.4 s** (dip = 6.34 s/unit), full cycle **2:41.2** |
+| **V8 SOLUTION station — charged pad (opt-in)** | the arm **dips its pad in detergent solution** before cleaning and re-dips when the charge runs low, per DrinkPrime Stage 3. **100%** coverage on 16 fresh units, **0 missed of 252**, peak **22.6 N**, **1 dip/unit**, **0.00 s** of dry-pad contact; clean **114.4 s** (dip = 6.34 s/unit); paired render on one seed: **2:36.1** dry → **2:42.6** with the dip |
 | **v5 CLEAN — point raster (baseline)** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **23.9 N** vs a **45 N** validity ceiling; **180.9 s/unit** |
 | **v5 VERIFY — prove the check can fail** | honest **10/10** verified with zero residue, **0/10** false verifies, sabotage caught **10/10** |
 | **v5 MEMBRANE — Stage 10** | **arm really inserts the element 10/10** (aligned 0.30 mm median vs 1.5 mm clearance); cap stalls on torque, median **9.40 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass. **The cap is presented by a fixture, not fitted by the robot** |
@@ -175,7 +175,7 @@ For the **current (v5)** stations:
 ../venv/bin/python v5_video.py    --render 1607  # re-render the v5 demo cut (writes no stats)
 
 # V7 continuous stroke (the shipping clean mode) and V8 the solution station:
-../venv/bin/python v5_clean.py --eval 16 --stroke --seed0 1920             # 100%, 0/273, 22.6 N
+../venv/bin/python v5_clean.py --eval 16 --stroke --seed0 2120             # 100%, 0/273, 22.6 N
 ../venv/bin/python v5_clean.py --eval 16 --stroke --solution --seed0 2204  # + charged pad, 0 s dry
 ```
 

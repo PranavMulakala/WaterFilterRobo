@@ -1255,3 +1255,18 @@ what we now understand.
   before isolating the dip on its own -- and the isolation took two minutes and gave the
   answer immediately (2.8 mm from target, correct branch). RUN THE NEW THING ALONE, WHERE
   YOU KNOW THE ANSWER, BEFORE RUNNING IT INSIDE THE OLD THING |
+| 2026-08-12 | **A stale `--seed0` in my own reference doc nearly overwrote a protected
+  baseline, invisibly.** Re-verifying after the V8 scene change I ran
+  `v5_clean.py --eval 16 --stroke --seed0 1920`, copied from the skill's
+  `references/gates-and-baselines.md`. That is the **pre-clamp V7** set (256 patches); the
+  committed baseline is the **post-clamp V7.1** run at **2120–2135** (273 patches). **The
+  near-miss is the point: because the cleaning trajectory is open-loop and seed-independent,
+  coverage (100%), missed (0), peak force (22.62 N) and in-band (99.96%) ALL matched the
+  published values to every decimal.** The printout was indistinguishable from a correct
+  reproduction. Only `soil` and `seed0` inside the JSON moved. Caught by `git diff` on the
+  stats file, not by reading the output. Restored from git and reproduced byte-identically
+  at 2120. | ~15 min | **DIFF THE ARTIFACT, DON'T EYEBALL THE PRINTOUT** — for a
+  seed-independent process, a wrong-seed run is textually identical where you are looking
+  and different only where you are not. And when a phase supersedes an earlier one, update
+  every command that names the old seed block **in the same commit**; a stale `--seed0` in a
+  reference doc is a loaded gun pointed at a protected file |
