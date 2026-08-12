@@ -365,7 +365,8 @@ class CleanConfig:
     # breaks, 65 is fine. That is solver behaviour, not a material property, and it was
     # present BEFORE the membrane station was added (verified against the committed
     # pre-V5-E scene), so it is a pre-existing mischaracterisation and not a regression.
-    # Cleaning peaks at 34.5 N, comfortably inside the stable region.
+    # Cleaning peaks at 23.9 N (point) / 22.6 N (stroke) since the 2026-08-10 arm-speed
+    # clamp, comfortably inside the stable region. It was 34.5 N pre-clamp.
     force_hi: float = 45.0
 
     speed: float = 1.0
@@ -2590,6 +2591,15 @@ if __name__ == "__main__":
     # full-coverage point-mode number the whole station is measured against; a stroke
     # or targeted run must never land in it.
     _tag = ("_stroke" if CFGX.stroke else "") + ("_targeted" if CFGX.targeted else "")
+    # AND TAG ANY NON-DEFAULT PARAMETER. The mode tag alone is not enough: a run at a
+    # different feed or row pitch is a DIFFERENT EXPERIMENT, and without this it lands in
+    # the published baseline's filename and silently replaces it. Caught by an eval agent
+    # asked to "bump the feed to 0.3" -- it noticed `--stroke --feed 0.30 --eval 16` would
+    # overwrite the published 0.20 stroke baseline under the same name.
+    if CFGX.stroke and abs(CFGX.stroke_feed - CleanConfig.stroke_feed) > 1e-9:
+        _tag += f"_feed{CFGX.stroke_feed:g}"
+    if abs(CFGX.row_frac - CleanConfig.row_frac) > 1e-9:
+        _tag += f"_row{CFGX.row_frac:g}"
     STATS = f"stats_v5_clean{_tag}.json"
     if a.validate:
         import dataclasses as _dc

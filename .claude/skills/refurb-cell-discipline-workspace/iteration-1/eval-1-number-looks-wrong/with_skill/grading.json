@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Runs (or explicitly sequences) the three gates BEFORE concluding anything about the number",
+      "passed": true,
+      "evidence": "Plan step 1 is \"Run the three gates first -- they write nothing, and a gate that has silently started failing means the bug is older and wider than the thing I came to look at.\" Section 1 reports all three run before any measurement: `v5_check_scene.py` PASS, `v5_check_spec.py` PASS (ALL 50 VALUES MATCH), `v5_reach.py --indexed` PASS, plus the documented 6.95 m/s WARN identified as loose-by-design."
+    },
+    {
+      "text": "Avoids overwriting the committed stats_v5_clean.json, or archives it first",
+      "passed": true,
+      "evidence": "Archived first (`mkdir -p _archive/stats_2026-08-12_pre_check; cp sim_poc/stats*.json ...`), then used `--run SEED`, justified by source inspection: \"the three `open(..., \\\"w\\\")` sites in the module are in `falsify()`, `sweep()` and the `--eval` branch, none of which `--run` reaches\" (verified: v5_clean.py has exactly 3 write sites). §6: \"No stats file was written. `git diff -- sim_poc/stats*.json` is empty.\""
+    },
+    {
+      "text": "Explicitly compares against the committed value rather than only re-running (e.g. git diff / field-by-field)",
+      "passed": true,
+      "evidence": "Four-row table comparing committed `f_max` 23.925980963125905 against `--run 900`, `--run 907`, and a pristine-HEAD git worktree run, all identical; then a second field-by-field table (f_med, in_band, contact_frac, raster_planned 323x8=2584, raster_infeasible 17x8=136, tilt_mean, tilt_zero_frac, tcp_speed_max, joint_speed_max) against the committed aggregates. All values match the committed file I inspected."
+    },
+    {
+      "text": "Cites the published figure (100% coverage, 0 missed of 129, peak ~23.9 N) as the thing being reproduced",
+      "passed": true,
+      "evidence": "\"Committed value: `f_max = 23.925980963125905` N (published as 23.9 N, point mode, full coverage, seeds 900-907)\", and the un-run command's expectation: \"byte-identical to the committed file (100% coverage, 0 missed of 129, `f_max` 23.925980963125905).\""
+    }
+  ]
+}

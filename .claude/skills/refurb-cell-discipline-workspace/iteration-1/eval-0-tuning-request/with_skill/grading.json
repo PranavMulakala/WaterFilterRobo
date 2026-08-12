@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Checks the seed ledger and proposes FRESH seeds (2200+) rather than reusing a spent range",
+      "passed": true,
+      "evidence": "\"Seed 2100 -- already spent (V7.1 post-clamp feed-sweep tuning block)... No fresh seed burned; the ledger is unchanged, next free block is still 2200+.\" Recommendation uses `--seed0 2200` for the upper sweep and allocates 2220-2235 (held-out) and 2240-2249 (sabotage), telling the user to \"record those by named phase in CLAUDE.md\"."
+    },
+    {
+      "text": "Applies margin discipline: notes 0.30 is the fastest value ever tested, so shipping it leaves no measured headroom above",
+      "passed": true,
+      "evidence": "\"What 0.30 actually lacks is an envelope... Shipping 0.30 means shipping at the exact top of everything ever measured, with zero knowledge of what is above it.\" It also corrects the naive framing honestly ('There is no measured cliff at 0.30') and contrasts with step_frac 1.30 / row_frac 1.50 where a real cliff is known, then proposes sweeping [0.20...0.60] to convert caution into a measured 1.18x margin."
+    },
+    {
+      "text": "Surfaces the dwell honesty label: rub time per spot falls to 0.20 s and the model removes soil on contact, not dwell",
+      "passed": true,
+      "evidence": "Dwell table: point mode ~1.0 s, stroke 0.20 = 0.30 s, stroke 0.30 = 0.20 s. \"Our model removes soil on contact, not dwell... the coverage metric will report 100% at any feed whatsoever. It cannot fail for the reason we actually care about. A check that cannot fail is not evidence.\" Called \"The blocking objection\" and escalated to a founder question."
+    },
+    {
+      "text": "Protects the committed stats files (archives, or uses a mode-tagged output) before running any eval",
+      "passed": true,
+      "evidence": "\"Stats archived to `_archive/stats_2026-08-12_pre_feed030/` (13 stats + 4 sweep files) before running anything.\" Also finds the sharper defect: `STATS = f\"stats_v5_clean{_tag}.json\"` encodes only stroke/targeted, NOT feed, so \"`--stroke --feed 0.30 --eval 16` would silently overwrite the published 0.20 16-unit stroke baseline under the same filename.\""
+    },
+    {
+      "text": "Does NOT present a cycle time as validated on the strength of a single unit or an unrun eval",
+      "passed": true,
+      "evidence": "Presents 2:27.5 as measured but explicitly unvalidated: \"The validation gap, scoped precisely. 2100-2103 is the tuning block... Shipping 0.30 on it and quoting its own number is 'tuning on a range and reporting that range'. 0.30 has neither [held-out run nor sabotage battery].\" Recommendation: \"Don't flip the default on the strength of what exists today.\" The single-unit probe is justified by documented seed-independence AND controlled against the committed 4-seed sweep delta (7.298 s vs 7.30 s)."
+    }
+  ]
+}

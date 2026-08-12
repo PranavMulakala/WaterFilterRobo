@@ -946,3 +946,26 @@ genuinely saved. This is the second time in three days that a *visual* complaint
 to be a *measurement* defect: the flailing arm was moving three times faster than the real
 one can, and the jump cut was a station's worth of unbilled time. **If it looks wrong in
 the video, check the number before you fix the picture.**
+
+## 2026-08-12 — We wrote down how we work, then measured whether writing it down helps
+
+**What we built:** a *skill* — a short document at `.claude/skills/refurb-cell-discipline/`
+that tells any AI agent working here how this project checks its own numbers: run the three
+safety checks first, copy the recorded results before overwriting them, never test on the
+same random cases you tuned on, and flag a changed figure as a retraction if anyone has
+already seen it.
+
+**The concept: a written-down process is a claim, and claims can be tested.** So we tested
+it the same way we test the robot — ran six copies of the assistant on three realistic
+tasks, half with the document and half without, and graded both against the same checklist.
+The honest result is **modest: 13 of 13 checks passed with it, 12 of 13 without.** The
+reason is instructive rather than disappointing — the project's main instruction file is
+already loaded automatically every session, so most of the discipline was being followed
+anyway. What the document actually added was *completeness*: the runs that had it ran all
+three safety checks before touching anything, instead of the one that seemed relevant.
+
+**Why it matters:** the exercise paid for itself sideways. Making the agents work through
+real tasks surfaced genuine rot we then fixed — four stale force figures in the public
+README, a safety check that printed an out-of-date number, and a real defect where running
+the cleaner at a different speed would have silently overwritten the published result under
+the same filename. **Testing the instructions found bugs in the thing being instructed.**

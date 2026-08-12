@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Proposes validating the METRIC itself against a case whose answer is already known (e.g. point mode, where it must be ~0)",
+      "passed": true,
+      "evidence": "§2b \"Arithmetic self-tests -- PASSED\": synthetic vectors with known parts (normal 5, along-path 13, cross-path 7, with a tangent deliberately not perpendicular to the normal) \"recovers 5.000000 / 13.000000 / 7.000000 exactly\", reconstructing to 1e-9. `_wpct` is checked against a hand-computable weighted-median case and against numpy at equal weights. §2e runs point mode (`--run 900`) as a known-answer case: f_max 23.925980963125905 \"with all stroke fields zero\"."
+    },
+    {
+      "text": "Measures in the PAD frame rather than the TCP/wrist frame, or explains why the wrist frame would mislead",
+      "passed": true,
+      "evidence": "Implements `Cell._cmd_pad_pos()` and explains the frame trap explicitly: \"you cannot read the pad geom out of the scratch data after `mj_kinematics` ... FK on a copied qpos leaves the pad exactly where it already was, so the metric would read ~0 mm no matter how far the arm lagged.\" Instead it takes \"the pad's measured offset in the live TCP frame and re-apply[ies] it to the commanded TCP frame ... leaving exactly the wrist's pose error mapped out to the pad.\""
+    },
+    {
+      "text": "Handles teleports: uses velocity state or otherwise avoids raw position differencing across discontinuities",
+      "passed": true,
+      "evidence": "The error vector is an instantaneous same-step difference between the measured pad position and the commanded pad position derived by FK on `q_des`; no differencing of positions across time steps occurs, so a mid-cycle teleport cannot enter the number. §2c adds a non-degeneracy guard against the related free-body failure (\"Not zero (which would mean the free-body trap)\"). Caveat: teleports/discontinuities are never named as a hazard."
+    },
+    {
+      "text": "Decomposes the error into in-plane (coverage) vs surface-normal (flange compression) rather than reporting one mixed number",
+      "passed": true,
+      "evidence": "Three-way decomposition table -- normal (\"the active contact flange compressing ... No [not an error]\"), along-path lag (\"No -- the pad sweeps the same ground, later\"), cross-path (\"Yes -- this is the headline servo number\") -- with the tangent orthogonalised against the normal \"otherwise flange travel leaks into the lag term\". §3 shows the undecomposed version was caught and rejected: \"The 18.46 mm I would have shipped as 'servo tracking error' was 86% an artefact of my own frame choice.\""
+    }
+  ]
+}

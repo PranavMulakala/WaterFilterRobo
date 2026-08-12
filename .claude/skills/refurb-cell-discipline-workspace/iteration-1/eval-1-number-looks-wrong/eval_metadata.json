@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "number-looks-wrong",
+  "prompt": "the peak force in stats_v5_clean.json looks off to me. can you check whether it still reproduces?",
+  "assertions": [
+    "Runs (or explicitly sequences) the three gates BEFORE concluding anything about the number",
+    "Avoids overwriting the committed stats_v5_clean.json, or archives it first",
+    "Explicitly compares against the committed value rather than only re-running (e.g. git diff / field-by-field)",
+    "Cites the published figure (100% coverage, 0 missed of 129, peak ~23.9 N) as the thing being reproduced"
+  ]
+}

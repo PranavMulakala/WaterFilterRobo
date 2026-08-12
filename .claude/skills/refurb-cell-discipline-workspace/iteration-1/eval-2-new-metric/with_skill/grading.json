@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Proposes validating the METRIC itself against a case whose answer is already known (e.g. point mode, where it must be ~0)",
+      "passed": true,
+      "evidence": "Built `--metric-check`: six closed-form cases \"on geometry whose answer is known on paper\", one per historical failure (in-plane 0 for a 5-knot-ahead setpoint; 0/12 for a pure normal offset; 5/0 for a pure cross offset; 5/12/13 for the mixed case; 0 for a 30-degree tool tilt; 20 mm with a row-snap guard). \"Result: ALL PASS.\" It also names the point-mode control it did not reinstate (\"the metric read 0.02 mm in point mode, which is what proved it can tell the two modes apart\")."
+    },
+    {
+      "text": "Measures in the PAD frame rather than the TCP/wrist frame, or explains why the wrist frame would mislead",
+      "passed": true,
+      "evidence": "The extracted function takes the pad position directly -- `Cell._path_dev(pad_xyz, P, N, k, win=8)` -- and the run-row header defines it as \"the PAD's in-plane departure from its commanded path\". Metric-check case 4 exists specifically to catch the wrong-frame error: a 30-degree tool tilt at knots ahead of the pad \"decomposed about the setpoint knot's normal instead of the pad's ... would show 6.0 mm of phantom error\"; correct answer in-plane 0."
+    },
+    {
+      "text": "Handles teleports: uses velocity state or otherwise avoids raw position differencing across discontinuities",
+      "passed": true,
+      "evidence": "The metric is an instantaneous point-to-polyline residual (`_path_dev(pad_xyz, P, N, k)` -- pad position vs the commanded path within a +/-8-segment window), so no successive-position differencing is performed at any point. Sampling is also scoped away from the discontinuous phases: \"The metric measures only during the sweep loop. It does not sample during the seat, during the 0.30 s per-run catch-up, or on single-knot runs.\" Caveat: the teleport hazard itself is never named."
+    },
+    {
+      "text": "Decomposes the error into in-plane (coverage) vs surface-normal (flange compression) rather than reporting one mixed number",
+      "passed": true,
+      "evidence": "Field table separates `stroke_inplane_err_mm` (worst in-plane departure) from `stroke_flange_mm` (\"worst departure along the normal -- the flange compressing, not an error\") and explicitly labels `stroke_total_dev_mm` as \"the undecomposed distance (the number not to quote)\". Metric-check case 3b asserts the split directly: \"in-plane 5, normal 12, total 13 -- the split must be clean; the 13 is the number not to quote.\" Run-row header repeats it: \"coverage-relevant half only; the normal half is the flange and is judged by force.\""
+    }
+  ]
+}

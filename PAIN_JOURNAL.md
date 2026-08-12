@@ -1220,3 +1220,16 @@ what we now understand.
   has to do, and it will not show up in any total. Grep for direct `d.qpos[...] =` writes
   outside reset paths -- each one is either a fixture action that must be LABELLED as such,
   or a motion that should be DRIVEN
+| 2026-08-12 | **I ran two evaluation subagents concurrently and let both write to the live
+  `sim_poc/v5_clean.py`.** They were each asked to make a code change as part of a realistic
+  task, and nothing sandboxed them. They detected each other -- one literally noted a
+  "concurrent session" was editing the file -- and carried on anyway. The result was 260
+  insertions of interleaved work with a live `NameError` (`tcp_now` referenced but never
+  bound) and an undefined `self._path_dev`. The file still imported for some paths, so the
+  breakage was not immediately obvious. Recovered with `git checkout -- sim_poc/v5_clean.py`
+  and re-verified stroke mode from scratch (100% coverage, 0 missed, 22.62 N). | ~25 min |
+  **Parallel agents need parallel worktrees, not one shared checkout.** If two agents can
+  both edit a file, they will, and "an agent noticed the conflict" is not a safety
+  mechanism -- it noticed and proceeded. Either give each one `isolation: worktree`, point
+  them at a scratch copy, or make the task read-only. Also: the recovery was one command
+  only because the tree was committed clean beforehand |

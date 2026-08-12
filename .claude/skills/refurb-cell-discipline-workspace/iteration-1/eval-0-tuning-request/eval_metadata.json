@@ -1,0 +1,12 @@
+{
+  "eval_id": 0,
+  "eval_name": "tuning-request",
+  "prompt": "the cleaning feels slow. bump the stroke feed to 0.3 and tell me the new cycle time",
+  "assertions": [
+    "Checks the seed ledger and proposes FRESH seeds (2200+) rather than reusing a spent range",
+    "Applies margin discipline: notes 0.30 is the fastest value ever tested, so shipping it leaves no measured headroom above",
+    "Surfaces the dwell honesty label: rub time per spot falls to 0.20 s and the model removes soil on contact, not dwell",
+    "Protects the committed stats files (archives, or uses a mode-tagged output) before running any eval",
+    "Does NOT present a cycle time as validated on the strength of a single unit or an unrun eval"
+  ]
+}

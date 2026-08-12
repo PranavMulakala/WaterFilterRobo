@@ -20,10 +20,12 @@ trusting this file if anything upstream has moved.*
 settles it is one we already had.**
 
 One cell, one xArm7, using the continuous-stroke cleaning built this session, does about
-**330 units a day** on two shifts `[measured cycle, assumed uptime]` — and about **470** if
-the opt-in "clean only where the dirt is" mode is enabled. The refurb volume nobody has
+**385 units a day** on two shifts `[measured cycle, assumed uptime]`. *(An earlier version of
+this paragraph offered a higher figure for an opt-in "clean only where the dirt is" mode.
+That mode was **withdrawn** — it failed its own zero-residue bar once the arm-speed clamp
+went in — so the number is retracted and nothing replaces it.)* The refurb volume nobody has
 confirmed is somewhere around **130–200 a day** `[assumed]`. So a single arm has roughly
-**1.7–2.4× the capacity that is probably needed**. You do not buy a second arm to sit idle.
+**1.9–3.0× the capacity that is probably needed**. You do not buy a second arm to sit idle.
 
 That makes three of the four options answers to a question the volume does not ask:
 
@@ -41,17 +43,25 @@ That makes three of the four options answers to a question the volume does not a
   hardware, but a requirement, not a detail. The real cost is different: **brushes clean
   blind.** We lose the per-patch evidence that is the actual product.
 - **D — YAM arms (I2RT), $3.0–4.9K vs ~$11K.** Genuinely cheaper. Two things are not
-  like-for-like. Our sustained wipe force is **32 N `[measured]`**, about **3.3 kg of push
-  held for the whole cleaning cycle** — that is **82% of a YAM Ultra's 4 kg rating
-  `[published]`** before you add the tool. And **YAM publishes no repeatability figure at
-  all `[published absence]`**, while our tightest job needs about half a millimetre. The
-  absence is the signal: industrial arms always publish it, research arms often don't.
+  like-for-like. Our sustained wipe force is **22 N `[measured]`**, about **2.3 kg of push
+  held for the whole cleaning cycle** — that is **56% of a YAM Ultra's 4 kg rating
+  `[published]`** before you add the tool, and **112% of a standard YAM's 2 kg**. And
+  **YAM publishes no repeatability figure at all `[published absence]`**, while our
+  tightest job needs about half a millimetre. The absence is the signal: industrial arms
+  always publish it, research arms often don't.
+
+  > **This argument got weaker and we are saying so.** The first version of this document
+  > read 32 N / 82% of an Ultra's rating. Adopting the arm's published speed limits made
+  > every approach gentler and took the peak wipe force to 22 N, so the payload objection to
+  > a YAM Ultra is now *56%* — comfortable rather than marginal. The standard YAM is still
+  > excluded outright. **The recommendation does not change, but it no longer rests on
+  > payload**; it rests on the missing repeatability figure and the duty cycle.
 
 **Recommendation: stay on one xArm7.** Not because YAM is bad — because at ~200 units a
 day the arm is not the constraint, and swapping to an arm with no published precision
 figure trades a known quantity for an unknown one in order to solve a problem we do not
-have. Revisit if the volume answer comes back above **~330/day** (where a second cell is
-needed) or **~700/day** (where fixed brushes become the only single-cell answer), or if
+have. Revisit if the volume answer comes back above **~385/day** (where a second cell is
+needed) or **~726/day** (where fixed brushes become the only single-cell answer), or if
 Anirudh produces first-hand evidence of a YAM working under this kind of sustained load.
 
 **Two things would change this document, and both are outstanding:** the daily refurb
@@ -104,21 +114,25 @@ Identical cell, cheaper arm.
 
 | quantity | value | tag | source |
 |---|---|---|---|
-| clean, point raster, full coverage | 186.8 s | `[measured]` | `v5_clean.py --eval 8` |
-| **clean, V7 continuous stroke, full coverage** | **137.3 s** | `[measured]` | `v5_clean.py --eval 16 --stroke --seed0 1920` |
+| clean, point raster, full coverage | 180.9 s | `[measured]` | `v5_clean.py --eval 8` |
+| **clean, V7 continuous stroke, full coverage** | **108.1 s** | `[measured]` | `v5_clean.py --eval 16 --stroke --seed0 1920` |
 | clean, targeted + camera backstop (V6, point) | 74.7 s median | `[measured]` | seeds 1860–1875 |
 | clean, targeted + stroke | **REJECTED** — 98.2 s median (slower than targeted alone) and a 91.5 N contact on 1 of 16, twice the 45 N model-validity ceiling | `[measured]` | seeds 2000–2015 |
-| membrane (insert 25.6 + tighten 17.4 + dip 1.2) | 44.2 s | `[measured]` | `v5_membrane.py` |
+| membrane (V7.2: carry 0.20, hold floor 0.20) | 36.7 s | `[measured]` | `v5_membrane.py` |
 | triage | **0 simulated seconds** | `[measured]` | pure rendering — no motion exists |
-| verify | **0 simulated seconds** | `[measured]` | pure rendering |
+| **verify** | **10.0 s** | `[measured]` | **V7.3 made it DRIVE.** It used to teleport the arm and the turntable, which is exactly why it read as free |
 | triage, real cell | 8 s | `[assumed]` (4–15) | 1.2 s indexer dwell × 4 faces + exposure |
-| verify, real cell | 8 s | `[assumed]` (4–15) | as above |
+| ~~verify, real cell~~ | *no longer assumed — measured above* | — | the assumed 8 s was close but low |
 | load / unload onto the indexer | 20 s | `[assumed]` (10–40) | **not modelled anywhere in v5** |
 
-> **The two zeros matter and they cut against us.** Triage and verify cost no simulated
-> time because they are renders, not motions. A real cell must index the device past a
-> camera and wait for it to settle. **Every cycle time in this document is therefore an
-> optimistic bound, never a conservative one.**
+> **One zero left, and it cuts against us.** Triage still costs no simulated time because
+> it is a render, not a motion — a real cell must index the device past a camera and wait
+> for it to settle. **Verify used to be the second zero and no longer is:** it was
+> teleporting the arm and the turntable, which is precisely why it read as free. V7.3 made
+> it drive and it measures 10.0 s. **Every cycle time in this document is still an
+> optimistic bound, never a conservative one** — triage and load/unload remain unmodelled.
+> That correction is worth stating plainly: *a station that costs zero is more likely to be
+> unmeasured than free.*
 
 ### Class mix
 
@@ -180,39 +194,43 @@ bar we chose. `trade_study.py --targeted` reruns everything with the opt-in targ
 
 | option | 100/day | 200/day | 400/day | 1000/day | first step-up |
 |---|---|---|---|---|---|
-| **A** 1× xArm7, stroke | 1 | 1 | 2 | 4 | ~328/day |
-| **B** 2× xArm7, split | 1 | 1 | 2 | 3 | ~371/day |
-| **C** brushes + 1× xArm7 | 1 | 1 | 1 | 2 | ~710/day |
-| **D** YAM Ultra, as A | 1 | 1 | 2 | 4 | ~328/day |
+| **A** 1× xArm7, stroke | 1 | 1 | 2 | 3 | ~385/day |
+| **B** 2× xArm7, split | 1 | 1 | 1 | 3 | ~435/day |
+| **C** brushes + 1× xArm7 | 1 | 1 | 1 | 2 | ~726/day |
+| **D** YAM Ultra, as A | 1 | 1 | 2 | 3 | ~385/day |
 
 **Economics at each volume** (capex includes tooling and a one-off integration allowance;
 payback is against $16–21K/yr displaced labour per cell, all `[assumed]`):
 
 | volume | option | cycle s | units/cell/day | cells | arms | capex $ | maint $/yr | payback yr |
 |---|---|---|---|---|---|---|---|---|
-| **100/day** | A | 149.4 | 328 | 1 | 1 | 42,500 | 3,188 | 2.4–3.3 |
-| | B | 132.1 | 371 | 1 | 2 | 53,500 | 4,013 | 3.1–4.5 |
-| | C | 69.0 | 710 | 1 | 1 | 50,500 | 3,788 | 2.9–4.1 |
-| | D | 149.4 | 328 | 1 | 1 | 35,799 | 2,685 | 2.0–2.7 |
-| **200/day** | A | 149.4 | 328 | 1 | 1 | 42,500 | 3,188 | 2.4–3.3 |
-| | B | 132.1 | 371 | 1 | 2 | 53,500 | 4,013 | 3.1–4.5 |
-| | C | 69.0 | 710 | 1 | 1 | 50,500 | 3,788 | 2.9–4.1 |
-| | D | 149.4 | 328 | 1 | 1 | 35,799 | 2,685 | 2.0–2.7 |
-| **400/day** | A | 149.4 | 328 | **2** | 2 | 62,500 | 4,688 | 1.7–2.3 |
-| | B | 132.1 | 371 | 2 | **4** | 84,500 | 6,338 | 2.4–3.3 |
-| | C | 69.0 | 710 | **1** | 1 | 50,500 | 3,788 | 2.9–4.1 |
-| | D | 149.4 | 328 | 2 | 2 | 49,098 | 3,682 | 1.3–1.7 |
-| **1000/day** | A | 149.4 | 328 | 4 | 4 | 102,500 | 7,688 | 1.3–1.8 |
-| | B | 132.1 | 371 | 3 | **6** | 115,500 | 8,663 | 2.1–2.9 |
-| | C | 69.0 | 710 | **2** | 2 | 78,500 | 5,888 | 2.2–3.0 |
-| | D | 149.4 | 328 | 4 | 4 | 75,696 | 5,677 | 1.0–1.3 |
+| **100/day** | A | 127.0 | 385 | 1 | 1 | 42,500 | 3,188 | 2.4–3.3 |
+| | B | 112.6 | 435 | 1 | 2 | 53,500 | 4,013 | 3.1–4.5 |
+| | C | 67.5 | 726 | 1 | 1 | 50,500 | 3,788 | 2.9–4.1 |
+| | D | 127.0 | 385 | 1 | 1 | 35,799 | 2,685 | 2.0–2.7 |
+| **200/day** | A | 127.0 | 385 | 1 | 1 | 42,500 | 3,188 | 2.4–3.3 |
+| | B | 112.6 | 435 | 1 | 2 | 53,500 | 4,013 | 3.1–4.5 |
+| | C | 67.5 | 726 | 1 | 1 | 50,500 | 3,788 | 2.9–4.1 |
+| | D | 127.0 | 385 | 1 | 1 | 35,799 | 2,685 | 2.0–2.7 |
+| **400/day** | A | 127.0 | 385 | **2** | 2 | 62,500 | 4,688 | 1.7–2.3 |
+| | B | 112.6 | 435 | 1 | 2 | 53,500 | 4,013 | 3.1–4.5 |
+| | C | 67.5 | 726 | **1** | 1 | 50,500 | 3,788 | 2.9–4.1 |
+| | D | 127.0 | 385 | 2 | 2 | 49,098 | 3,682 | 1.3–1.7 |
+| **1000/day** | A | 127.0 | 385 | 3 | 3 | 82,500 | 6,188 | 1.5–2.0 |
+| | B | 112.6 | 435 | 3 | **6** | 115,500 | 8,663 | 2.1–2.9 |
+| | C | 67.5 | 726 | **2** | 2 | 78,500 | 5,888 | 2.2–3.0 |
+| | D | 127.0 | 385 | 3 | 3 | 62,397 | 4,680 | 1.1–1.4 |
+
+*Regenerated 2026-08-11 against the post-clamp V7.3 station times. The faster cell moved
+every cycle figure down and every capacity figure up; at 1000/day option A now needs 3
+cells rather than 4, which is the only place the ranking moved at all.*
 
 **Where the answer flips**
 
-- **Below ~328/day: one cell, any option. The choice is nearly irrelevant** — the arm is
+- **Below ~385/day: one cell, any option. The choice is nearly irrelevant** — the arm is
   not the constraint. This bracket contains the whole 130–200/day estimate.
-- **~328–371/day:** A needs a second cell before B does. This is the *only* window where
-  B's pipeline earns anything, and it is 43 units/day wide.
+- **~385–435/day:** A needs a second cell before B does. This is the *only* window where
+  B's pipeline earns anything, and it is 50 units/day wide.
 - **Above ~400/day:** the ranking is set by cycle time, and **C pulls away** — it is the
   only option that still runs one cell at 400/day.
 - **B never wins on arms.** At 400/day it uses 4 arms to do what A does with 2; at
@@ -228,10 +246,10 @@ The right lens **if the founder's constraint really is throughput rather than co
 
 | option | units/hr | units/day | capex, 1 cell | **$ per unit/day of capacity** |
 |---|---|---|---|---|
-| A 1× xArm7, stroke | 20.5 | 328 | $42,500 | **$130** |
-| B 2× xArm7, split | 23.2 | 371 | $53,500 | $144 |
-| **C brushes + 1× xArm7** | 44.4 | 710 | $50,500 | **$71** |
-| D YAM Ultra, as A | 20.5 | 328 | $35,799 | $109 |
+| A 1× xArm7, stroke | 24.1 | 385 | $42,500 | **$110** |
+| B 2× xArm7, split | 27.2 | 435 | $53,500 | $123 |
+| **C brushes + 1× xArm7** | 45.4 | 726 | $50,500 | **$70** |
+| D YAM Ultra, as A | 24.1 | 385 | $35,799 | $93 |
 
 On this lens **C is nearly twice as good as anything else and B is the worst option on the
 board** — it buys 13% more throughput for 26% more capex. D beats A only because the arm is
@@ -241,7 +259,7 @@ cheaper; it produces exactly the same number of units.
 
 | risk | evidence | severity |
 |---|---|---|
-| **Sustained force exceeds payload class** | our wipe is 32.2 N ≈ 3.3 kg-equivalent `[measured]`, held for the whole clean cycle. YAM 2 kg → 164% of rating; YAM Ultra 4 kg → 82%, **before** the ~1 kg tool. A push is not a lift, but the joint torques are comparable. | **high** — standard YAM is excluded outright; Ultra is marginal |
+| **Sustained force exceeds payload class** | our wipe is 22.0 N ≈ 2.25 kg-equivalent `[measured, post-clamp]`, held for the whole clean cycle. YAM 2 kg → 112% of rating; YAM Ultra 4 kg → 56%, **before** the ~1 kg tool. A push is not a lift, but the joint torques are comparable. | **medium** — standard YAM still excluded; **Ultra is no longer marginal on this axis.** Was 164% / 82% at the pre-clamp 32.2 N |
 | **No published repeatability** | `[published absence]`. Our tightest needs: tool-changer capture 4 mm / 4° `[measured]`, membrane seat 1.31–1.61 mm against a 1.8 mm bound `[measured]` | **high** — this is a ±0.5 mm-class job with no vendor number to check against |
 | **Duty cycle** | 2 shifts × 300 days is continuous industrial duty; YAM is marketed for research and data collection `[published]` | **medium** — not a defect, a different product category |
 | **6-DoF vs 7-DoF** | our cleaner's posture-continuity fix exploits the 7-DoF null space to keep adjacent path knots in the same IK branch `[measured]`. A 6-DoF arm has discrete branches instead of a continuum | **medium** — needs re-validation, and `ArmProfile` exists so it is a config change |
@@ -256,8 +274,8 @@ A link, a recommendation, or "they look good" does not move it. `[open]`
 
 | if this turns out to be true | then |
 |---|---|
-| volume comes back **above ~330/day** | the arm-count question becomes real; go to **two independent cells**, not a 2-arm pipeline |
-| volume comes back **above ~700/day** | option **C** becomes the only single-cell answer, and the 64 mm sprung-brush requirement has to be engineered |
+| volume comes back **above ~385/day** | the arm-count question becomes real; go to **two independent cells**, not a 2-arm pipeline |
+| volume comes back **above ~726/day** | option **C** becomes the only single-cell answer, and the 64 mm sprung-brush requirement has to be engineered |
 | Anirudh supplies **first-hand YAM-under-load evidence** | D becomes live; it saves ~$6.7K/arm and changes nothing else. Re-validate against `ArmProfile` — one profile, one gate + eval pass |
 | the founder says *"cleans the filter with a solution"* means the **v4 cartridge dip** | **this entire study is about the wrong station.** Still outstanding since 2026-08-04, and it outranks everything here |
 | operators grade by **feel**, not by eye | triage is the wrong architecture and the class mix driving these cycle times is wrong too |
@@ -265,11 +283,12 @@ A link, a recommendation, or "they look good" does not move it. `[open]`
 ## 7. What this study does not cover
 
 - **Load/unload is `[assumed]` and unmodelled.** No motion anywhere in v5 puts a device on
-  the indexer or takes it off. At 20 s of a 149 s cycle it is 13% of the answer.
+  the indexer or takes it off. At 20 s of a 127 s cycle it is 16% of the answer.
 - **The HARD route has no physical handoff** — 0 of 6 steps implemented. Hard units are
   costed as triage-only, which is the optimistic end.
-- **Triage and verify cost zero simulated seconds.** Every cycle time here is an
-  optimistic bound.
+- **Triage still costs zero simulated seconds** (the arm is parked and it renders). Verify
+  no longer does — V7.3 made it drive, and it measures 10.0 s. Cycle times here remain an
+  optimistic bound because of triage and load/unload.
 - **No reliability model.** MTBF, spares, changeover and operator intervention are absent;
   maintenance is a flat percentage of capex `[assumed]`.
 - **One-cell-one-operator** is the labour assumption and it is the weakest link in the

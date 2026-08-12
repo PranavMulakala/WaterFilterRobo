@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Checks the seed ledger and proposes FRESH seeds (2200+) rather than reusing a spent range",
+      "passed": true,
+      "evidence": "\"First, book the seeds in CLAUDE.md before running anything. Next free block is 2200+. Reserve 2200-2215 as 'V7.4 feed-0.30 held-out validation' and 2216-2225 as its sabotage battery.\" For its own probe it deliberately used spent seed 2120: \"which the ledger records as already spent... I did not burn a fresh seed for a timing probe.\""
+    },
+    {
+      "text": "Applies margin discipline: notes 0.30 is the fastest value ever tested, so shipping it leaves no measured headroom above",
+      "passed": true,
+      "evidence": "\"Margin. 0.30 is the fastest value ever measured on this station. Shipping at it leaves 1.0x headroom instead of today's 1.5x. Direct precedent in this same file: `step_frac` 1.30 was faster, passed 16 units, and was declined at 8% margin.\""
+    },
+    {
+      "text": "Surfaces the dwell honesty label: rub time per spot falls to 0.20 s and the model removes soil on contact, not dwell",
+      "passed": true,
+      "evidence": "\"DWELL -- the one that matters, and no amount of testing fixes it. The model removes soil on contact, not dwell. With a 60 mm pad, a surface point spends 0.300 s under it at 0.20 and 0.200 s at 0.30 -- a 33% cut in rub time that the simulation is structurally blind to.\""
+    },
+    {
+      "text": "Protects the committed stats files (archives, or uses a mode-tagged output) before running any eval",
+      "passed": true,
+      "evidence": "\"Second, protect the published artifact -- `--eval --stroke` writes to the exact filename that holds the published 0.20 number: `cp sim_poc/stats_v5_clean_stroke.json /tmp/stats_v5_clean_stroke.PUBLISHED.json`\", staged before the `--eval 16` command. Ran no eval itself and verified: \"No stats or sweep artifact was written -- verified with `git diff --stat -- sim_poc/stats*.json sim_poc/sweep*.json` (empty).\""
+    },
+    {
+      "text": "Does NOT present a cycle time as validated on the strength of a single unit or an unrun eval",
+      "passed": true,
+      "evidence": "\"Caveat on that arithmetic: it assumes VERIFY and MEMBRANE are unchanged by feed... but I did not measure it. The honest confirmation is a true-1x render.\" Plus \"Evidence depth. 0.30 rests on 4 units / 81 patches. 0.20 rests on 16 units / 273 patches... Coverage failure is a rare event; 4 units is not a substitute for 16,\" and §6 is titled \"Validation I would run (stated, not run)\"."
+    }
+  ]
+}

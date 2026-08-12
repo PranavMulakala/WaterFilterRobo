@@ -1,4 +1,4 @@
-# HANDOVER — state as of 2026-08-09 (evening)
+# HANDOVER — state as of 2026-08-12
 
 **Read `CLAUDE.md` first** (phase table + seed ledger are authoritative). This is the
 five-minute version. `git log` is the detailed one; every commit message carries its
@@ -15,7 +15,7 @@ own evidence.
 | ~~V6 targeted clean~~ | **WITHDRAWN 2026-08-10.** Under the arm-speed clamp it left residue on **1 of 24** units and failed verify on one (seed 1844, backstop exhausted), with one **98.67 N** contact. Its published claim was 0/24. |
 | targeted + stroke | **MEASURED AND REJECTED** (pre-clamp) — 98.2 s median, slower than targeted alone, and a 91.5 N contact on 1 of 16 |
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10. **Costs 10.0 s — the arm DRIVES clear and the indexer ROTATES each face past the camera. It used to teleport both, which is why it was recorded as free.** |
-| **V6-ARM membrane** (39.1 s, V7.2) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
+| **V6-ARM membrane** (36.7 s, V7.3) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
 | **full MEDIUM cycle** | **2:34.9** (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
 
@@ -60,14 +60,38 @@ without them no speedup claim has a denominator. He has also **not watched the v
    his own industrial shortlist (UR / Elite / UFACTORY) independently contained ours. YAM
    is re-scoped to a future **teleop / data bench**, which is what it is actually sold for.
    Purchase remains gated on founder funding. The study's own headline made it moot anyway:
-   one cell does ~328 units/day against a 130–200 need.
+   one cell does ~385 units/day against a 130–200 need.
+
+## Done 2026-08-12 — documentation drift, and a skill that found it
+
+- **A project skill** at `.claude/skills/refurb-cell-discipline/` — the measurement and
+  validation discipline as an instruction document for any agent working here, with two
+  reference files (gates/baselines, recurring traps) and three evals. **A/B measured on six
+  subagent runs: 13/13 checks with it, 12/13 without.** Honest and modest — `CLAUDE.md` is
+  auto-loaded and already enforces most of it; what the skill adds is procedural
+  completeness (all three gates, archive before overwriting).
+- **The exercise found real rot, which is what made it worth doing.** Fixed: four stale
+  force figures in `README.md` (34.5/32.9 N → 23.9 N post-clamp), a **gate** printing
+  34.5 N, a stale comment above `force_hi`, and `TRADE_STUDY.md`'s tables regenerated
+  (328 → **385 units/day**).
+- **One real defect:** `v5_clean.py` tagged its stats filename by *mode* but not by
+  *parameter*, so `--stroke --feed 0.30` would have overwritten the published 0.20 stroke
+  baseline under the same name. Now tagged `_feed{x}` / `_row{x}`; verified.
+- **A retraction that goes against us, recorded as such:** the clamp cut peak wipe force
+  32.2 → 22.0 N, so `TRADE_STUDY.md`'s payload objection to a YAM Ultra fell from **82% of
+  its rating to 56%**. The xArm7 decision is unchanged but **no longer rests on payload** —
+  it rests on YAM's unpublished repeatability and the duty cycle. Corrected in place.
 
 ## Next steps, ranked
 
 1. **Chase the founder.** Still unanswered since 2026-08-04, and the "cleans the filter
    with a solution" question can still invalidate v5 CLEAN entirely.
-2. If the founder stays silent, consider building the **v4-style solution dip** as a hedge —
-   it is closer to the funding bar's literal wording than anything in v5.
+2. **The v4-style solution dip — REQUESTED AND NOT YET BUILT.** Asked for directly on
+   2026-08-12 and interrupted before it started. **Start by checking `sim_poc/dp_process.py`:
+   no source document in the 13-PDF corpus describes cleaning a filter in a solution** (their
+   dip is an *80–90 PSI bubble leak test*, not a wash), so this step would be OURS wearing
+   their vocabulary and must be labelled that way. v4's cartridge dip is the nearest prior
+   art and it is a cartridge, not a cabinet. Scope it, price the cycle-time cost, then build.
 3. **If throughput ever becomes the constraint**, option C (fixed brushes) is the lever —
    but it cleans blind, which costs the per-patch evidence that is the actual product.
    Parked, not open: see `DECISIONS.md`.
