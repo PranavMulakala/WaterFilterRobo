@@ -1,4 +1,4 @@
-# HANDOVER — state as of 2026-08-12
+# HANDOVER — state as of 2026-08-12 (evening)
 
 **Read `CLAUDE.md` first** (phase table + seed ledger are authoritative). This is the
 five-minute version. `git log` is the detailed one; every commit message carries its
@@ -17,31 +17,57 @@ own evidence.
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10. **Costs 10.0 s — the arm DRIVES clear and the indexer ROTATES each face past the camera. It used to teleport both, which is why it was recorded as free.** |
 | **V6-ARM membrane** (36.7 s, V7.3) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
+| **V8 SOLUTION station** (opt-in, `--solution`) | the arm CHARGES THE PAD from a tray before cleaning and re-dips when low. **100% coverage, 0 missed of 252, peak 22.62 N, 1 dip/unit, 0.00 s dry-pad contact** on 16 fresh units (2204–2219). Clean 108.1 → **114.4 s** (dip 6.34 s/unit). Force/tracking/tilt **byte-identical** to the dry baseline |
 | **full MEDIUM cycle** | **2:34.9** (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
 
-## The five honesty labels that must travel with any demo
+## The honesty labels that must travel with any demo
+
+*Last audited 2026-08-12. Two entries in the previous version had gone stale and were
+saying the opposite of the truth — see the note at the end.*
 
 1. Easy/Medium/Hard **names** are DrinkPrime's; the **boundaries are ours** (asked, unanswered).
-2. Targeted cleaning's dirt **locations** are ground truth standing in for camera
-   localisation; the **residue check is a real camera** and catches sabotage 15/15.
-3. Membrane: the arm does insert + cap-place + driver-hold. **Thread-start engagement
+2. Cleaning removes soil on **CONTACT, not on dwell**. At 200 mm/s a surface point spends
+   ~0.30 s under the pad against ~1.0 s in point mode. A shorter rub is free here and would
+   **not** be free with real cream. Modelling limit, not a result.
+3. **v8 solution: the LOGISTICS of solution are modelled, the CHEMISTRY is not.** The pad
+   is charged, spends its charge on contact and is re-dipped. Solution does not make soil
+   easier to remove, because removal is binary on contact. The liquid is a rendered slab —
+   there is no fluid simulation anywhere in this repo. `wring_s` is a drain dwell standing
+   in for a squeeze the cell cannot perform. **Stage 3's rinse and dry passes are NOT
+   built** — they need two more pads on two more posts.
+4. Membrane: the arm does insert + cap-place + driver-hold. **Thread-start engagement
    (4 mm/4° capture) and spindle reaction torque are MODELLED.** The cap carries a
    **pick stem** — a design-for-automation feature we added, not a stock part.
-4. HARD route = software decision, **no physical handoff (0/6 implemented)**.
-5. Leak result is a **measured image of a modelled outcome**: torque → `seal_holds` →
+5. HARD route = software decision, **no physical handoff (0/6 implemented)**.
+6. Leak result is a **measured image of a modelled outcome**: torque → `seal_holds` →
    bubbles → camera. A damaged O-ring at full torque would pass. Not independently falsified.
-6. **The arm's FREE-SPACE moves are ~3× faster than the real xArm7 can go.** The setpoint
-   rate limit is 10 rad/s against a published 180 °/s (3.14 rad/s), and the pad reaches
-   **3.0 m/s** against a published 1 m/s TCP limit. **Contact motion is unaffected** (the
-   sweep runs at 93 mm/s median), so coverage/force/tilt are all sound — but the ~20 s of
-   repositioning inside every cycle time is optimistic. See next step 1.
+7. **TRIAGE still costs zero simulated seconds** — the arm parks and a camera renders. So
+   every cycle time here remains an optimistic bound. (VERIFY used to be the second zero
+   and no longer is: V7.3 made it drive, and it costs 10.0 s.) Load/unload is unmodelled.
+
+> **Two labels were removed on 2026-08-12 because they had become false, and that is worth
+> recording rather than quietly deleting.** The old label 2 described *targeted cleaning*,
+> which was **WITHDRAWN** on 2026-08-10 after failing its own zero-residue bar under the arm
+> speed clamp. The old label 6 warned that free-space moves ran **~3× the arm's rating** —
+> true when written, **fixed by that same clamp**: peak joint speed is now 2.46 rad/s
+> against a published 3.14, and peak tool speed 1007 mm/s against 1000, both asserted every
+> run. A stale honesty label is worse than no label: it spends credibility warning about a
+> defect that no longer exists, and it hides the fix.
 
 ## Open with the founder — sent 2026-08-04 evening, STILL UNANSWERED as of 2026-08-09
 
-Grading criteria; annexure scans; 45-vs-80 PSI; CAD (bowl/cap/O-ring); and the one that can
-invalidate work: **does "cleans the filter with a solution" mean the v4 cartridge dip or v5
-cabinet cleaning?** Plus, added by V6: **manual cycle time and daily refurb volume** —
-without them no speedup claim has a denominator. He has also **not watched the v6 video**.
+Grading criteria; annexure scans; 45-vs-80 PSI; CAD (bowl/cap/O-ring). Plus, added by V6:
+**manual cycle time and daily refurb volume** — without them no speedup claim has a
+denominator. He has also **not watched the v6 video**.
+
+> **The "cleans the filter with a solution" question narrowed on 2026-08-12, from their own
+> documents.** Stage 3 (`0024DPCRO003`) says *"Dip the CLOTH in the solution and wring out
+> excess water"*, then wipe. That is the only "solution" in all 13 documents — the word
+> appears three times, all in that stage, all about a cloth. The only immersion of a part
+> anywhere is Stage 10's membrane assembly in a water bin, which is a pressurised bubble
+> leak test, not a wash. **So it almost certainly means a solution-charged cloth wiping the
+> cabinet, which is v5 CLEAN plus v8's dip — NOT a bath the device goes into.** Still ask
+> him: this is our reading of his words against their documents, not his answer.
 
 ## Done this session (2026-08-09 evening) — all three advisor items closed
 
@@ -61,6 +87,28 @@ without them no speedup claim has a denominator. He has also **not watched the v
    is re-scoped to a future **teleop / data bench**, which is what it is actually sold for.
    Purchase remains gated on founder funding. The study's own headline made it moot anyway:
    one cell does ~385 units/day against a 130–200 need.
+
+## Done 2026-08-12 (evening) — V8 SOLUTION STATION
+
+- **The arm now charges its pad from a solution tray** before cleaning, and re-dips when the
+  charge runs low. `--solution`, **default OFF** so every published dry number stays
+  byte-locked. Held out on 16 fresh units (2204–2219): **100% coverage, 0 missed of 252,
+  peak 22.62 N, 1 dip/unit, 0.00 s of dry-pad contact.** Clean station 108.1 → **114.4 s** (the dip measures **6.34 s/unit**),
+  so the full cycle is **2:41.2**.
+- **The corpus redirected the design and that is the headline.** The ask was a v4-style bath;
+  Stage 3 says the **cloth** is dipped. A tank would have been our invention in their
+  vocabulary. Recorded in `dp_process.py`'s Stage 3 note.
+- **New metric: `dry_contact_s`** — seconds the pad spent pressing with nothing on it.
+  It caught a sweep row (`charge_contact_s` 80) that scored **100% coverage through 0.9 s of
+  dry wiping**, purely because no soil lay underneath. Shipped at 100 (1.24× margin), and
+  the value is independently corroborated by DrinkPrime's own consumable ratio.
+- **A precondition bug worth remembering:** V7.2's "skip the retreat when nothing rotates"
+  assumed the arm arrives at face 0 from the tool lift. The dip broke that silently —
+  coverage 100→75%, force 22.6→98.3 N — and the fix is that the dip is a **round trip** that
+  restores the joint configuration, not just a sensible pose. Full account in `PAIN_JOURNAL`.
+- **Named hardware gap:** Stage 3 needs three cloths (wash / clean-damp / dry) on three
+  posts. `--rinse` and `--dry` **raise `NotImplementedError` with the reason** rather than
+  no-op'ing.
 
 ## Done 2026-08-12 — documentation drift, and a skill that found it
 
@@ -84,15 +132,25 @@ without them no speedup claim has a denominator. He has also **not watched the v
 
 ## Next steps, ranked
 
-1. **Chase the founder.** Still unanswered since 2026-08-04, and the "cleans the filter
-   with a solution" question can still invalidate v5 CLEAN entirely.
-2. **The v4-style solution dip — REQUESTED AND NOT YET BUILT.** Asked for directly on
-   2026-08-12 and interrupted before it started. **Start by checking `sim_poc/dp_process.py`:
-   no source document in the 13-PDF corpus describes cleaning a filter in a solution** (their
-   dip is an *80–90 PSI bubble leak test*, not a wash), so this step would be OURS wearing
-   their vocabulary and must be labelled that way. v4's cartridge dip is the nearest prior
-   art and it is a cartridge, not a cabinet. Scope it, price the cycle-time cost, then build.
-3. **If throughput ever becomes the constraint**, option C (fixed brushes) is the lever —
+1. **Chase the founder.** Still unanswered since 2026-08-04. **The "cleans the filter with
+   a solution" question is now much narrower than it was** — Stage 3 of their own corpus
+   says the CLOTH is dipped, and v8 builds exactly that — but it is still an inference we
+   drew, not an answer they gave.
+2. ~~The v4-style solution dip~~ **BUILT 2026-08-12, AND THE DOCUMENTS REDIRECTED IT.**
+   Stage 3 says *"dip the CLOTH in the solution"* — the cloth, never the device — and that
+   is the only "solution" in all 13 documents. So a bath was never the right build; a
+   solution-CHARGED PAD was, and v5 CLEAN was already that motion, dry. See the V8 block in
+   `CLAUDE.md`. **The remaining gap is hardware:** Stage 3 needs a wash cloth, a clean damp
+   cloth and a dry cloth — three pads on three posts — and we have one. `--rinse`/`--dry`
+   refuse with that reason rather than no-op'ing.
+3. **Put the Stage 3 reading to the founder.** We now believe *"cleans the filter with a
+   solution"* means a solution-charged cloth, on the strength of their own work instruction.
+   That is an inference, not an answer, and it is the cheapest question left to ask.
+4. **Decide whether v8 ships as the default.** It is opt-in (`--solution`) so every
+   published dry-wipe number stays byte-locked. Turning it on costs ~6 s/unit and is the
+   only configuration that matches the funding bar's wording. That is a founder call, not
+   ours.
+5. **If throughput ever becomes the constraint**, option C (fixed brushes) is the lever —
    but it cleans blind, which costs the per-patch evidence that is the actual product.
    Parked, not open: see `DECISIONS.md`.
 

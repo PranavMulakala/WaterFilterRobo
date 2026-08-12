@@ -969,3 +969,31 @@ real tasks surfaced genuine rot we then fixed — four stale force figures in th
 README, a safety check that printed an out-of-date number, and a real defect where running
 the cleaner at a different speed would have silently overwritten the published result under
 the same filename. **Testing the instructions found bugs in the thing being instructed.**
+
+## 2026-08-12 — They dip the cloth, not the machine
+
+**What we built:** a solution tray next to the tool post. The arm dips its wiping pad in
+detergent-and-warm-water, drains it, then cleans — and when the pad runs low it goes back
+for more. Adds about six seconds a unit.
+
+**The concept: read the instructions before designing the machine.** The ask was for a
+"solution dip" like the one in our older demo, where a part is lowered into a bath. But
+DrinkPrime's own Stage 3 work instruction says *"dip the cloth in the solution and wring
+out excess water"* — **the cloth goes in the liquid, not the device**. Across all thirteen
+of their documents the word "solution" appears three times and every one is that sentence.
+The only thing ever immersed is a sealed membrane assembly, and that is a pressurised leak
+test, not a wash. So a tank would have been our idea wearing their vocabulary — and the
+motion we already had, a pad wiping the cabinet, was the right one all along. It was just
+dry.
+
+**The part that is genuinely new is that the solution runs out.** The pad carries a finite
+amount, spends it while it is pressing, and has to be recharged. That turns a chemical we
+cannot simulate into a *logistics* problem we can: how much, how often, how many seconds.
+Their own consumable table (five litres of cleaner per three hundred devices) implies about
+one dip per machine, and our measured 81 seconds of pad-on-surface contact per unit agrees
+with it. Two independent routes to the same answer is the closest thing to a check we get.
+
+**Why it matters for the real robot:** we now count a cost that was previously invisible,
+and we can catch a failure that used to be undetectable — a pad that has run dry still
+presses with the right force, still covers every surface, and cleans nothing. Coverage
+cannot see that. We measure it separately, because a check that cannot fail is not evidence.

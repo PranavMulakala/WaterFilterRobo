@@ -46,6 +46,13 @@ import mujoco
 
 import v5_triage as TR
 import v5_reach as RE
+# SOLUTION STATION coordinates are read from the SCENE GENERATOR, never retyped.
+# Same reason CELL_SPEC's numbers are read from the model: a station coordinate
+# duplicated in two files is a coordinate that will disagree with itself the first
+# time the scene moves. `v5_reach`'s PAD_STANDOFF was exactly this bug -- the tilt
+# cone was unified and the standoff was not, so the gate went on planning a 45 mm
+# tool against a real 105 mm one.
+import make_scene_v5 as SCN
 from sim_poc2 import ik_step
 
 XML = "ufactory_xarm7/refurb_scene_v5.xml"
@@ -314,6 +321,82 @@ class CleanConfig:
     floor_margin: float = 0.012     # m, extra clearance above the bench/platter
     faces_deg: tuple = (0.0, 90.0, 180.0, 270.0)
 
+    # --- SOLUTION STATION (Stage 3). DEFAULT OFF, deliberately: the dry wipe is the
+    #     published, byte-locked baseline and every number in CLAUDE.md's phase table
+    #     was measured without this. Turning it on is `--solution`.
+    #
+    # WHAT THE SOURCE DOCUMENT SAYS, because this station exists only because of it.
+    # Stage 3 (0024DPCRO003, "Back Panel & Top Cover Cleaning"):
+    #     "Mix a small amount of mild detergent with warm water"
+    #     "DIP THE CLOTH IN THE SOLUTION and wring out excess water"
+    #     "Gently wipe down the top cover and back panel"
+    #     "Use a clean, damp cloth to wipe away any remaining soap or cleaning solution"
+    #     "Dry thoroughly with a dry cloth to prevent water spots"
+    # THE CLOTH IS DIPPED, NOT THE DEVICE. Across all 13 source documents "solution"
+    # appears three times and all three are that stage, applied to a cloth. The only
+    # immersion of a PART anywhere in the corpus is Stage 10's membrane assembly in a
+    # water bin, which is a pressurised bubble LEAK TEST and explicitly not a wash. A
+    # tank the cabinet is lowered into would be our invention wearing their vocabulary.
+    #
+    # WHAT IS MODELLED: the LOGISTICS of solution -- carrying it on the pad, spending it
+    # as the pad works, and going back for more when it runs out. That is a real cost in
+    # real seconds and it is a real failure mode (a pad that runs dry mid-face is still
+    # wiping, just not cleaning).
+    # WHAT IS NOT MODELLED, and must travel with any number from this station: THE
+    # CHEMISTRY. There is no fluid simulation in this repo. Solution does not make the
+    # sim's soil easier to remove, because the sim has no notion of "easier" -- removal
+    # is binary on contact. So this station CANNOT tell you that detergent cleans
+    # better. It tells you what it costs to use detergent correctly.
+    solution: bool = False
+    dip_clear_z: float = 0.20       # m, height above the tray the pad transits at
+    dip_dwell_s: float = 0.8        # s, pad held under the surface
+    wring_s: float = 0.6            # s, held over the tray to drain. A real wring is a
+                                    # SQUEEZE and we do not model one -- this is a drain
+                                    # dwell standing in for it, and it is labelled as such
+                                    # everywhere the station is reported.
+    dip_speed: float = 0.12         # m/s, descent into the basin. Slower than a transit:
+                                    # a fast plunge into a liquid a real cell would slosh.
+    # HOW LONG ONE CHARGE LASTS, in seconds of PAD-ON-SURFACE CONTACT.
+    #
+    # ANCHORED, not invented: Stage 2's consumable table gives "Colin liquid 5 Ltr
+    # (300 devices)" = 16.7 mL per device, and a wrung microfibre cloth carries roughly
+    # 20-30 mL. THEIR OWN RATIO therefore implies about ONE CHARGE PER DEVICE.
+    #
+    # MEASURED: pad-on-surface contact is 80.9 s per unit, identical at every swept value
+    # and every seed -- the cleaning trajectory is open-loop and seed-independent, so this
+    # is a property of the path, not of the unit. One charge per device therefore needs
+    # charge_contact_s >= 80.9, and 100 sits 1.24x above that. The sim's measurement and
+    # DrinkPrime's consumable ratio agree, which is the closest thing to an independent
+    # check this constant can get.
+    #
+    # THE SWEEP ROW THAT MATTERS IS 80.0, AND COVERAGE WOULD HAVE HIDDEN IT (seeds
+    # 2200-2203, 4 units):
+    #   charge  cycle     coverage  missed  DRY contact  dips
+    #    40.0   119.93 s    98.2%      1      6.4 s       2
+    #    60.0   119.89 s   100.0%      0      0.0 s       2
+    #    80.0   114.47 s   100.0%      0    * 0.9 s *     1     <-- passed on luck
+    #   100.0   114.47 s   100.0%      0      0.0 s       1     <-- shipped, 1.24x margin
+    #   120.0   114.47 s   100.0%      0      0.0 s       1
+    # At 80.0 the pad wiped for 0.9 s with nothing on it and still scored 100%, because
+    # no soil happened to lie under those 0.9 s. That is the same rare-event trap that
+    # kept step_frac at 1.20 instead of the faster 1.30: a coverage pass on 4 units does
+    # not close a gap, it just fails to hit it. `dry_contact_s` sees it; coverage cannot.
+    charge_contact_s: float = 100.0
+    recharge_at: float = 0.30       # recharge between faces once this fraction is left
+    # THE RINSE AND DRY PASSES ARE NOT IMPLEMENTED, AND THE REASON IS HARDWARE.
+    # Stage 3 does not just say "wipe again". It says "use a CLEAN, DAMP CLOTH to wipe
+    # away any remaining soap" and then "dry thoroughly with a DRY CLOTH". Three passes,
+    # three different cloths. This cell has ONE pad on ONE tool post. A faithful Stage 3
+    # therefore needs two more pads and two more posts -- a CELL_SPEC hardware change,
+    # not a software one, and one nobody has costed or checked for reach.
+    #
+    # These flags exist so the gap is NAMED rather than absent. They REFUSE rather than
+    # quietly doing nothing: this repo has already had to retract a metric where a step
+    # "passed by being named" (ROUTE_TO_SCRAP_APPROVAL), and a flag that accepts a
+    # request and silently no-ops is the same defect with a friendlier face.
+    rinse_pass: bool = False        # NOT IMPLEMENTED -- needs a second pad + post
+    dry_pass: bool = False          # NOT IMPLEMENTED -- needs a third pad + post
+
     # --- soil removal: the pad's contact patch
     pad_radius: float = 0.030       # m, in-plane wipe radius of the 60 mm square pad
     pad_reach: float = 0.022        # m, how far off the pad plane a patch still counts
@@ -385,6 +468,12 @@ def tool_mat_face(index_deg):
     x /= np.linalg.norm(x)
     y = np.cross(z, x)
     return np.column_stack([x, y, z])
+
+
+# THE SAFE TRANSIT WAYPOINT, well clear of the device and above the bench.
+# Module scope because the solution dip has to return to EXACTLY the pose the face
+# loop used to start from -- see charge_pad().
+SAFE_WP = np.array([0.26, 0.0, 0.42])
 
 
 def grasp_mat():
@@ -552,6 +641,14 @@ class Cell:
         TR.set_pools(m, self.pools, nd, ns, no, rng)
         self.revealed_soil = [g for g in self.pools["soil"] if m.geom_rgba[g][3] > 0]
         self.raster_planned = self.raster_skipped = self.raster_infeasible = 0
+        # Solution-station state. `pad_charge` starts EMPTY, not full: a pad that begins
+        # a unit already wet is a pad whose first dip was never paid for, and this
+        # station's entire claim is that it pays for the solution in seconds.
+        self.pad_charge = 0.0
+        self.dips = 0
+        self.contact_s = 0.0
+        self.dry_contact_s = 0.0
+        self.dip_s = 0.0
         self.tilts = []
         self.q_warm = None
         self.face_unreachable = {}
@@ -896,6 +993,20 @@ class Cell:
             return 0
         if self.sabotage:
             return 0                # V5-D: contact happened, removal deliberately withheld
+        # SOLUTION MODE: spend charge for every second the pad is actually loaded, and
+        # refuse to clean once it is dry. Depletion is billed on CONTACT time, not on
+        # wall-clock -- a pad in free transit is not being used up. A dry pad still
+        # travels, still presses and still reports contact force; it just stops
+        # removing soil. That is the point: it makes "ran out mid-face" a FAILURE THE
+        # CAMERA CAN SEE rather than a bookkeeping note, which is the only way this
+        # station earns its cycle time.
+        if self.cfg.solution:
+            self.contact_s += self.dt
+            self.pad_charge = max(0.0, self.pad_charge
+                                  - self.dt / self.cfg.charge_contact_s)
+            if self.pad_charge <= 0.0:
+                self.dry_contact_s += self.dt
+                return 0
         centre = self.d.geom_xpos[self.pad_face]
         R = self.d.geom_xmat[self.pad_face].reshape(3, 3)
         n_hat = R[:, 2]                       # pad's own face normal
@@ -1080,8 +1191,14 @@ class Cell:
             b["t"][tag] = b["t"].get(tag, 0.0) + secs
             b["n"][tag] = b["n"].get(tag, 0) + 1
 
-    def step_to(self, tgt, mat, grip, index_deg=0.0, frames=None, tag=""):
-        """One control step toward a Cartesian target. Returns TCP position error."""
+    def step_to(self, tgt, mat, grip, index_deg=0.0, frames=None, tag="",
+                rate_scale=1.0):
+        """One control step toward a Cartesian target. Returns TCP position error.
+
+        `rate_scale` slows the setpoint the same way `move_planned`'s does, and
+        defaults to 1.0 so every existing caller is byte-identical. It exists for the
+        solution dip, which must enter the liquid slower than it transits air.
+        """
         m, d = self.m, self.d
         self.ik.qpos[:] = d.qpos
         self.ik.qpos[self.qadr] = self.q_des
@@ -1090,7 +1207,7 @@ class Cell:
         self._charge(tag, self.dt)
         dq, err = ik_step(m, self.ik, self.site, tgt, mat, self.dof)
         mx = np.max(np.abs(dq))
-        lim = self.cfg.arm.joint_rate * self.cfg.speed
+        lim = self.cfg.arm.joint_rate * self.cfg.speed * rate_scale
         if mx > lim:
             dq *= lim / mx
         self._advance(self.q_des + dq)
@@ -1103,7 +1220,7 @@ class Cell:
         return err
 
     def move(self, tgt, mat, grip, index_deg=0.0, tol=0.004, t_max=6.0,
-             wipe=False, log=None, frames=None, tag=""):
+             wipe=False, log=None, frames=None, tag="", rate_scale=1.0):
         """Drive to a Cartesian target and WAIT FOR THE ARM TO ACTUALLY GET THERE.
 
         The completion test is on the MEASURED TCP, not on the commanded configuration.
@@ -1119,7 +1236,7 @@ class Cell:
         cleaned = 0
         settle = 0.0
         while t < t_max:
-            self.step_to(tgt, mat, grip, index_deg, frames, tag)
+            self.step_to(tgt, mat, grip, index_deg, frames, tag, rate_scale)
             t += self.dt
             if wipe:
                 cleaned += self.wipe()
@@ -1505,6 +1622,89 @@ class Cell:
             self.budget["dur"].setdefault(tag, []).append(t)
         return cleaned
 
+    def charge_pad(self, frames=None, tag="DIP", return_deg=0.0, index_deg=0.0):
+        """Dip the pad in the solution tray and drain it. Stage 3, 0024DPCRO003.
+
+        The motion is: transit above the basin -> descend into the liquid at a reduced
+        rate -> hold -> lift clear -> hold again over the tray to drain -> leave charged.
+
+        WHY THE DESCENT IS SLOWER THAN A TRANSIT. Driving into a liquid and driving
+        through air are different motions, the same way driving INTO a surface and
+        sliding ALONG one are (that distinction cost this project a wrong feed sweep, see
+        `stroke_seat_scale`). We do not simulate the liquid, so the sim will happily
+        plunge the pad at full speed and report nothing wrong -- which is exactly the
+        kind of silence that has produced false numbers here before. `dip_speed` is the
+        honest constraint written down where it can be argued with.
+
+        WHAT THIS IS NOT. There is no fluid, no surface tension, no absorption and no
+        wringing. `wring_s` is a DRAIN DWELL standing in for a squeeze the cell does not
+        have hardware to perform. The liquid slab is a visual-only geom. What is real is
+        the TIME and the MOTION, and the fact that charge is finite and gets spent.
+        """
+        cfg = self.cfg
+        gm = grasp_mat()
+        sx, sy = SCN.SOLUTION_XY
+        # the pad face bottom must end SOL_SUBMERGE below the liquid surface; plan_pad
+        # takes where the PAD must be, because the pad hangs 105 mm off the wrist and
+        # solving for the TCP would put it somewhere else entirely.
+        deep = np.array([sx, sy, SCN.SOL_SURF - SCN.SOL_SUBMERGE])
+        above = np.array([sx, sy, cfg.dip_clear_z])
+        t0 = float(self.d.time)   # the SIMULATOR's clock; there is no wall clock here
+        # REMEMBER THE CONFIGURATION WE LEFT FROM, and come back to it. A 7-DoF arm
+        # reaches the same Cartesian pose through several elbow branches, and
+        # plan_pose prefers the branch nearest the seed it is given. Seeding the
+        # return with the post-dip pose asks it for the branch nearest the TRAY,
+        # which is how the arm came back to the right POINT in the wrong SHAPE.
+        q_before = self.q_des.copy()
+        tcp_before = self.d.site_xpos[self.site].copy()
+
+        self.move(above - gm @ self.pad_rel, gm, cfg.grip_open, t_max=8.0,
+                  tag=f"{tag}-OVER", frames=frames)
+        # descend at dip_speed rather than the transit rate
+        self.move(deep - gm @ self.pad_rel, gm, cfg.grip_open, tol=0.004, t_max=8.0,
+                  tag=f"{tag}-IN", frames=frames,
+                  rate_scale=min(1.0, cfg.dip_speed / max(cfg.arm.max_tcp_speed
+                                                          * cfg.arm.tcp_cmd_margin, 1e-9)))
+        self.dwell(cfg.dip_dwell_s, gm, deep - gm @ self.pad_rel, cfg.grip_open,
+                   frames=frames, tag=f"{tag}-SOAK")
+        drain = np.array([sx, sy, SCN.SOL_SURF + 0.045])
+        self.move(drain - gm @ self.pad_rel, gm, cfg.grip_open, t_max=8.0,
+                  tag=f"{tag}-OUT", frames=frames,
+                  rate_scale=min(1.0, cfg.dip_speed / max(cfg.arm.max_tcp_speed
+                                                          * cfg.arm.tcp_cmd_margin, 1e-9)))
+        self.dwell(cfg.wring_s, gm, drain - gm @ self.pad_rel, cfg.grip_open,
+                   frames=frames, tag=f"{tag}-DRAIN")
+
+        # THE DIP IS A ROUND TRIP: it puts the arm back in the exact CONFIGURATION it
+        # left from, not merely back at some sensible pose. This is a bug fix and the bug
+        # is worth keeping, because it is a precondition failure rather than a typo.
+        #
+        # V7.2 removed the SAFE retreat before a face that is not rotating. That was
+        # correct at the time and is still correct: the arm always arrived at face 0
+        # straight from the tool LIFT. The dip silently broke that unstated precondition
+        # by inserting a trip to a tray off to one side and low down. Measured, landing
+        # the dip straight into face 0: in-plane tracking 15.2 -> 59.4 mm, coverage
+        # 100% -> 75%, peak force 22.6 -> 98.3 N, tool speed past its own limit at
+        # 1.386 m/s -- the branch-jump signature documented at plan_pad.
+        #
+        # The first fix was to return to SAFE_WP, and it changed NOTHING (identical
+        # numbers to three decimals), because the dry path never visits SAFE_WP before
+        # face 0 either. Returning to a *reasonable* pose is not the same as returning to
+        # the *expected* one. Restoring the configuration makes the dip a pure insertion
+        # in the time axis with no side effect on geometry, which is the only way the
+        # solution number stays comparable to the dry one.
+        #
+        # AN OPTIMISATION IS ONLY VALID WHILE ITS PRECONDITION HOLDS, and an unwritten
+        # precondition is one a later station will break without noticing.
+        self.move_planned(q_before, tcp_before, cfg.grip_open, index_deg=index_deg,
+                          t_max=8.0, tag=f"{tag}-BACK", frames=frames)
+
+        self.pad_charge = 1.0
+        self.dips += 1
+        spent = float(self.d.time) - t0
+        self.dip_s += spent
+        return spent
+
     def dwell(self, s, mat, tgt, grip, index_deg=0.0, frames=None, tag=""):
         """Hold station for S seconds -- AND KEEP FILMING.
 
@@ -1667,15 +1867,41 @@ class Cell:
                     "in_band": 0.0, "contact_frac": 0.0,
                     "couple_mm": perr * 1000, "couple_deg": aerr}
 
+        # --- CHARGE THE PAD before the first face (Stage 3). Done HERE, right after the
+        #     tool is latched and `pad_rel` has been MEASURED, because the dip is planned
+        #     on where the PAD is, and before coupling we do not know that -- the latch
+        #     welds at the pose actually achieved, so the pad's offset is a measurement,
+        #     not a constant.
+        if cfg.solution:
+            self.charge_pad(frames=frames)
+        if cfg.rinse_pass or cfg.dry_pass:
+            raise NotImplementedError(
+                "Stage 3's rinse and dry passes need a CLEAN DAMP cloth and a DRY cloth "
+                "-- two more pads on two more tool posts. That is a CELL_SPEC hardware "
+                "change, unreached and uncosted. Refusing rather than no-op'ing: a step "
+                "that passes by being named is a defect this project has already "
+                "retracted once. See CleanConfig.rinse_pass.")
+
         # --- wipe each face at the front working position
         forces, cleaned = [], 0
         # A SAFE WAYPOINT well clear of the device, in front of it and above the bench.
         # Everything indexes from here.
-        safe = np.array([0.26, 0.0, 0.42])
+        safe = SAFE_WP
         prev_deg = 0.0
         if cfg.targeted:
             self.targeted_skipped_faces = []
         for deg in cfg.faces_deg:
+            # RECHARGE BETWEEN FACES, never mid-face. A face is the natural unit: it is
+            # where the arm is already retreating and the turntable is about to move, so
+            # the dip costs travel that is partly paid for anyway -- and interrupting a
+            # continuous stroke to go and fetch solution would break the one property
+            # that makes the stroke worth having. The cost is that a pad CAN run dry
+            # inside a face, which is precisely the failure `dry_contact_s` counts and
+            # the camera catches. We do not hide it by recharging more often; we measure
+            # it and size `charge_contact_s` with margin.
+            if cfg.solution and self.pad_charge < cfg.recharge_at:
+                self.charge_pad(frames=frames, tag="REDIP", return_deg=deg,
+                                index_deg=prev_deg)
             # RETRACT CLEAR, THEN INDEX, THEN APPROACH -- in that order. Rotating the
             # device while the arm was still swinging back across it swept the tool
             # through the cabinet and knocked it out of the jaws: face 0 wiped correctly
@@ -2183,7 +2409,19 @@ class Cell:
                 "stroke_corners": int(self.stroke_corners),
                 "device_shift_mm": float(self.device_shift),
                 "tcp_speed_max": float(self.tcp_speed_max),
-                "joint_speed_max": float(self.joint_speed_max)}
+                "joint_speed_max": float(self.joint_speed_max),
+                # --- solution station. `dry_contact_s` is the one that matters: it is
+                #     time the pad spent PRESSING ON THE DEVICE with nothing on it. Those
+                #     seconds look like cleaning in every other metric -- the force log is
+                #     healthy, the coverage geometry is satisfied, the arm went exactly
+                #     where it was told -- and remove nothing. Report it beside coverage
+                #     always, the same way false-verify is reported beside sabotage.
+                "solution": bool(self.cfg.solution),
+                "dips": int(self.dips),
+                "dip_s": float(self.dip_s),
+                "contact_s": float(self.contact_s),
+                "dry_contact_s": float(self.dry_contact_s),
+                "charge_left": float(self.pad_charge)}
 
 
 def run_with_backstop(cell, seed, max_recleans=2, frames=None):
@@ -2231,6 +2469,24 @@ def report(rows):
     totm = sum(r["missed"] for r in ok)
     print(f"  MISSED SPOTS    : {totm} of {tot0} soil patches "
           f"({totm/max(tot0,1)*100:.1f}%)   <- Stage 3's own QC check")
+    if ok and ok[0].get("solution"):
+        dips = [r.get("dips", 0) for r in ok]
+        dry = [r.get("dry_contact_s", 0.0) for r in ok]
+        con = [r.get("contact_s", 0.0) for r in ok]
+        dsec = [r.get("dip_s", 0.0) for r in ok]
+        print(f"  SOLUTION STATION: {np.mean(dips):.1f} dips/unit "
+              f"({np.mean(dsec):.1f} s of dipping), pad-on-surface "
+              f"{np.mean(con):.1f} s/unit")
+        # DRY SECONDS ARE REPORTED BESIDE COVERAGE, ALWAYS -- the same rule that puts
+        # the false-verify rate beside the sabotage-caught rate. A pad that has run out
+        # still presses, still logs healthy force and still satisfies the coverage
+        # geometry; it just removes nothing. Coverage alone cannot see that, and on a
+        # 4-unit sweep it scored 100% through 0.9 s of it purely because no soil
+        # happened to lie underneath.
+        print(f"  DRY-PAD CONTACT : {sum(dry):.1f} s total, worst unit {max(dry):.1f} s"
+              f"   <- seconds spent wiping with nothing on the pad")
+        print("                    (report this beside coverage; a dry pad passes every "
+              "other check)")
     fm = np.array([r["f_med"] for r in ok]) if ok else np.array([0.0])
     fx = np.array([r["f_max"] for r in ok]) if ok else np.array([0.0])
     ib = np.array([r["in_band"] for r in ok]) if ok else np.array([0.0])
@@ -2426,10 +2682,13 @@ def falsify(n, seed0, cfg=CFG):
           "would_escape": len(blind), "rows": rows}
     # PROTECT THE PUBLISHED BASELINE, same reason as stats_v5_clean.json: the committed
     # stats_v5_verify.json is V5-D's recorded 10/10 on the point-mode station.
-    _tag = ("_stroke" if cfg.stroke else "") + ("_targeted" if cfg.targeted else "")
+    _tag = ("_stroke" if cfg.stroke else "") + ("_targeted" if cfg.targeted else "") \
+           + ("_solution" if cfg.solution else "")
     out = f"stats_v5_verify{_tag}.json"
     st["mode"] = ("stroke" if cfg.stroke else "point") + \
-                 ("+targeted" if cfg.targeted else "+full")
+                 ("+targeted" if cfg.targeted else "+full") + \
+                 ("+solution" if cfg.solution else "")
+    st["solution"] = bool(cfg.solution)
     st["seed0"] = seed0
     with open(out, "w") as f:
         json.dump(st, f, indent=2)
@@ -2450,6 +2709,10 @@ def falsify(n, seed0, cfg=CFG):
 STROKE_TAGS = ("WIPE",)
 OVERHEAD_TAGS = ("SAFE", "TO FACE", "TO TOP", "SETTLE", "RETRACT", "TOP CLEAR", "INDEX")
 LATCH_TAGS = ("APPROACH", "COUPLE", "LIFT", "RETURN", "PLACE", "UNLATCH", "CLEAR")
+# V8. WITHOUT THIS GROUP THE DIP'S SECONDS LAND IN THE TOTAL AND IN NO PRINTED ROW, so
+# the breakdown would silently stop summing to 100% and the new station would be the one
+# thing the budget could not see. That is the same shape as VERIFY reading as free.
+SOLUTION_TAGS = ("DIP", "REDIP")
 
 
 def time_budget(seed, cfg=CFG):
@@ -2461,6 +2724,7 @@ def time_budget(seed, cfg=CFG):
     total = sum(T.values())
     pick = lambda pres: {k: v for k, v in T.items() if any(k.startswith(p) for p in pres)}
     stroke, over, latch = pick(STROKE_TAGS), pick(OVERHEAD_TAGS), pick(LATCH_TAGS)
+    soln = pick(SOLUTION_TAGS)
     pts = [d for k, v in c.budget["dur"].items() if k.startswith("WIPE") for d in v]
     tmo = sum(v for k, v in c.budget["timeout"].items() if k.startswith("WIPE"))
     print(f"\nCLEAN CYCLE TIME BUDGET -- seed {seed}, step_frac {cfg.step_frac}, "
@@ -2469,7 +2733,8 @@ def time_budget(seed, cfg=CFG):
           f"raster {r['raster_planned']} planned, {r['raster_skipped']} skipped")
     for name, grp in (("STROKE (pad on surface)", stroke),
                       ("retract/rotate/approach", over),
-                      ("tool latch/unlatch", latch)):
+                      ("tool latch/unlatch", latch),
+                      ("SOLUTION (charge the pad)", soln)):
         t = sum(grp.values())
         print(f"    {name:<26} {t:8.2f} s  {t/total*100:5.1f}%")
     unit = "stroke runs" if cfg.stroke else "raster points"
@@ -2527,7 +2792,14 @@ def sweep(param, values, n, seed0, out, base=None):
                "track_p99_mm": float(max(r.get("stroke_track_p99_mm", 0.0) for r in rs)),
                "track_max_mm": float(max(r.get("stroke_inplane_err_mm", 0.0) for r in rs)),
                "flange_mm": float(max(r.get("stroke_flange_mm", 0.0) for r in rs)),
-               "runs": int(rs[0].get("stroke_runs", 0))}
+               "runs": int(rs[0].get("stroke_runs", 0)),
+               # solution station -- dry seconds are the failure this sweep is looking
+               # for, and they are invisible in coverage alone on a lucky seed
+               "dips": float(np.mean([r.get("dips", 0) for r in rs])),
+               "dip_s": float(np.mean([r.get("dip_s", 0.0) for r in rs])),
+               "contact_s": float(np.mean([r.get("contact_s", 0.0) for r in rs])),
+               "dry_s_worst": float(max(r.get("dry_contact_s", 0.0) for r in rs)),
+               "dry_s_total": float(sum(r.get("dry_contact_s", 0.0) for r in rs))}
         rows.append(row)
         print(f"  {param}={v:<6} cycle {total:7.2f}s  raster {row['raster']:4d}  "
               f"cov {row['cov_mean']*100:5.1f}% (worst {row['cov_worst']*100:5.1f}%)  "
@@ -2535,7 +2807,9 @@ def sweep(param, values, n, seed0, out, base=None):
               f"fmax {row['f_max']:5.2f}N  in-band {row['in_band_worst']*100:5.1f}%  "
               f"tilt {row['tilt_max']:4.1f}deg"
               + (f"  track {row['track_med_mm']:4.1f}/{row['track_p99_mm']:5.1f}/"
-                 f"{row['track_max_mm']:5.1f}mm" if cfg.stroke else ""))
+                 f"{row['track_max_mm']:5.1f}mm" if cfg.stroke else "")
+              + (f"  dips {row['dips']:.1f}  contact {row['contact_s']:5.1f}s  "
+                 f"DRY {row['dry_s_worst']:5.1f}s" if cfg.solution else ""))
     with open(out, "w") as f:
         json.dump({"param": param, "n": n, "seed0": seed0, "rows": rows}, f, indent=2)
     print(f"\nwrote {out}")
@@ -2577,6 +2851,17 @@ if __name__ == "__main__":
     ap.add_argument("--row-sweep", type=int, metavar="N", dest="row_sweep",
                     help="V7: sweep row_frac (the only coverage-critical spacing in "
                          "stroke mode) over N units each -- finds the 2.0 R cliff")
+    # --- V8 solution station (Stage 3)
+    ap.add_argument("--solution", action="store_true",
+                    help="V8: charge the pad from the solution tray before cleaning and "
+                         "re-dip when it runs low (DrinkPrime Stage 3)")
+    ap.add_argument("--rinse", action="store_true",
+                    help="V8: add Stage 3's 'wipe away any remaining solution' pass")
+    ap.add_argument("--dry", action="store_true", dest="dry_pass",
+                    help="V8: add Stage 3's 'dry thoroughly with a dry cloth' pass")
+    ap.add_argument("--charge-sweep", type=int, metavar="N", dest="charge_sweep",
+                    help="V8: sweep charge_contact_s over N units each -- finds the "
+                         "point where patches start being wiped by a DRY pad")
     a = ap.parse_args()
     import dataclasses as _dc
     _over = {}
@@ -2586,11 +2871,19 @@ if __name__ == "__main__":
         _over["targeted"] = True
     if a.feed is not None:
         _over["stroke_feed"] = a.feed
+    if a.solution:
+        _over["solution"] = True
+    if a.rinse:
+        _over["rinse_pass"] = True
+    if a.dry_pass:
+        _over["dry_pass"] = True
     CFGX = _dc.replace(CFG, **_over) if _over else CFG
     # PROTECT THE PUBLISHED BASELINE. `stats_v5_clean.json` is the recorded
     # full-coverage point-mode number the whole station is measured against; a stroke
     # or targeted run must never land in it.
     _tag = ("_stroke" if CFGX.stroke else "") + ("_targeted" if CFGX.targeted else "")
+    _tag += ("_solution" if CFGX.solution else "")
+    _tag += ("_rinse" if CFGX.rinse_pass else "") + ("_dry" if CFGX.dry_pass else "")
     # AND TAG ANY NON-DEFAULT PARAMETER. The mode tag alone is not enough: a run at a
     # different feed or row pitch is a DIFFERENT EXPERIMENT, and without this it lands in
     # the published baseline's filename and silently replaces it. Caught by an eval agent
@@ -2615,6 +2908,15 @@ if __name__ == "__main__":
         # 1.414 R. Measure where it actually falls before believing the geometry.
         sweep("row_frac", [1.20, 1.50, 1.70, 1.85, 2.00, 2.20], a.row_sweep, a.seed0,
               "sweep_row.json", base=_dc.replace(CFGX, stroke=True))
+    elif a.charge_sweep:
+        # V8: how long one pad charge must last. The ANCHOR is DrinkPrime's own
+        # consumable ratio -- Stage 2 lists "Colin liquid 5 Ltr (300 devices)" = 16.7 mL
+        # per device, and a wrung microfibre carries 20-30 mL, so their process implies
+        # roughly ONE CHARGE PER DEVICE. Measured pad-on-surface contact is ~81 s/unit,
+        # so the question is where below that patches start being wiped by a dry pad.
+        sweep("charge_contact_s", [40.0, 60.0, 80.0, 100.0, 120.0], a.charge_sweep,
+              a.seed0, "sweep_charge.json",
+              base=_dc.replace(CFGX, stroke=True, solution=True))
     elif a.budget is not None:
         time_budget(a.budget, CFGX)
     elif a.stride_sweep:
@@ -2641,10 +2943,29 @@ if __name__ == "__main__":
                   f"picked={rows[-1]['picked']}  fmax {rows[-1]['f_max']:.1f} N")
         st = report(rows)
         st["mode"] = ("stroke" if CFGX.stroke else "point") + \
-                     ("+targeted" if CFGX.targeted else "+full")
+                     ("+targeted" if CFGX.targeted else "+full") + \
+                     ("+solution" if CFGX.solution else "")
         st["stroke_feed"] = CFGX.stroke_feed if CFGX.stroke else None
         st["row_frac"] = CFGX.row_frac if CFGX.stroke else CFGX.step_frac
         st["seed0"] = a.seed0
+        # THE ARTIFACT MUST BE ABLE TO AUDIT ITSELF. The first solution run wrote a
+        # stats file reading `mode: stroke+full` with no trace that the pad had ever been
+        # charged -- indistinguishable from a dry run, in the very file the claim is made
+        # from. This repo has already retracted one metric for exactly this shape
+        # (`grade_correct` is now written to stats_v5_route.json for the same reason).
+        # `dry_s` is the load-bearing one: it is the seconds the pad spent pressing with
+        # nothing on it, and coverage cannot see them.
+        st["solution"] = bool(CFGX.solution)
+        if CFGX.solution:
+            st["charge_contact_s"] = CFGX.charge_contact_s
+            st["recharge_at"] = CFGX.recharge_at
+            st["dips_mean"] = float(np.mean([r.get("dips", 0) for r in rows]))
+            st["dip_s_mean"] = float(np.mean([r.get("dip_s", 0.0) for r in rows]))
+            st["contact_s_mean"] = float(np.mean([r.get("contact_s", 0.0) for r in rows]))
+            st["dry_contact_s_total"] = float(sum(r.get("dry_contact_s", 0.0)
+                                                  for r in rows))
+            st["dry_contact_s_worst"] = float(max(r.get("dry_contact_s", 0.0)
+                                                  for r in rows))
         with open(STATS, "w") as f:
             json.dump(st, f, indent=2)
         print(f"\nwrote {STATS}")

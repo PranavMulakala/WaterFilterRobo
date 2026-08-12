@@ -101,6 +101,10 @@ CAVEAT = {
     "MEMBRANE": "The ARM inserts the element, PLACES the cap (thread-start capture 4mm/4deg "
                 "is modelled) and HOLDS the driver -- the spindle spins only while the arm "
                 "holds station. Geometry PLACEHOLDER.",
+    "SOLUTION": "THE ARM CHARGES THE PAD from the tray -- DrinkPrime Stage 3 dips the "
+                "CLOTH, never the device. The LIQUID IS A RENDERED SLAB: no fluid sim, no "
+                "chemistry. What is real is the motion, the time, and that the charge RUNS "
+                "OUT and has to be fetched again.",
     "DIP": "THE ARM DOES NOT CARRY THIS -- the assembly is TELEPORTED into the bin. "
            "BUBBLES = MODELLED FROM TORQUE, NOT FLUID SIM. The camera must still see them.",
     "SCRAP": "NO MOTION DELIVERS THE UNIT ANYWHERE -- this is a SOFTWARE decision only. "
@@ -203,7 +207,7 @@ def _wrap(s, n):
 
 
 def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
-                physical=False):
+                physical=False, solution=False):
     import dataclasses as _dc
     import v5_clean as _CL
     # V7: stroke composes with targeted -- they are independent switches. The render
@@ -219,6 +223,17 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         # Measured consequence of the default: repositioning moves fling the pad at up
         # to 3.0 m/s. Contact motion is unaffected (the sweep runs at 93 mm/s median).
         _over["arm"] = _dc.replace(_CL.ARM, joint_rate=3.1416 * 0.002)
+    if solution:
+        CAVEAT["CLEAN"] = (
+            "The pad is CHARGED FROM THE TRAY, but the CHEMISTRY is still not simulated: "
+            "solution does not make soil easier to remove here, because removal is binary "
+            "on contact. What is modelled is that solution is CARRIED, SPENT and REFETCHED "
+            "-- and that a pad which runs dry keeps pressing and stops cleaning.")
+        # V8: charge the pad from the solution tray (DrinkPrime Stage 3). Set through
+        # the SAME CleanConfig the evaluation uses, for the same reason as everything
+        # else here -- the render path has twice filmed a stale system by building its
+        # own cell, and both times are recorded in CLAUDE.md.
+        _over["solution"] = True
     if stroke:
         # FULL COVERAGE, deliberately. Stroke does NOT imply targeted: the two are
         # substitutes (both remove the same per-point stall cost) and stacking them
@@ -247,7 +262,8 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
     route = RT.GRADE_ROUTE[grade]
     plan = DP.V5_ROUTES[route].steps
     rec.chips = (["TRIAGE", "SCRAP"] if route == "hard_non_rectifiable"
-                 else ["TRIAGE", "CLEAN", "VERIFY"] +
+                 else ["TRIAGE"] + (["SOLUTION"] if solution else []) +
+                      ["CLEAN", "VERIFY"] +
                       (["MEMBRANE", "DIP"] if route != "easy" else []))
     rec.info = {"SEED": seed, "TRUTH": truth, "GRADED": grade.upper(),
                 "ROUTE": route, "PLAN": " -> ".join(plan)}
@@ -266,9 +282,14 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
     else:
         # ---------------- CLEAN (the real V5-C cycle, frames plumbed through)
         rec.info.pop("INDEX", None)
+        # THE STATION IS CHOSEN FROM THE MOTION TAG, not assumed. Charging the pad is a
+        # different station from wiping with it -- different caveat, different chip -- and
+        # billing its seconds to CLEAN would understate the dip exactly the way VERIFY was
+        # understated when it teleported. One callback, two stations.
+        _stn = lambda tag: ("SOLUTION" if tag.startswith(("DIP", "REDIP")) else "CLEAN")
         frames = {"f": rec.frames, "max": 10_000, "every": every,
                   "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
-                                     rec.grab(c.d, "CLEAN", inset="verify_top"))}
+                                     rec.grab(c.d, _stn(tag), inset="verify_top"))}
         if v6:
             cr, v_bs, n_rc = _CL.run_with_backstop(c, seed, frames=frames)
             rec.info["COVERAGE"] = (f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
@@ -456,7 +477,7 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
 
 
 def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
-                  stroke=False, physical=False):
+                  stroke=False, physical=False, solution=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -468,7 +489,7 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
     clip = f"rt_{seed}.mp4"
     raw = f"rt_raw_{seed}.mp4"
     _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke,
-                                physical=physical)
+                                physical=physical, solution=solution)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -552,6 +573,9 @@ if __name__ == "__main__":
                     help="film the V6 targeted cell (fast clean + fast membrane)")
     ap.add_argument("--stroke", action="store_true",
                     help="film the V7 continuous-stroke cell (implies targeted)")
+    ap.add_argument("--solution", action="store_true",
+                    help="film the V8 solution station: the pad is charged from the "
+                         "tray before cleaning (DrinkPrime Stage 3)")
     ap.add_argument("--physical", action="store_true",
                     help="clamp the setpoint rate to the arm's PUBLISHED 180 deg/s "
                          "instead of the 10 rad/s default")
@@ -566,12 +590,12 @@ if __name__ == "__main__":
                  "../media/v6_cell_realtime.mp4" if a.v6 else
                  "../media/v5_cell_realtime.mp4")
         make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke,
-                      physical=a.physical)
+                      physical=a.physical, solution=a.solution)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
         render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke,
-                    physical=a.physical)
+                    physical=a.physical, solution=a.solution)
     else:
         ap.print_help()
         sys.exit(1)

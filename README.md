@@ -108,6 +108,7 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | **v5 TRIAGE — grade a whole unit** | **97.5%** on 120 fresh units; **missed-hard 0.0%**, false-easy 2.5% |
 | ~~V6 TARGETED CLEAN~~ | **WITHDRAWN 2026-08-10** — under the arm's published speed limits it left residue on **1 of 24** units and failed verification on one, against a published claim of 0/24. Its **2:33** cycle time is retracted. |
 | **V7 CLEAN — continuous stroke (shipping)** | **100%** coverage on 16 fresh units, **0 missed of 273**, peak **22.6 N**, sabotage **10/10**, **0** false verifies; clean **108.1 s**, full cycle **2:34.9** |
+| **V8 SOLUTION station — charged pad (opt-in)** | the arm **dips its pad in detergent solution** before cleaning and re-dips when the charge runs low, per DrinkPrime Stage 3. **100%** coverage on 16 fresh units, **0 missed of 252**, peak **22.6 N**, **1 dip/unit**, **0.00 s** of dry-pad contact; clean **114.4 s** (dip = 6.34 s/unit), full cycle **2:41.2** |
 | **v5 CLEAN — point raster (baseline)** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **23.9 N** vs a **45 N** validity ceiling; **180.9 s/unit** |
 | **v5 VERIFY — prove the check can fail** | honest **10/10** verified with zero residue, **0/10** false verifies, sabotage caught **10/10** |
 | **v5 MEMBRANE — Stage 10** | **arm really inserts the element 10/10** (aligned 0.30 mm median vs 1.5 mm clearance); cap stalls on torque, median **9.40 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass. **The cap is presented by a fixture, not fitted by the robot** |
@@ -129,8 +130,13 @@ result), **[RESULTS_V4.md](RESULTS_V4.md)** (the decision loop),
 
 > **Caveats that must travel with the numbers above.** The class names Easy / Medium /
 > Hard are DrinkPrime's; **the boundaries between them are ours**, because no document in
-> their set defines them — that is the top open question for the founder. v5 CLEAN is a
-> **dry pad wipe of the cabinet exterior**: no cream, detergent or solution is simulated.
+> their set defines them — that is the top open question for the founder. **v5 CLEAN is a
+> dry pad wipe of the cabinet exterior; v8 charges the pad from a solution tray — but only
+> the LOGISTICS of solution are modelled, never the chemistry.** There is no fluid
+> simulation anywhere in this repo, and solution does not make soil easier to remove here,
+> because removal is binary on contact. What v8 measures is what it costs to use solution
+> correctly: carrying it, spending it, and going back for more. Stage 3's follow-on rinse
+> and dry passes need two more pads on two more tool posts and are **not built**.
 > The membrane bowl, cap and O-ring are **placeholder geometry** pending CAD. The dip's
 > bubbles are **modelled from cap torque, not a fluid simulation** — what stays real is
 > that a camera has to actually see them to fail the part. And end-to-end is **capped by
@@ -167,6 +173,10 @@ For the **current (v5)** stations:
 ../venv/bin/python v5_membrane.py --sabotage 10  # Stage 10 + bubble -> 10/10, 0 false pass
 ../venv/bin/python v5_route.py    --eval 28      # full routed cycle -> 26/28 end-to-end
 ../venv/bin/python v5_video.py    --render 1607  # re-render the v5 demo cut (writes no stats)
+
+# V7 continuous stroke (the shipping clean mode) and V8 the solution station:
+../venv/bin/python v5_clean.py --eval 16 --stroke --seed0 1920             # 100%, 0/273, 22.6 N
+../venv/bin/python v5_clean.py --eval 16 --stroke --solution --seed0 2204  # + charged pad, 0 s dry
 ```
 
 > **Each command's default `--seed0` is the one that reproduces its published number**

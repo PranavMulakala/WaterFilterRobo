@@ -208,7 +208,18 @@ STAGES = (
              "cover and back panel appear to be DETACHED during refurb (stage 6 lists 5 "
              "back-panel assembling screws, stage 7 re-attaches the back panel), but "
              "7 Quality Check says 'securely attached'. The set contains NO teardown work "
-             "instruction, so this cannot be resolved from the documents. See CONTRADICTIONS.",
+             "instruction, so this cannot be resolved from the documents. See CONTRADICTIONS. "
+             "*** THIS IS THE ONLY 'SOLUTION' IN THE ENTIRE CORPUS. *** The word appears "
+             "three times in all 13 documents and every one is here, in this stage, applied "
+             "TO A CLOTH: 'Dip the cloth in the solution'. The only immersion of a PART "
+             "anywhere is stage 10's membrane assembly into a water bin, which is a "
+             "pressurised bubble LEAK TEST and explicitly not a wash. So the founder's "
+             "funding bar -- 'cleans the filter with a solution' -- is most plausibly THIS "
+             "stage, i.e. a solution-charged cloth wiping the device, NOT a tank the device "
+             "is lowered into. v5's CLEAN station is the same motion with a dry pad; v8 adds "
+             "the charge. NOTE ALSO that this stage needs THREE cloths in sequence -- wash, "
+             "then 'a clean, damp cloth' to remove the soap, then 'a dry cloth'. A one-pad "
+             "cell cannot perform it faithfully; that is a hardware gap, not a software one.",
     ),
     Stage(
         n=4, ref="0024DPCRO004", title="Device Assembly",
