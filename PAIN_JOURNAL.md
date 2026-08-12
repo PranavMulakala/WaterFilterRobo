@@ -1170,3 +1170,16 @@ what we now understand.
   (targeted+stroke hit 91.5 N, follow-err 0.14 hit 89.5 N). | ~30 min | A speed change is
   not a knob, it is a change to the contact regime — and the modes that break are the ones
   that were already relying on the approach being fast enough to trip a stall
+- 2026-08-11 | **A cliff we had documented, sworn by and tuned around had stopped existing,
+  and we would never have noticed.** The V7 feed rate was pinned at 0.10 m/s by a measured
+  coverage cliff at 0.15 (2 patches missed) with a diagnosed cause: in-plane tracking error
+  grew with feed. The 2026-08-10 following-error clamp -- adopted for an unrelated reason,
+  to obey the arm's datasheet -- made tracking FEED-INDEPENDENT. Re-swept on fresh
+  2100-2103: worst tracking error **15.2 mm at every feed from 0.05 to 0.30**, coverage
+  100% and 0 missed at every one. Feed doubled to 0.20, clean 146.6 -> **111.4 s**, whole
+  cycle 3:11.9 -> **2:36.7**. The same re-sweep found the ROW cliff had moved the other way
+  (1.7 R now loses a patch where it used to hold), so row pitch was left alone.
+  | ~50 min | **When you change the control layer, every sweep whose CONCLUSION depended on
+  the old dynamics is stale -- not just the tests that guard the change.** Two of ours were,
+  and they had moved in opposite directions. Cheap to re-run, and one of them was worth 35
+  seconds a unit

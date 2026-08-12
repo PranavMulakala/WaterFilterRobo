@@ -210,21 +210,36 @@ class CleanConfig:
     # quantity on purpose: it is what a process engineer specifies for a wipe and it
     # ports across arms, whereas `speed` above is a joint-space setpoint rate that
     # means nothing off this arm. Swept on 1900-1907; see V5_PLAN "V7 STROKE SWEEP".
-    # 0.10, NOT 0.15. THERE IS A COVERAGE CLIFF IN FEED RATE AND IT IS SHARP. Measured
-    # on fresh 1900-1903, full coverage, everything else held:
+    # 0.20. THE FEED CLIFF THAT FORCED 0.10 IS GONE, AND IT WENT FOR A REASON.
     #
-    #   0.05  224.3 s  100%   0 missed of 71
-    #   0.10  136.7 s  100%   0 missed          <- HERE
-    #   0.15  112.0 s  97.8%  2 missed          <- the cliff
-    #   0.20  102.0 s  97.8%  2 missed
-    #   0.30   94.9 s  96.7%  3 missed
+    # Pre-clamp (2026-08-09) there was a sharp coverage cliff between 0.10 and 0.15 m/s:
+    # 0.15 missed 2 patches, 0.30 missed 3. The cause was TRACKING -- the pad's in-plane
+    # departure from the commanded path grew with feed (worst 18 -> 21 mm), and a
+    # displaced band leaves a gap the geometry says should not exist.
     #
-    # The cause is tracking, not sampling: the pad's IN-PLANE departure from the
-    # commanded path grows with feed (median 3.2 -> 3.8 mm, worst 18 -> 21 mm), and a
-    # displaced band leaves a gap the raster's geometry says should not be there. This
-    # is the SAME lesson as step_frac, one level down -- the geometry is only a promise
-    # if the arm actually goes where the geometry says.
-    stroke_feed: float = 0.10
+    # Adopting the arm's published speed limits (2026-08-10) added a FOLLOWING-ERROR
+    # CLAMP, and that made tracking FEED-INDEPENDENT. Re-swept on fresh 2100-2103:
+    #
+    #   feed   cycle    coverage  missed   peak N   tracking med/p99/worst
+    #   0.05   235.5 s   100%     0/81     21.22    2.5 / 12.9 / 15.2 mm
+    #   0.10   146.6 s   100%     0/81     22.04    2.6 / 13.5 / 15.2 mm
+    #   0.15   121.6 s   100%     0/81     22.47    2.7 / 13.7 / 15.2 mm
+    #   0.20   111.4 s   100%     0/81     22.62    2.8 / 14.0 / 15.2 mm   <- HERE
+    #   0.30   104.1 s   100%     0/81     22.62    3.0 / 14.2 / 15.2 mm
+    #
+    # WORST-CASE TRACKING IS 15.2 mm AT EVERY FEED. That identity is the finding: the
+    # error is no longer set by how fast the pad sweeps, it is set by the clamp. So the
+    # mechanism that produced the old cliff no longer operates -- this is not "we tested
+    # faster and nothing broke", it is "the thing that used to break is gone".
+    #
+    # 0.20 rather than 0.30, for two reasons. (1) MARGIN: 0.30 is measured clean above it,
+    # so the shipped value has 1.5x headroom to the fastest verified setting, which is the
+    # same discipline that shipped step_frac 1.20 under a 1.414 cliff. (2) DWELL: our model
+    # removes soil on CONTACT, not on dwell, so the sim cannot see a rub getting too brief.
+    # At 0.20 a surface point spends 0.30 s under the 60 mm pad; at 0.30 it is 0.20 s.
+    # Real cream on real soil may care, and we cannot measure that here -- so we do not
+    # spend margin the model is blind to.
+    stroke_feed: float = 0.20
     # Trapezoidal ramp at each end of a run, m/s^2. Without it the first control step
     # of a stroke demands a step change in velocity, which the rate limiter turns into
     # a lag the pad drags through.
@@ -2368,7 +2383,7 @@ def time_budget(seed, cfg=CFG):
     if cfg.stroke:
         print(f"  swept path {r['stroke_len_m']:.2f} m in {r['stroke_runs']} runs at "
               f"{cfg.stroke_feed*1000:.0f} mm/s | worst path error "
-              f"{r['stroke_path_err_mm']:.1f} mm | device shift "
+              f"{r['stroke_inplane_err_mm']:.1f} mm | device shift "
               f"{r['device_shift_mm']:.2f} mm")
     print(f"  per face: " + "  ".join(f"{k.split()[-1]}={v:.1f}s"
                                       for k, v in sorted(stroke.items())))

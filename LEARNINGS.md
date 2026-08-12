@@ -880,3 +880,27 @@ had to be withdrawn, along with a cycle time we had already quoted. **And nothin
 test suite could have caught any of this** — every number we measure is about the moment of
 contact, so the arm flying between jobs was invisible to all of it. A person watched the
 video and said "it's flailing". That was the whole detection mechanism.
+
+## 2026-08-11 — The honest fix paid for itself
+
+**What we built:** nothing new — we just re-measured. Making the arm obey its real speed
+limit had let us double the *cleaning* speed. Full-coverage cleaning 146.6 → 111.4 seconds,
+a whole unit now 2:36.7 instead of 3:11.9, with coverage still perfect (0 spots missed of
+273 on 16 fresh units) and the hardest press still 22.6 N.
+
+**The concept: fixing one thing can move a limit somewhere else, and you only find out by
+re-measuring.** We had a hard speed limit on the wiping: above 100 mm/s the pad started
+missing spots. The reason was that the faster it swept, the further it drifted from the
+line it was told to follow. When we later forced the arm to obey its datasheet, we added a
+rule that stops the target ever getting far ahead of the real arm — and *that* is what the
+drift was made of. So the drift stopped growing with speed: it is now the same 15 mm at
+100 mm/s and at 300. The old limit was not a property of wiping, it was a property of a
+control bug we had since fixed, and it sat there unquestioned for two days.
+
+**Why it matters:** the honest change looked like a pure cost when we made it — it slowed
+the cycle and forced us to retract a number we had already quoted. Re-measuring afterwards
+turned it into the opposite. **A stale measurement is a decision you are still paying for.**
+The discipline that matters: when you change something fundamental, go back and re-run the
+experiments whose *conclusions* depended on the old behaviour, not just the tests that
+guard the new one. And the same re-measure cut both ways — the row spacing got *tighter*,
+so we left it alone.

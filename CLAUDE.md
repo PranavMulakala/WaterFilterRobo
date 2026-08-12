@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **23.9 N** inside the **45 N** ceiling (was 32.9 before the 2026-08-10 arm-speed clamp). **V7 continuous stroke: 180.9 → 146.6 s/unit** — see below |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **23.9 N** inside the **45 N** ceiling. **V7 continuous stroke: 180.9 → 111.4 s/unit (1.62×)**, full MEDIUM cycle **2:36.7** — see below |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
 | V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
@@ -38,11 +38,29 @@ falsification — a damaged O-ring at full torque would not be caught.
 
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
-**V7-STROKE (2026-08-09, RE-BASELINED 2026-08-10 under the arm-speed clamp) —
-CONTINUOUS-STROKE CLEANING. Full-coverage clean 180.9 → 146.6 s (1.23× on the station,
-1.18× on the full MEDIUM cycle: 3:46.2 → 3:11.9) at 100% coverage, 0 missed of 256 on 16
-fresh units (1920–1935), peak force 22.04 N — BELOW the point raster's own 23.93 N — 100%
-in band, sabotage 10/10 caught, 0/10 false verifies (1940–1949).** *All numbers in this
+**V7-STROKE (2026-08-09; re-baselined 2026-08-10; FEED RAISED 2026-08-11) —
+CONTINUOUS-STROKE CLEANING. Full-coverage clean 180.9 → 111.4 s (1.62× on the station,
+1.44× on the full MEDIUM cycle: 3:46.2 → 2:36.7) at 100% coverage, **0 missed of 273** on 16
+fresh units (2120–2135), peak force 22.6 N — BELOW the point raster's own 23.93 N — 100%
+in band, sabotage 10/10 caught, 0/10 false verifies (2140–2149).**
+
+**THE SPEED CLAMP PAID FOR ITSELF (2026-08-11).** Adopting the arm's published limits
+looked like a pure cost — it slowed the cycle and forced the 2:33 retraction. It was not.
+The clamp's following-error limit made pad tracking **FEED-INDEPENDENT**, and tracking was
+the *mechanism* behind the old feed cliff. Re-swept on fresh 2100–2103, worst in-plane
+tracking error is **15.2 mm at every feed from 0.05 to 0.30 m/s**, and coverage is 100%
+with 0 missed at every one — where pre-clamp, 0.15 lost 2 patches and 0.30 lost 3. So the
+feed doubled 0.10 → **0.20** and the clean station went 146.6 → **111.4 s**.
+
+**That identity — the same 15.2 mm at every feed — is the finding.** It is not "we tried
+faster and nothing broke"; it is "the thing that used to break no longer operates".
+0.20 rather than the fastest tested 0.30, for margin (1.5× to the fastest verified value)
+and because our model removes soil on CONTACT, not dwell: at 0.20 a surface point spends
+0.30 s under the pad, at 0.30 only 0.20 s, and the sim is blind to a rub being too brief.
+
+**Row pitch went the OTHER way and was NOT touched.** Post-clamp the row cliff moved *in*:
+1.5 R holds 100%, **1.7 R loses a patch** (pre-clamp 1.7 held). `row_frac` stays at 1.20 R
+— 1.42× margin. A fix in one place moved a cliff in another, in both directions. *All numbers in this
 block below the sweep table are PRE-CLAMP and are kept because the reasoning they support
 is unchanged; the shipping figures are the ones in this paragraph and in the re-baseline
 table further down.* The arm no longer stops at all 323 raster points: it
@@ -319,14 +337,14 @@ so allocate BY NAMED PHASE, never by a floating start alone — a large range st
 1728 can still collide with a reserved block. Reserved: 1000–1309 V5-D and Gate 1;
 **1400–1409 V5-E paired diagnostic (development seeds, PERMANENTLY — never a
 generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
-**1800–1809 the V5-E pre-speed headline**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane (superseded)**; **1880–1889 V6-ARM development (burned)**; **1890–1899 V6-ARM membrane headline (arm places cap + holds driver)**;
+**1800–1809 the V5-E pre-speed headline**; **2100–2103 V7.1 post-clamp feed sweep**; **2110–2113 V7.1 row sweep**; **2120–2135 V7.1 held-out validation (the published 16-unit number)**; **2140–2149 V7.1 sabotage**; **1810–1817 V6 stride sweep**; **1820–1827 V6 feed sweep**; **1830–1837 V6 stride validation**; **1840–1847 + 1860–1875 V6-speed targeted-clean fresh validation**; **1850–1859 V6-speed membrane (superseded)**; **1880–1889 V6-ARM development (burned)**; **1890–1899 V6-ARM membrane headline (arm places cap + holds driver)**;
 **1900–1907 V7 stroke FEED sweep** (1900–1903 used); **1910–1917 V7 ROW-PITCH sweep**
 (1910–1913 used, and re-used for the PAIRED point-vs-stroke check against the same units);
 **1920–1935 V7 stroke held-out validation — the published 16-unit number**;
 **1940–1949 V7 stroke sabotage battery**; **1950 BURNED** (a render probe printed its
 truth to the transcript — one command, one seed, gone); **1960–1999 VLM-vs-HSV paired
 triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**.
-Next free block: **2100+**.
+Next free block: **2200+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of
