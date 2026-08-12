@@ -1599,10 +1599,21 @@ class Cell:
             # and every face after it was "wiped" with an empty gripper, while the force
             # log kept reporting healthy contact. A real cell sequences it the same way,
             # for the same reason.
-            pl = self.plan_pose(safe, tool_mat_face(deg), self.q_des)
-            if pl is not None:
-                self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
-                                  tol=0.006, t_max=8.0, tag="SAFE", frames=frames)
+            # DON'T RETREAT AND DON'T WAIT FOR A ROTATION YOU DID NOT COMMAND. On the
+            # FIRST face the device is already at the angle we want (reset leaves the
+            # indexer at 0), so the SAFE retreat and the settle dwell below were both
+            # pure cost -- 2.5 s of the arm travelling away from the device and then
+            # waiting for a turntable that never moved. The retreat-then-index ordering
+            # is still enforced for every face that ACTUALLY rotates; that sequencing
+            # exists because rotating while the arm is over the device swept the tool
+            # through the cabinet, and that reason does not apply when nothing rotates.
+            _tt_now = float(np.rad2deg(self.d.qpos[self.tt_q]))
+            _rotating = abs(_tt_now - deg) > 0.5
+            if _rotating:
+                pl = self.plan_pose(safe, tool_mat_face(deg), self.q_des)
+                if pl is not None:
+                    self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
+                                      tol=0.006, t_max=8.0, tag="SAFE", frames=frames)
             # The fixed 1.2 s indexer dwell STAYS. An early-exit on measured angle
             # (|tt - deg| < 0.005 rad, min 0.15 s) saved ~4 s per unit and BROKE
             # COVERAGE: angle-arrived is not settled -- the device still carries a small
@@ -1610,8 +1621,9 @@ class Cell:
             # raster that cleans it when the dwell is respected. 4 s is not worth a
             # missed patch; if this is ever revisited it needs an angular-VELOCITY
             # settle criterion, not an angle threshold.
-            self.dwell(1.2, tool_mat_face(deg), safe, cfg.grip_open,
-                       index_deg=deg, frames=frames, tag=f"INDEX {deg:.0f}")
+            if _rotating:
+                self.dwell(1.2, tool_mat_face(deg), safe, cfg.grip_open,
+                           index_deg=deg, frames=frames, tag=f"INDEX {deg:.0f}")
             prev_deg = deg
             fx, cy, hw, z0, z1 = self.front_face_plane(deg)
             # GEOMETRIC soil selection: a patch is on the PRESENTED face iff, after this

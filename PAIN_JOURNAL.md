@@ -1183,3 +1183,24 @@ what we now understand.
   the old dynamics is stale -- not just the tests that guard the change.** Two of ours were,
   and they had moved in opposite directions. Cheap to re-run, and one of them was worth 35
   seconds a unit
+- 2026-08-11 | **The stale-sweep lesson repeated itself in the membrane station one day
+  after we learned it in the cleaning station.** V6 swept `carry_speed` and chose 0.10; that
+  sweep predates the 2026-08-10 arm-speed clamp, which changed the tracking the choice
+  depended on. Re-swept on 6 seeds with the accuracy gates: 0.20 is **7.3 s faster** with
+  insert 6/6, cap placed 6/6, stall 6/6 -- and the MARGINS IMPROVED (worst placement error
+  1.74 -> 1.90 mm inside a 4 mm capture; worst pre-insert alignment 1.74 -> 0.97 mm).
+  Also found `drive_rate` is a DEAD LEVER: identical time at 12/16/20/24 rad/s, because the
+  spin is limited by the actuator's own rate, not the commanded one -- a knob V6 had swept
+  and set to 12 in the belief it mattered. | ~35 min | **When a control-layer change
+  invalidates one sweep, it invalidates ALL of them.** We re-ran cleaning's and stopped.
+  Write down which sweeps depend on the dynamics, and re-run the whole list
+- 2026-08-11 | **A 1.2 s wait for a rotation that was never commanded, on every unit since
+  V5-C.** The face loop retreats to SAFE and then dwells for the indexer to settle -- correct
+  for the three faces that rotate, meaningless for the first, which is already presented.
+  Nobody had asked whether the precondition held. Guarding both on `abs(tt_now - deg) > 0.5`
+  cost one line and 3.3 s/unit, and DROPPED peak tool speed 1063 -> 1007 mm/s because the
+  redundant SAFE move was one of the fastest repositioning moves in the cycle. Same shape in
+  v5_membrane: 16 `_hold` calls each floored at 0.4 s before their velocity test was
+  believed -- 6.4 s of floor inside a check that was already measuring velocity directly.
+  | ~20 min | Ask of every wait: what is it waiting FOR, and can that thing even happen from
+  here? A guard whose precondition is absent is not caution, it is cost

@@ -634,6 +634,45 @@
         <!-- flats for the spanner/driver head, and so the cap's rotation is VISIBLE -->
         <geom name="mem_cap_flat" type="box" size="0.0313 0.006 0.007"
               pos="0 0 0.024" material="stemmat" mass="0.02"/>
+        <!-- VISIBLE THREAD. The cap has ALWAYS been a screw mechanically -- cap_rot and
+             cap_z are tied by the `capthread` equality, which is the one line that makes
+             this a threaded fastener rather than a lid that happens to spin. But it
+             rendered as a plain cylinder, so a viewer could not SEE a screw going in.
+             These ridges are the thread made visible.
+             STRICTLY VISUAL: contype/conaffinity 0 and mass 0, so they cannot touch
+             anything and cannot shift the cap's inertia. The tightening physics -- turns
+             to stall, torque, seal preload -- is byte-identical with them present, and
+             that is asserted by re-running the membrane eval on the same seeds. -->
+        <geom name="mem_cap_thread0" type="box" size="0.0035 0.0016 0.0011" pos="0.03383 0.00000 0.00200" euler="0 0 90.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread1" type="box" size="0.0035 0.0016 0.0011" pos="0.02930 0.01691 0.00217" euler="0 0 120.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread2" type="box" size="0.0035 0.0016 0.0011" pos="0.01692 0.02930 0.00233" euler="0 0 150.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread3" type="box" size="0.0035 0.0016 0.0011" pos="0.00000 0.03383 0.00250" euler="0 0 180.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread4" type="box" size="0.0035 0.0016 0.0011" pos="-0.01691 0.02930 0.00267" euler="0 0 210.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread5" type="box" size="0.0035 0.0016 0.0011" pos="-0.02930 0.01691 0.00283" euler="0 0 240.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread6" type="box" size="0.0035 0.0016 0.0011" pos="-0.03383 0.00000 0.00300" euler="0 0 270.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread7" type="box" size="0.0035 0.0016 0.0011" pos="-0.02930 -0.01691 0.00317" euler="0 0 300.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread8" type="box" size="0.0035 0.0016 0.0011" pos="-0.01692 -0.02930 0.00333" euler="0 0 330.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread9" type="box" size="0.0035 0.0016 0.0011" pos="-0.00000 -0.03383 0.00350" euler="0 0 360.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread10" type="box" size="0.0035 0.0016 0.0011" pos="0.01692 -0.02930 0.00367" euler="0 0 390.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread11" type="box" size="0.0035 0.0016 0.0011" pos="0.02930 -0.01692 0.00383" euler="0 0 420.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread12" type="box" size="0.0035 0.0016 0.0011" pos="0.03383 -0.00000 0.00400" euler="0 0 450.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread13" type="box" size="0.0035 0.0016 0.0011" pos="0.02930 0.01691 0.00417" euler="0 0 480.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread14" type="box" size="0.0035 0.0016 0.0011" pos="0.01692 0.02930 0.00433" euler="0 0 510.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread15" type="box" size="0.0035 0.0016 0.0011" pos="0.00000 0.03383 0.00450" euler="0 0 540.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread16" type="box" size="0.0035 0.0016 0.0011" pos="-0.01691 0.02930 0.00467" euler="0 0 570.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread17" type="box" size="0.0035 0.0016 0.0011" pos="-0.02930 0.01691 0.00483" euler="0 0 600.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread18" type="box" size="0.0035 0.0016 0.0011" pos="-0.03383 0.00000 0.00500" euler="0 0 630.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread19" type="box" size="0.0035 0.0016 0.0011" pos="-0.02930 -0.01691 0.00517" euler="0 0 660.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread20" type="box" size="0.0035 0.0016 0.0011" pos="-0.01691 -0.02930 0.00533" euler="0 0 690.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread21" type="box" size="0.0035 0.0016 0.0011" pos="-0.00000 -0.03383 0.00550" euler="0 0 720.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread22" type="box" size="0.0035 0.0016 0.0011" pos="0.01691 -0.02930 0.00567" euler="0 0 750.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread23" type="box" size="0.0035 0.0016 0.0011" pos="0.02930 -0.01692 0.00583" euler="0 0 780.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread24" type="box" size="0.0035 0.0016 0.0011" pos="0.03383 -0.00000 0.00600" euler="0 0 810.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread25" type="box" size="0.0035 0.0016 0.0011" pos="0.02930 0.01692 0.00617" euler="0 0 840.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread26" type="box" size="0.0035 0.0016 0.0011" pos="0.01691 0.02930 0.00633" euler="0 0 870.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread27" type="box" size="0.0035 0.0016 0.0011" pos="0.00000 0.03383 0.00650" euler="0 0 900.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread28" type="box" size="0.0035 0.0016 0.0011" pos="-0.01691 0.02930 0.00667" euler="0 0 930.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
+        <geom name="mem_cap_thread29" type="box" size="0.0035 0.0016 0.0011" pos="-0.02930 0.01691 0.00683" euler="0 0 960.00" material="stemmat" contype="0" conaffinity="0" mass="0"/>
         <site name="cap_top" pos="0 0 0.031" size="0.004" rgba="0 0 0 0"/>
       </body>
     </body>

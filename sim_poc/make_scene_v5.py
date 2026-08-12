@@ -524,6 +524,22 @@ def build(seed=SEED, cab_x=CAB_X):
 
     # ------------------------------------------------------------- tool post + pad
     tx, ty = TOOLPOST_XY
+    # VISIBLE THREAD on the cap: a helix of small visual-only ridges. 2.5 turns at
+    # 12 segments per turn reads clearly as a screw at video scale without flooding the
+    # renderer. contype/conaffinity 0 and mass 0 -> cannot collide, cannot change inertia.
+    _TH = []
+    _n_seg, _turns = 12, 2.5
+    for _k in range(int(_n_seg * _turns)):
+        _a = 2 * np.pi * _k / _n_seg
+        _z = 0.002 + MEM_THREAD_PITCH * _k / _n_seg
+        _TH.append(
+            f'        <geom name="mem_cap_thread{_k}" type="box" '
+            f'size="0.0035 0.0016 0.0011" '
+            f'pos="{MEM_CAP_R * 0.995 * np.cos(_a):.5f} '
+            f'{MEM_CAP_R * 0.995 * np.sin(_a):.5f} {_z:.5f}" '
+            f'euler="0 0 {np.degrees(_a) + 90:.2f}" '
+            f'material="stemmat" contype="0" conaffinity="0" mass="0"/>')
+    THREAD = "\n".join(_TH)
     add(f'''
     <!-- ===================== WIPING TOOL + TOOL POST =====================
          The pad is a free body that the arm PICKS UP by a cylindrical stem. The stem is
@@ -691,6 +707,16 @@ def build(seed=SEED, cab_x=CAB_X):
         <!-- flats for the spanner/driver head, and so the cap's rotation is VISIBLE -->
         <geom name="mem_cap_flat" type="box" size="{MEM_CAP_R*0.92:.4f} 0.006 0.007"
               pos="0 0 0.024" material="stemmat" mass="0.02"/>
+        <!-- VISIBLE THREAD. The cap has ALWAYS been a screw mechanically -- cap_rot and
+             cap_z are tied by the `capthread` equality, which is the one line that makes
+             this a threaded fastener rather than a lid that happens to spin. But it
+             rendered as a plain cylinder, so a viewer could not SEE a screw going in.
+             These ridges are the thread made visible.
+             STRICTLY VISUAL: contype/conaffinity 0 and mass 0, so they cannot touch
+             anything and cannot shift the cap's inertia. The tightening physics -- turns
+             to stall, torque, seal preload -- is byte-identical with them present, and
+             that is asserted by re-running the membrane eval on the same seeds. -->
+{THREAD}
         <site name="cap_top" pos="0 0 0.031" size="0.004" rgba="0 0 0 0"/>
       </body>
     </body>

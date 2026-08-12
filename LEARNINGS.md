@@ -904,3 +904,25 @@ The discipline that matters: when you change something fundamental, go back and 
 experiments whose *conclusions* depended on the old behaviour, not just the tests that
 guard the new one. And the same re-measure cut both ways — the row spacing got *tighter*,
 so we left it alone.
+
+## 2026-08-11 — Waiting for something that never happened
+
+**What we built:** three cuts to the cycle — 2:36.7 → **2:27.3** — and the cap now looks
+like the screw it always was.
+
+**The concept: the cheapest time to find is time spent waiting for a condition that cannot
+occur.** The arm's first job is the front face. The turntable already presents the front
+face. But the code retreated to a safe position and then waited 1.2 seconds for the
+turntable to settle — every unit, from the first version. The wait was correct *in general*
+(rotating the device while the arm hovers over it once swept the tool through the cabinet)
+and meaningless *in this instance*. Making it conditional on the turntable actually being
+asked to move cost one line. The same shape appeared in the membrane station: sixteen
+"wait for the part to stop wobbling" checks, each of which refused to believe the part
+could have settled in under 0.4 seconds — 6.4 seconds of floor per unit, in a check that
+was already measuring the wobble directly.
+
+**Why it matters:** neither of these was a trade-off. No accuracy was spent — coverage,
+force, insertion and the sabotage tests are all unchanged, and the peak tool speed actually
+*dropped*, because one of the moves we deleted was among the fastest in the cycle. **A
+guard that fires when its precondition is absent is not caution, it is cost.** Worth asking
+of every wait in a machine: what am I waiting *for*, and can it even happen right now?
