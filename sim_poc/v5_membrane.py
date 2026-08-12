@@ -191,9 +191,20 @@ class MemCell(CL.Cell):
         self.rend_m = None
 
     # ------------------------------------------------------------------ state
-    def reset_mem(self, seed):
+    def reset_mem(self, seed, keep_cell=False):
         """Fresh unit. The seed varies how the element is PRESENTED, which is the real
-        in-cell uncertainty -- not the torque, which is the thing being measured."""
+        in-cell uncertainty -- not the torque, which is the thing being measured.
+
+        keep_cell=True initialises ONLY the membrane parts and leaves the arm, the
+        gripper, the indexer, the pad tool and the simulated clock exactly where the
+        previous station left them. Without it this call is a full keyframe reset, which
+        mid-cycle means the arm SNAPS back to home and the unit resets -- a visible CUT in
+        the demo right after cleaning finishes, and a discontinuity in a cycle that is
+        supposed to be one continuous piece of work. The standalone membrane eval still
+        uses the default (a genuinely fresh unit), so its numbers are unaffected.
+        """
+        if keep_cell:
+            _q, _v, _t = self.d.qpos.copy(), self.d.qvel.copy(), float(self.d.time)
         mujoco.mj_resetDataKeyframe(self.m, self.d, self.m.key("v5home").id)
         rng = np.random.default_rng(seed)
         # element placement jitter on its nest
@@ -233,6 +244,17 @@ class MemCell(CL.Cell):
         for g in self.bubbles:
             self.m.geom_rgba[g][3] = 0.0
         self._rot0 = float(self.d.qpos[self.cap_rot_q])
+        if keep_cell:
+            # Put the CELL back exactly as it was and keep only the membrane joints the
+            # lines above just initialised. Restoring by explicit slice rather than by
+            # "everything except" so that adding a joint to the scene fails loudly here
+            # instead of silently carrying stale state into the membrane cycle.
+            _mem = self.d.qpos.copy()
+            self.d.qpos[:], self.d.qvel[:] = _q, _v
+            for adr, n in ((self.bowl_q, 7), (self.cap_rot_q, 1), (self.cap_z_q, 1),
+                           (self.elem_q, 7), (self.blank_q, 7)):
+                self.d.qpos[adr:adr + n] = _mem[adr:adr + n]
+            self.d.time = _t
         mujoco.mj_forward(self.m, self.d)
         self.q_des = self.d.qpos[self.qadr].copy()
         self.q_warm = None
