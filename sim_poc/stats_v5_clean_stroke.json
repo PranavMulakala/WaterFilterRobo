@@ -28,5 +28,6 @@
   "mode": "stroke+full",
   "stroke_feed": 0.2,
   "row_frac": 1.2,
-  "seed0": 2120
+  "seed0": 2120,
+  "solution": false
 }

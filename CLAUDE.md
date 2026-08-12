@@ -151,7 +151,22 @@ which has been shown safe. Recorded rather than taken.
 **V8-SOLUTION (2026-08-12) — THE PAD IS CHARGED FROM A TRAY, AND THE CORPUS SETTLED THE
 DESIGN.** `CleanConfig.solution` (**DEFAULT OFF** — the dry wipe is the byte-locked
 published baseline). Clean station 108.1 → **114.4 s** — the dip is a MEASURED **6.34 s/unit**,
-one dip, no re-dip — so the full MEDIUM cycle is 2:34.9 → **2:41.2**. Held out on 16 fresh units (**2204–2219**): coverage **100%**,
+one dip, no re-dip.
+
+**THE CYCLE FIGURE IS FROM A PAIRED RENDER, AND IT SUPERSEDES 2:34.9.** Same seed (1704),
+same everything but the flag: **2:36.1 without the dip, 2:42.6 with it** — a delta of
+**+6.5 s**, of which 6.3 s is the SOLUTION station and 0.2 s is membrane noise.
+`media/v8_solution_realtime.mp4`, true 1×, split CLEAN 108.1 / MEMBRANE 38.2 / VERIFY 10.0 /
+SOLUTION 6.3.
+
+**SUPERSEDED, and honestly: the dry cycle on seed 1704 measures 2:36.1, not the published
+2:34.9.** The 1.2 s sits entirely in the MEMBRANE phase (36.7 → 38.0 s). What is ruled OUT
+by measurement: the clean station (`stats_v5_clean_stroke.json` byte-identical at its own
+seeds 2120–2135, and CLEAN is 108.1 s in both renders) and membrane accuracy
+(`stats_v5_membrane.json` byte-identical, 10/10 across the board). The only scene change is
+the tray — a new collidable body the pose planner must now avoid — which is the plausible
+cause, **but that attribution is NOT isolated and is not claimed as measured.** Quote
+2:36.1 / 2:42.6. Held out on 16 fresh units (**2204–2219**): coverage **100%**,
 **0 missed of 252**, peak **22.62 N**, in-band 99.96%, **1 dip/unit**, **0.00 s of dry-pad
 contact**. Peak force, tracking, tilt, infeasible count and run count are **byte-identical
 to the dry stroke baseline** — the dip is a pure insertion in the time axis.

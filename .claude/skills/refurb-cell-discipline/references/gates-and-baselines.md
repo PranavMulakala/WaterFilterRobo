@@ -30,7 +30,8 @@ overwrites the baseline with a figure that is not the published one.
 | `sim_poc4.py --eval 60 --seed0 200` | `stats_v4.json` | 86.7% end-to-end, **0.0% false-clean**, routing 100% |
 | `v5_triage.py --eval 120` | `stats_v5_triage.json` | 97.5%, missed-hard 0.0%, false-easy 2.5% |
 | `v5_clean.py --eval 8` | `stats_v5_clean.json` | 100% coverage, 0 missed of 129, peak 23.9 N |
-| `v5_clean.py --eval 16 --stroke --seed0 1920` | `stats_v5_clean_stroke.json` | 100%, 0 missed of 273, peak 22.6 N |
+| `v5_clean.py --eval 16 --stroke --seed0 2120` | `stats_v5_clean_stroke.json` | 100%, 0 missed of **273**, peak 22.6 N |
+| `v5_clean.py --eval 16 --stroke --solution --seed0 2204` | `stats_v5_clean_stroke_solution.json` | 100%, 0 missed of 252, **0.00 s dry-pad contact**, 1 dip/unit |
 | `v5_clean.py --sabotage 10 --seed0 2140 --stroke` | `stats_v5_verify_stroke.json` | 10/10 caught, **0/10 false verifies** |
 | `v5_membrane.py --sabotage 10 --seed0 1890` | `stats_v5_membrane.json` | 10/10 inserted, 10/10 stalled, 10/10 leak pass, **0 false pass** |
 | `v5_route.py --eval 28 --seed0 1700` | `stats_v5_route.json` | 28/28 compliance · 26/28 right-route · **22/28 fully backed** ← quote this one |
@@ -62,3 +63,17 @@ versions — the same code and seeds scored 84% on one engine version and 88% on
 one seed flipping outcome at zero code change. **A success rate quoted without an engine
 version is not a reproducible claim.** If you bump anything in `requirements.txt`, re-run
 everything and expect numbers to move.
+
+## The seed0 in the command IS part of the baseline
+
+The row above said `--seed0 1920` until 2026-08-12, and it was wrong: 1920–1935 is the
+**pre-clamp V7** validation (256 patches), while the committed file is the **post-clamp
+V7.1** run at 2120–2135 (273 patches). Running the stale command overwrote the published
+baseline with a different experiment — and it was nearly invisible, because the cleaning
+trajectory is seed-independent, so **coverage, missed, peak force and in-band all matched to
+every decimal.** The only fields that moved were `soil` and `seed0`.
+
+Two things follow. **Diff the stats file, don't eyeball the printout** — the printout looked
+perfect. And when a phase supersedes an earlier one, **update every command that names the
+old seed block in the same commit**, because a stale `--seed0` in a reference doc is a
+loaded gun pointed at a protected file.

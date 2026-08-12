@@ -17,8 +17,8 @@ own evidence.
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10. **Costs 10.0 s — the arm DRIVES clear and the indexer ROTATES each face past the camera. It used to teleport both, which is why it was recorded as free.** |
 | **V6-ARM membrane** (36.7 s, V7.3) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
-| **V8 SOLUTION station** (opt-in, `--solution`) | the arm CHARGES THE PAD from a tray before cleaning and re-dips when low. **100% coverage, 0 missed of 252, peak 22.62 N, 1 dip/unit, 0.00 s dry-pad contact** on 16 fresh units (2204–2219). Clean 108.1 → **114.4 s** (dip 6.34 s/unit). Force/tracking/tilt **byte-identical** to the dry baseline |
-| **full MEDIUM cycle** | **2:34.9** (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
+| **V8 SOLUTION station** (opt-in, `--solution`) | the arm CHARGES THE PAD from a tray before cleaning and re-dips when low. **100% coverage, 0 missed of 252, peak 22.62 N, 1 dip/unit, 0.00 s dry-pad contact** on 16 fresh units (2204–2219). Clean 108.1 → **114.4 s** (dip 6.34 s/unit). Force/tracking/tilt **byte-identical** to the dry baseline. **Paired render, seed 1704: 2:36.1 without the dip → 2:42.6 with it** |
+| **full MEDIUM cycle** | **2:36.1** dry / **2:42.6** with the solution dip (paired, seed 1704; `media/v8_solution_realtime.mp4`). *Supersedes 2:34.9 — see the note under Done 2026-08-12 (evening).* (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
 
 ## The honesty labels that must travel with any demo
 
@@ -94,7 +94,16 @@ denominator. He has also **not watched the v6 video**.
   charge runs low. `--solution`, **default OFF** so every published dry number stays
   byte-locked. Held out on 16 fresh units (2204–2219): **100% coverage, 0 missed of 252,
   peak 22.62 N, 1 dip/unit, 0.00 s of dry-pad contact.** Clean station 108.1 → **114.4 s** (the dip measures **6.34 s/unit**),
-  so the full cycle is **2:41.2**.
+  so the full cycle is **2:42.6** (paired against **2:36.1** dry on the same seed).
+
+- **A 1.2 s figure was SUPERSEDED and it is not fully explained.** The dry cycle on seed
+  1704 now measures **2:36.1**, where V7.3 published **2:34.9**. The whole difference is in
+  the MEMBRANE phase (36.7 → 38.0 s). Ruled out by measurement: the clean station
+  (`stats_v5_clean_stroke.json` byte-identical, CLEAN 108.1 s in both renders) and membrane
+  accuracy (`stats_v5_membrane.json` byte-identical, 10/10 across the board). The only scene
+  change is the solution tray — a new collidable body the pose planner must avoid — which is
+  the plausible cause, **but the attribution was not isolated and is not claimed as
+  measured.** Recorded rather than absorbed.
 - **The corpus redirected the design and that is the headline.** The ask was a v4-style bath;
   Stage 3 says the **cloth** is dipped. A tank would have been our invention in their
   vocabulary. Recorded in `dp_process.py`'s Stage 3 note.
