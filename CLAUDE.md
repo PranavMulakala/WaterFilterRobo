@@ -148,6 +148,83 @@ combination (feed 0.30 + row 1.50) is clean 90.7 s + membrane 39.1 = **2:09.8**,
 required since `step_frac`. 2:00 needs feed above 0.30 or row pitch at 1.7, neither of
 which has been shown safe. Recorded rather than taken.
 
+**V8-SOLUTION (2026-08-12) — THE PAD IS CHARGED FROM A TRAY, AND THE CORPUS SETTLED THE
+DESIGN.** `CleanConfig.solution` (**DEFAULT OFF** — the dry wipe is the byte-locked
+published baseline). Clean station 108.1 → **114.4 s** — the dip is a MEASURED **6.34 s/unit**,
+one dip, no re-dip — so the full MEDIUM cycle is 2:34.9 → **2:41.2**. Held out on 16 fresh units (**2204–2219**): coverage **100%**,
+**0 missed of 252**, peak **22.62 N**, in-band 99.96%, **1 dip/unit**, **0.00 s of dry-pad
+contact**. Peak force, tracking, tilt, infeasible count and run count are **byte-identical
+to the dry stroke baseline** — the dip is a pure insertion in the time axis.
+
+**THE ASK WAS FOR A v4-STYLE BATH AND THE DOCUMENTS SAY OTHERWISE.** Stage 3
+(`0024DPCRO003`) says *"Mix a small amount of mild detergent with warm water"*, *"**Dip the
+cloth in the solution** and wring out excess water"*, *"Gently wipe down the top cover and
+back panel"*. **THE CLOTH IS DIPPED, NOT THE DEVICE.** Across all 13 documents the word
+"solution" appears **three times** and every one is that stage, applied to a cloth. The only
+immersion of a PART anywhere is Stage 10's membrane assembly into a water bin — a
+pressurised **bubble leak test**, explicitly not a wash. A tank the cabinet is lowered into
+would be OUR invention wearing their vocabulary, which the source-document rule forbids.
+**So the funding bar's *"cleans the filter with a solution"* is most plausibly Stage 3 —
+a solution-charged cloth wiping the device — and v5 CLEAN was already that motion, dry.**
+Recorded in `dp_process.py`'s Stage 3 note so it cannot be re-litigated from memory.
+
+**WHAT IS MODELLED IS THE LOGISTICS, NEVER THE CHEMISTRY.** There is no fluid simulation
+anywhere in this repo and a rendered liquid slab does not create one (`sol_liquid` is
+`contype`/`conaffinity` 0, mass 0 — the same trick as the cap threads). Solution does NOT
+make soil easier to remove here, because removal is binary on contact. **This station cannot
+tell you detergent cleans better; it tells you what it costs to use detergent correctly.**
+`wring_s` is a DRAIN DWELL standing in for a squeeze the cell has no hardware to perform.
+
+**`charge_contact_s` IS ANCHORED IN THEIR OWN CONSUMABLE RATIO, AND THE SWEEP ROW THAT
+MATTERS PASSED ON LUCK.** Stage 2 lists *"Colin liquid 5 Ltr (300 devices)"* = 16.7 mL per
+device against a 20–30 mL wrung microfibre → **about one charge per device**. Measured
+pad-on-surface contact is **80.9 s/unit, identical at every value and every seed** (the
+trajectory is open-loop and seed-independent), so one charge needs ≥ 80.9 s. Swept on fresh
+**2200–2203**:
+
+| charge_contact_s | cycle | coverage | missed | DRY contact | dips |
+|---|---|---|---|---|---|
+| 40.0 | 119.93 s | 98.2% | 1 | 6.4 s | 2 |
+| 60.0 | 119.89 s | 100% | 0 | 0.0 s | 2 |
+| 80.0 | 114.47 s | 100% | 0 | **0.9 s** | 1 |
+| **100.0 (shipped)** | **114.47 s** | **100%** | **0** | **0.0 s** | **1** |
+| 120.0 | 114.47 s | 100% | 0 | 0.0 s | 1 |
+
+**At 80.0 the pad wiped for 0.9 s with nothing on it and still scored 100%**, because no
+soil happened to lie under those 0.9 s. Same rare-event trap that kept `step_frac` at 1.20
+rather than the faster 1.30: *a coverage pass does not close a gap, it just fails to hit
+it.* 100.0 gives **1.24× margin** on the 80.9 s bound. **`dry_contact_s` is the metric that
+sees it and MUST be reported beside coverage** — a dry pad presses with healthy force,
+satisfies the coverage geometry and removes nothing, exactly as a blind verifier passes
+every sabotage test. It is in `report()` and in the stats file.
+
+**A NEW STATION SILENTLY INVALIDATED AN OPTIMISATION WHOSE PRECONDITION WAS NEVER WRITTEN
+DOWN.** V7.2 removed the SAFE retreat before a face that is not rotating — correct, because
+the arm always arrived at face 0 straight from the tool LIFT. The dip inserted a trip to a
+tray off to one side and low down, and face 0 then started from a different arm
+configuration: tracking **15.2 → 59.4 mm**, coverage **100% → 75%**, peak **22.6 → 98.3 N**
+(twice the validity ceiling), tool speed **1.386 m/s** past its own limit. Nothing errored.
+**The first fix — return to SAFE_WP — changed the numbers by nothing at all**, because the
+dry path never visits SAFE_WP before face 0 either; restoring a *reasonable* pose is not
+restoring the *expected* one. The second fix made it worse (494 mm). **What works is that
+the dip is a ROUND TRIP: save the joint configuration AND the TCP on entry and drive back
+to both.** `charge_pad()`. *An unwritten precondition is one a later station will break
+without noticing.*
+
+**STAGE 3 CANNOT BE PERFORMED FAITHFULLY BY THIS CELL, AND THE GAP IS HARDWARE.** It calls
+for a wash cloth, then *"a clean, damp cloth"* to remove the soap, then *"a dry cloth"* —
+**three cloths, three posts.** We have one pad. `--rinse` and `--dry` therefore **raise
+`NotImplementedError` with the reason** rather than silently no-op'ing: a step that passes
+by being named is the defect `ROUTE_TO_SCRAP_APPROVAL` was retracted for, and a flag that
+accepts a request and does nothing is the same defect with a friendlier face.
+
+**PLACEMENT WAS CHOSEN BY THE REACH GATE, NOT BY EYE.** The obvious spot (0.30, −0.17) cost
+coverage on **all four vertical faces** (100% → 93.8% worst) — the same class as the 6 mm
+backdrop panel that once cost an entire face. Three of four candidates passed; the tray sits
+at **(0.14, −0.36)**, the closest passing spot to the tool post. The basin is **130 mm
+square** because the pad's clearing feature is its **84.9 mm diagonal**, not its 60 mm
+width. In `CELL_SPEC.md` and asserted by `v5_check_spec.py` (**now 55 values**).
+
 **V7.3 (2026-08-11) — ONE CONTINUOUS CYCLE, AND VERIFY IS FINALLY COUNTED.**
 Cycle **2:34.9**. The demo used to CUT at ~1:52: the arm vanished and reappeared, then
 snapped home. Two teleports, both real defects:
@@ -398,8 +475,10 @@ generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
 **1920–1935 V7 stroke held-out validation — the published 16-unit number**;
 **1940–1949 V7 stroke sabotage battery**; **1950 BURNED** (a render probe printed its
 truth to the transcript — one command, one seed, gone); **1960–1999 VLM-vs-HSV paired
-triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**.
-Next free block: **2200+**.
+triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**;
+**2200–2203 V8 charge_contact_s sweep**; **2204–2219 V8 solution held-out validation
+— the published 16-unit number**.
+Next free block: **2220+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of

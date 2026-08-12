@@ -42,6 +42,11 @@ def main():
     cb_p, cb_s = geom("cab_body")
     ps_p, ps_s = geom("pad_stem")
     pf_p, pf_s = geom("pad_face")
+    st_p, st_s = geom("sol_floor")          # V8 solution tray
+    sl_p, sl_s = geom("sol_liquid")
+    swp, sws = geom("sol_w_yp")             # a side wall: its inner face gives the basin
+    sw_p = abs(swp[1] - st_p[1]) - sws[1]   # half of the inner width
+    sf_top = st_p[2] + st_s[2]
     pad = m.body("padtool").id
     cab = m.body("cabinet").id
     base = m.body("link_base").id
@@ -102,6 +107,17 @@ def main():
         ("pad shank length", 2 * ps_s[2], 0.090),
         ("pad face width", 2 * pf_s[0], 0.060),
         ("pad face thickness", 2 * pf_s[2], 0.020),
+        # --- V8 solution tray (Stage 3). Listed here for the same reason as everything
+        # else: CELL_SPEC's whole value is that its numbers were READ FROM THE MODEL
+        # rather than typed, and a fixture that exists in the scene but not in the spec
+        # is a fixture the builder will not fit. The clearance line is the important
+        # one -- a basin sized to the pad's 60 mm WIDTH instead of its 84.9 mm DIAGONAL
+        # is the v4 staging-nest mistake, which cost a day.
+        ("solution tray X", st_p[0], 0.140),
+        ("solution tray Y", st_p[1], -0.360),
+        ("solution tray inner width", 2 * sw_p, 0.130),
+        ("solution tray wall height above floor", 2 * sws[2], 0.040),
+        ("solution liquid surface Z", sl_p[2] + sl_s[2], 0.028),
     ]
 
     bad = 0

@@ -1233,3 +1233,25 @@ what we now understand.
   mechanism -- it noticed and proceeded. Either give each one `isolation: worktree`, point
   them at a scratch copy, or make the task read-only. Also: the recovery was one command
   only because the tree was committed clean beforehand |
+| 2026-08-12 | **A new station silently invalidated an optimisation whose precondition was
+  never written down.** V7.2 removed the SAFE retreat before a face that is not rotating --
+  correct, and still correct: the arm always arrived at face 0 straight from the tool LIFT,
+  a pose right next to the working area. Adding the solution dip inserted a trip to a tray
+  off to one side and low down, so face 0 now started from a completely different arm
+  configuration. Nothing errored. What happened instead: in-plane tracking 15.2 -> 59.4 mm,
+  coverage 100% -> 75%, peak contact 22.6 -> **98.3 N** (twice the 45 N validity ceiling),
+  and tool speed past its own limit at 1.386 m/s. Every one of those is the branch-jump
+  signature already documented at `plan_pad` -- a 7-DoF arm reaching the same pose through a
+  different elbow. **My first fix returned the arm to the SAFE waypoint and changed the
+  numbers by nothing at all** (identical to three decimals), because the dry path never
+  visits SAFE before face 0 either -- I had restored a *reasonable* pose, not the *expected*
+  one. **My second fix seeded the return plan from the pre-dip configuration and made it
+  worse** (tracking 494 mm) -- an incomplete move, because I was still solving for the wrong
+  target. The fix that worked is that the dip is a ROUND TRIP: save the joint configuration
+  and the TCP on entry, and drive back to both. The station numbers then went byte-identical
+  to the dry baseline (22.6 N, 15.2 mm, 17 infeasible, 5 runs) and the only difference left
+  was the intended one. | ~50 min | **An unwritten precondition is one a later station will
+  break without noticing.** Also: I diagnosed this by thrashing through three full runs
+  before isolating the dip on its own -- and the isolation took two minutes and gave the
+  answer immediately (2.8 mm from target, correct branch). RUN THE NEW THING ALONE, WHERE
+  YOU KNOW THE ANSWER, BEFORE RUNNING IT INSIDE THE OLD THING |

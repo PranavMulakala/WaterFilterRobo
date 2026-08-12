@@ -196,6 +196,7 @@ All coordinates in metres, sim world frame. Convert with §2 before use.
 | **device** (footprint centre, base) | 0.580 | 0.000 | 0.010 | stands on the indexer |
 | tool post (top face) | 0.300 | −0.340 | 0.020 | ⌀110 mm flat plate |
 | pad tool (stem axis, at rest) | 0.300 | −0.340 | 0.040 | body origin |
+| **solution tray** (basin centre, floor) | 0.140 | −0.360 | 0.008 | 130 mm square inner, 8 mm walls, 40 mm deep; liquid surface at Z = 0.028 |
 | inspection backdrop, +X (panel face) | 0.854 | 0.000 | 0…0.720 | matte black, 920 × 720 mm |
 | inspection backdrop, +Y (panel face) | 0.660 | **0.414** | 0…0.720 | matte black, 600 × 720 mm |
 | **inspection camera** | 0.100 | −0.450 | 0.400 | fixed, fovy 48°, aims at (0.58, 0, 0.235) |
@@ -412,6 +413,20 @@ Read this section before quoting any number from §1–6 to a customer.
    trusting the §4 numbers (§2).
 3. Install the **rotary indexer** at (580, 0) mm, top face 10 mm above the bench.
 4. Fit the **tool post** at (300, −340) mm, top face 20 mm above the bench.
+4a. Fit the **solution tray** at (140, −360) mm — 130 mm square inside, 40 mm deep, fill
+   to 20 mm. Detergent-and-warm-water per Stage 3 (0024DPCRO003).
+   > **Sizing is not arbitrary and the obvious number is wrong.** The pad is a 60 mm
+   > square, so the feature that must clear the walls is its **84.9 mm diagonal**, not
+   > its width. A 130 mm basin leaves 22.6 mm to a wall on the worst diagonal. Sizing to
+   > 60 mm would repeat the v4 staging-nest failure (nest sized to a 21.5 mm body, fouled
+   > 34 mm lugs by exactly 7 mm).
+   > **Placement was chosen by the reach gate, not by eye.** The first location, (300,
+   > −170) mm, looked obviously fine and cost coverage on **all four vertical faces**
+   > (100% → 93.8% worst). Three of four candidates passed; this one is the closest to
+   > the tool post that does. **Re-run `v5_reach.py --indexed` if you move it.**
+   > **Stage 3's full sequence needs two more of these stations and is NOT built:** it
+   > calls for a wash cloth, then a *clean damp* cloth, then a *dry* cloth. That is three
+   > pads on three posts. Only the wash pad exists.
 5. Fit **both matte-black backdrops**: the +X panel at X = 854 mm spanning ±460 mm in Y,
    and the +Y panel at Y = 414 mm spanning X = 360…960 mm. Both 0–720 mm in Z.
    > ⚠️ **This instruction is the reverse of an earlier version of this document.** The

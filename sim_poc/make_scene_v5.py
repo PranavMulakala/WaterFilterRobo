@@ -72,6 +72,20 @@ CAB_WIDTH = 0.25      # Y extent
 CAB_HEIGHT = 0.45     # Z extent, standing on the bench at z = 0
 
 TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
+
+# --- Solution tray (Stage 3, 0024DPCRO003). See the big comment at the geometry.
+# Sited next to the tool post, on the same -Y side as the rest of the cleaning
+# hardware, so charging the pad is a short move from picking it up. Clear of the
+# rotary indexer, whose disc has radius 0.175 at x = 0.58 (so it starts at x = 0.405).
+SOLUTION_XY = (0.14, -0.36)
+SOL_INNER = 0.130             # inner basin, square. Pad half-DIAGONAL is 42.4 mm, so
+                              # this leaves 22.6 mm to a wall on the worst diagonal.
+SOL_WALL = 0.008
+SOL_DEPTH = 0.040             # wall height above the floor
+SOL_SURF = 0.028              # liquid surface height, z. Below the wall top by design:
+                              # a full basin that a pad displaces would slop over, and
+                              # nothing here simulates that.
+SOL_SUBMERGE = 0.010          # how far the pad face is driven BELOW the surface
 # ---------------------------------------------------------------- V5-E, Stage 10
 # *** EVERY MEMBRANE DIMENSION BELOW IS INVENTED. *** No source document gives a bowl,
 # cap, O-ring or membrane size (dp_process.MISSING). The ask is out to the customer for
@@ -275,6 +289,10 @@ def build(seed=SEED, cab_x=CAB_X):
     <material name="padmat" rgba="0.95 0.85 0.30 1" reflectance="0.05"/>
     <material name="stemmat" rgba="0.25 0.27 0.30 1" reflectance="0.3"/>
     <material name="postmat" rgba="0.45 0.47 0.50 1" reflectance="0.1"/>
+    <!-- detergent-and-warm-water mix (Stage 3). Translucent so the pad is visible
+         through it while it is charging -- the dip has to be legible on camera, or
+         nobody watching the demo can tell the station did anything. -->
+    <material name="solmat"  rgba="0.62 0.78 0.86 0.55" reflectance="0.35"/>
   </asset>
 
   <worldbody>
@@ -524,6 +542,7 @@ def build(seed=SEED, cab_x=CAB_X):
 
     # ------------------------------------------------------------- tool post + pad
     tx, ty = TOOLPOST_XY
+    sx, sy = SOLUTION_XY
     # VISIBLE THREAD on the cap: a helix of small visual-only ridges. 2.5 turns at
     # 12 segments per turn reads clearly as a screw at video scale without flooding the
     # renderer. contype/conaffinity 0 and mass 0 -> cannot collide, cannot change inertia.
@@ -637,6 +656,58 @@ def build(seed=SEED, cab_x=CAB_X):
     <geom name="post_base" type="cylinder" size="0.055 0.010" pos="{tx:.3f} {ty:.3f} 0.010"
           material="postmat"/>
     <site name="post_pt" pos="{tx:.3f} {ty:.3f} 0.30" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- =================== SOLUTION TRAY (Stage 3) ===================
+         WHAT THE SOURCE DOCUMENT ACTUALLY SAYS, because this station exists only
+         because of it. Stage 3 (0024DPCRO003, "Back Panel & Top Cover Cleaning"):
+
+             "Mix a small amount of mild detergent with warm water"
+             "DIP THE CLOTH IN THE SOLUTION and wring out excess water"
+             "Gently wipe down the top cover and back panel"
+
+         THE THING THAT IS DIPPED IS THE CLOTH, NOT THE DEVICE. Across all 13 source
+         documents the word "solution" appears three times and every one of them is in
+         that stage, applied to a cloth. The ONLY immersion of a part anywhere in the
+         corpus is Stage 10's membrane assembly going into a water bin -- and that is a
+         pressurised BUBBLE LEAK TEST, explicitly not a wash. So a bath that a device is
+         lowered into would be OUR invention wearing their vocabulary, and the repo rule
+         is not to add a process step no source document describes.
+
+         Hence: a shallow tray the PAD is charged from, sited next to the tool post so
+         charging costs almost no travel from the pad pickup.
+
+         SIZING -- a fixture must clear the part's LARGEST feature. The pad is a 60 mm
+         square, so its half-DIAGONAL is 42.4 mm, not 30. The inner basin is {SOL_INNER*1000:.0f} mm
+         square, leaving {(SOL_INNER/2 - 0.0424)*1000:.0f} mm of clearance to a wall on the worst diagonal. This is the
+         same mistake the v4 staging nest made (sized to a 21.5 mm body, fouled 34 mm
+         lugs) and that the first draft of the tool post above made.
+
+         THE LIQUID IS VISUAL ONLY -- contype/conaffinity 0 and mass 0, exactly like the
+         cap's thread ridges. THERE IS NO FLUID SIMULATION ANYWHERE IN THIS REPO and
+         adding a rendered slab does not create one. What is modelled is the LOGISTICS of
+         solution -- carrying it, spending it, going back for more -- never its chemistry.
+         The walls and floor ARE collidable: mis-position the pad and it strikes a wall,
+         which is a real failure mode and should stay one. -->
+    <body name="sol_tray" pos="{sx:.3f} {sy:.3f} 0">
+      <geom name="sol_floor" type="box" size="{SOL_INNER/2 + SOL_WALL:.4f} {SOL_INNER/2 + SOL_WALL:.4f} 0.004"
+            pos="0 0 0.004" material="postmat"/>
+      <geom name="sol_w_xp" type="box" size="{SOL_WALL/2:.4f} {SOL_INNER/2 + SOL_WALL:.4f} {SOL_DEPTH/2:.4f}"
+            pos="{SOL_INNER/2 + SOL_WALL/2:.4f} 0 {0.008 + SOL_DEPTH/2:.4f}" material="postmat"/>
+      <geom name="sol_w_xn" type="box" size="{SOL_WALL/2:.4f} {SOL_INNER/2 + SOL_WALL:.4f} {SOL_DEPTH/2:.4f}"
+            pos="-{SOL_INNER/2 + SOL_WALL/2:.4f} 0 {0.008 + SOL_DEPTH/2:.4f}" material="postmat"/>
+      <geom name="sol_w_yp" type="box" size="{SOL_INNER/2:.4f} {SOL_WALL/2:.4f} {SOL_DEPTH/2:.4f}"
+            pos="0 {SOL_INNER/2 + SOL_WALL/2:.4f} {0.008 + SOL_DEPTH/2:.4f}" material="postmat"/>
+      <geom name="sol_w_yn" type="box" size="{SOL_INNER/2:.4f} {SOL_WALL/2:.4f} {SOL_DEPTH/2:.4f}"
+            pos="0 -{SOL_INNER/2 + SOL_WALL/2:.4f} {0.008 + SOL_DEPTH/2:.4f}" material="postmat"/>
+      <!-- the liquid. VISUAL ONLY: contype=0 conaffinity=0 mass=0, so it can neither
+           touch anything nor shift any inertia. Surface sits at z = {SOL_SURF:.3f}. -->
+      <geom name="sol_liquid" type="box" contype="0" conaffinity="0" mass="0"
+            size="{SOL_INNER/2:.4f} {SOL_INNER/2:.4f} {(SOL_SURF - 0.008)/2:.4f}"
+            pos="0 0 {0.008 + (SOL_SURF - 0.008)/2:.4f}" material="solmat"/>
+    </body>
+    <!-- dip target: directly above the basin centre. The pad face is driven down to
+         SOL_SUBMERGE below the liquid surface; see v5_clean.charge_pad(). -->
+    <site name="dip_pt" pos="{sx:.3f} {sy:.3f} 0.30" size="0.004" rgba="0 0 0 0"/>
 
     <!-- ===================== MEMBRANE STATION (Stage 10) =====================
          PLACEHOLDER GEOMETRY. See MEM_* at the top of this file for the swap-in point
