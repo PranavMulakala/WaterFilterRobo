@@ -11,13 +11,13 @@ own evidence.
 | v2 insert / v3 swap / v4 refurb loop | 100% / 100% / 86.7% — byte-locked baselines |
 | v5 TRIAGE | 97.5% on 120 fresh units, missed-hard 0.0%, false-easy 2.5% |
 | v5 CLEAN — full coverage, point raster | 100% coverage, 0 missed of 129, peak **23.9 N** under a 45 N ceiling, **180.9 s** |
-| **V7 CLEAN — full coverage, CONTINUOUS STROKE (default)** | **100% on 16 fresh units, 0 missed of 273, peak 22.6 N (below point mode), 100% in band, sabotage 10/10, 0 false verifies — 111.4 s (1.62× on the station)** |
+| **V7 CLEAN — full coverage, CONTINUOUS STROKE (default)** | **100% on 16 fresh units, 0 missed of 273, peak 22.6 N, 100% in band, sabotage 10/10, 0 false verifies — 108.1 s (1.67× on the station)** |
 | ~~V6 targeted clean~~ | **WITHDRAWN 2026-08-10.** Under the arm-speed clamp it left residue on **1 of 24** units and failed verify on one (seed 1844, backstop exhausted), with one **98.67 N** contact. Its published claim was 0/24. |
 | targeted + stroke | **MEASURED AND REJECTED** (pre-clamp) — 98.2 s median, slower than targeted alone, and a 91.5 N contact on 1 of 16 |
 | v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10 |
-| **V6-ARM membrane** | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
+| **V6-ARM membrane** (39.1 s, V7.2) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
-| **full MEDIUM cycle** | **2:36.7** (V7 full-coverage stroke, `media/v7_clean_stroke_realtime.mp4`) / 3:46.2 (point raster). True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — but full coverage now matches that speed WITHOUT the shortcut.* |
+| **full MEDIUM cycle** | **2:27.3** (V7.2 full coverage, `media/v7_clean_stroke_realtime.mp4`) / 3:46.2 (point raster). True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
 
 ## The five honesty labels that must travel with any demo
 

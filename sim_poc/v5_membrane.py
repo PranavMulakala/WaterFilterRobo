@@ -79,13 +79,26 @@ class MemConfig:
     # was plainly seated at 6.00 Nm.
     stall_dz_um_s: float = 100.0      # axial advance below this = seated
     stall_hold_s: float = 0.4
+    # MINIMUM settle before the velocity check is believed, seconds. Was a hard-coded 0.4
+    # inside _hold; there are 16 _hold calls per unit so it was a 6.4 s floor. 0.20 is
+    # still a VELOCITY criterion -- if the part is genuinely still moving the hold
+    # continues -- it just stops assuming nothing can have settled in under 0.4 s.
+    # Measured over 6 seeds: 46.3 -> 43.8 s with insert 6/6, cap 6/6, stall 6/6.
+    hold_floor_s: float = 0.20
 
     # --- MEMBRANE INSERT (2026-08-05). A REAL MOTION, where there was none.
     #     The bowl is OPEN while the element goes in -- see present_cap().
     grip_below_top: float = 0.012     # pads this far below the element top. Grip HIGH: the
                                       # fingers are wider than the bore and cannot follow
                                       # the element in, so this sets the release depth.
-    carry_speed: float = 0.10         # m/s setpoint limit. V6: was 0.05; at 0.10 the
+    # 0.20 (V7.2, 2026-08-11). V6 chose 0.10 and that sweep is STALE -- it predates the
+    # 2026-08-10 arm-speed clamp, which changed the tracking this depends on, exactly as
+    # it did for the cleaning feed rate. Re-swept on 6 seeds (1890-95) with the accuracy
+    # gates: insert 6/6, cap placed 6/6, stall 6/6 at every value, and the MARGINS get
+    # BETTER not worse -- worst placement error 1.74 -> 1.90 mm inside a 4 mm capture, and
+    # worst pre-insert alignment 1.74 -> 0.97 mm. Membrane station 46.3 -> 39.1 s with the
+    # hold floor below. Original V6 note, still true, kept below.
+    carry_speed: float = 0.20         # m/s setpoint limit. At 0.10 the
                                       # worst settled seat is 1.48 mm vs 1.47 at 0.05
                                       # (bound 1.8), insert 26.1 -> 22.2 s. 0.15 passed
                                       # too (worst 1.57) and was NOT taken -- the margin
@@ -301,7 +314,7 @@ class MemCell(CL.Cell):
             if frames is not None and len(frames["f"]) < frames["max"] and \
                     int(t / self.dt) % frames["every"] == 0:
                 frames["cb"](tag)
-            if t > 0.4 and self.elem_speed() < 0.01:
+            if t > self.mcfg.hold_floor_s and self.elem_speed() < 0.01:
                 break
 
     def insert_element(self, verbose=False, frames=None):

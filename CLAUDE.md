@@ -11,7 +11,7 @@ Instructions for Claude Code / any AI agent working in this repo.
 | V5-0 reachability | **DONE** — passes at cabinet x=0.58; `v5_reach.py` |
 | V5-A unit-scale scene | **DONE** — `make_scene_v5.py`, 5 faces, rotary indexer, tool changer |
 | V5-B triage | **DONE — 97.5%** on 120 fresh units (700–819); `v5_triage.py` |
-| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **23.9 N** inside the **45 N** ceiling. **V7 continuous stroke: 180.9 → 111.4 s/unit (1.62×)**, full MEDIUM cycle **2:36.7** — see below |
+| V5-C cleaning | **DONE — 100%** coverage (8/8, 900–907), 0 missed of 129; force **100%** in band, peak **23.9 N** inside the **45 N** ceiling. **V7 continuous stroke: 180.9 → 108.1 s/unit**, full MEDIUM cycle **2:27.3** — see below |
 | V5-D verification + sabotage test | **DONE** — honest verified **10/10** with **zero** residue, false verifies **0/10**, sabotage caught **10/10** (1200–1209); needed a 2nd camera |
 | V5-E membrane (Stage 10) | **DONE** — **element really inserted 10/10** (aligned 0.30 mm median vs 1.5 mm clearance, seated 1.31 mm off-axis); threaded cap stalls on torque, median **9.40 turns** @ 6.00 N·m, 336 N preload; bubble test **10/10** honest pass, **10/10** sabotage caught, **0** false pass (**1800–1809**). Cap is PRESENTED engaged on the first thread — a fixture action, declared de-scope, not a robot motion |
 | V5-F route wiring | **DONE, with a named caveat** — route-plan compliance, right-route and end-to-end reported SEPARATELY on 1700–1727; false-easy **0**, missed-hard **0**. `MEMBRANE_INSERT` is now MEASURED; **`ROUTE_TO_SCRAP_APPROVAL` is still UNBACKED** — no motion delivers a unit anywhere, it passes by being named. **The earlier "end-to-end 28/28" is RETRACTED** — see below |
@@ -39,8 +39,8 @@ falsification — a damaged O-ring at full torque would not be caught.
 The other things worth doing are not code: put the open questions to the founder — what defines Easy/Medium/Hard, and whether the funding bar's *"cleans the filter with a solution"* means v4's cartridge dip rather than v5's dry cabinet wipe — and re-derive the placeholder membrane geometry when the CAD lands.
 
 **V7-STROKE (2026-08-09; re-baselined 2026-08-10; FEED RAISED 2026-08-11) —
-CONTINUOUS-STROKE CLEANING. Full-coverage clean 180.9 → 111.4 s (1.62× on the station,
-1.44× on the full MEDIUM cycle: 3:46.2 → 2:36.7) at 100% coverage, **0 missed of 273** on 16
+CONTINUOUS-STROKE CLEANING. Full-coverage clean 180.9 → 108.1 s (1.67× on the station),
+and with the V7.2 membrane work the full MEDIUM cycle is 3:46.2 → **2:27.3** at 100% coverage, **0 missed of 273** on 16
 fresh units (2120–2135), peak force 22.6 N — BELOW the point raster's own 23.93 N — 100%
 in band, sabotage 10/10 caught, 0/10 false verifies (2140–2149).**
 
@@ -116,6 +116,37 @@ tuned past. **The two are SUBSTITUTES, not complements:** both remove the same p
 stall cost. Full coverage sweeps 5 long serpentines (7 runs, 9.5 m) so the per-run seat
 amortises; targeted leaves many short segments, each paying its own seat, so stroke ADDS
 seats instead of removing stops.
+
+**V7.2 (2026-08-11) — THE OPENING WAIT, THE MEMBRANE STATION, AND A VISIBLE THREAD.**
+Cycle **2:36.7 → 2:27.3**. Three separate things, all validated:
+
+1. **The first face waited 2.5 s for a rotation nobody commanded.** `reset()` leaves the
+   indexer at 0 and the first face IS 0, yet the loop still retreated to SAFE and then
+   dwelled 1.2 s for the indexer to settle. Now both are conditional on the angle actually
+   changing (`_rotating`). The retreat-then-index ordering is still enforced for every
+   face that DOES rotate — that sequencing exists because rotating with the arm over the
+   device swept the tool through the cabinet, and that reason cannot apply when nothing
+   rotates. **Clean 111.4 → 108.1 s, and peak tool speed 1063 → 1007 mm/s** as a bonus:
+   that redundant SAFE move was one of the fastest repositioning moves in the cycle.
+2. **Membrane 45.3 → 39.1 s.** `carry_speed` 0.10 → 0.20 and a new `hold_floor_s` 0.4 →
+   0.20 (16 `_hold` calls per unit were each floored at 0.4 s before their VELOCITY test
+   was believed — 6.4 s of pure floor). **The V6 membrane sweep was STALE for exactly the
+   reason the cleaning feed sweep was**: it predates the arm-speed clamp. Re-swept on 6
+   seeds with the accuracy gates — insert 6/6, cap placed 6/6, stall 6/6, and the margins
+   got BETTER (worst placement error 1.74 → 1.90 mm inside a 4 mm capture, worst
+   pre-insert alignment 1.74 → 0.97 mm). **`drive_rate` is a DEAD LEVER** — identical time
+   at 12/16/20/24 rad/s; the spin is limited by the actuator, not the command.
+3. **The cap now LOOKS like a screw.** It always WAS one — `cap_rot` and `cap_z` are tied
+   by the `capthread` equality — but it rendered as a plain cylinder. 30 helical ridges,
+   `contype`/`conaffinity` 0 and mass 0, so they cannot touch anything or shift inertia.
+   **Physics byte-identical with them present** (same 37.98 s, align 0.28, seat 1.28,
+   turns 9.70) — asserted by re-running the membrane eval, not assumed.
+
+**UNDER 2:00 IS NOT REACHABLE ON ANYTHING WE HAVE MEASURED CLEAN.** The fastest measured
+combination (feed 0.30 + row 1.50) is clean 90.7 s + membrane 39.1 = **2:09.8**, and row
+1.50 sits at 1.13× margin to its measured cliff — below the 1.18× this project has
+required since `step_frac`. 2:00 needs feed above 0.30 or row pitch at 1.7, neither of
+which has been shown safe. Recorded rather than taken.
 
 **Honesty label that must travel with the stroke number:** our model removes soil on
 CONTACT, not on DWELL. At 100 mm/s any surface point spends **0.60 s** under the 60 mm pad
