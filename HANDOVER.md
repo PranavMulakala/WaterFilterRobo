@@ -14,10 +14,10 @@ own evidence.
 | **V7 CLEAN — full coverage, CONTINUOUS STROKE (default)** | **100% on 16 fresh units, 0 missed of 273, peak 22.6 N, 100% in band, sabotage 10/10, 0 false verifies — 108.1 s (1.67× on the station)** |
 | ~~V6 targeted clean~~ | **WITHDRAWN 2026-08-10.** Under the arm-speed clamp it left residue on **1 of 24** units and failed verify on one (seed 1844, backstop exhausted), with one **98.67 N** contact. Its published claim was 0/24. |
 | targeted + stroke | **MEASURED AND REJECTED** (pre-clamp) — 98.2 s median, slower than targeted alone, and a 91.5 N contact on 1 of 16 |
-| v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10 |
+| v5 VERIFY | honest 10/10 verified, 0/10 false verifies, sabotage caught 10/10. **Costs 10.0 s — the arm DRIVES clear and the indexer ROTATES each face past the camera. It used to teleport both, which is why it was recorded as free.** |
 | **V6-ARM membrane** (39.1 s, V7.2) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
-| **full MEDIUM cycle** | **2:27.3** (V7.2 full coverage, `media/v7_clean_stroke_realtime.mp4`) / 3:46.2 (point raster). True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
+| **full MEDIUM cycle** | **2:34.9** (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
 
 ## The five honesty labels that must travel with any demo
 

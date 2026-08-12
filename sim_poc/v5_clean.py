@@ -621,6 +621,69 @@ class Cell:
         self.q_des = q_new
         return self.q_des
 
+    def _goto(self, q_goal, t_max=6.0, tol=0.01, frames=None, tag=""):
+        """Drive the arm to a JOINT target under the normal rate/following-error limits.
+
+        The plain way to move somewhere when there is no Cartesian target to hold -- used
+        for the verify park, which used to be a qpos teleport.
+        """
+        m, d = self.m, self.d
+        if self.q_des is None:
+            self.q_des = d.qpos[self.qadr].copy()
+        t = 0.0
+        lim = self.cfg.arm.joint_rate * self.cfg.speed
+        while t < t_max:
+            dq = np.array(q_goal) - self.q_des
+            mx = float(np.max(np.abs(dq)))
+            if mx > lim:
+                dq = dq * (lim / mx)
+            self._advance(self.q_des + dq)
+            d.ctrl[self.act] = self.q_des
+            d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
+            mujoco.mj_step(m, d)
+            self._tcp_tick()
+            t += self.dt
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
+            if float(np.max(np.abs(d.qpos[self.qadr] - np.array(q_goal)))) < tol:
+                break
+        self._charge(tag, t)
+
+    def _index_to(self, deg, t_max=3.0, frames=None, tag="", nearest=False):
+        """Rotate the indexer to DEG and let it settle, holding the arm where it is.
+
+        The 1.2 s settle is the same one the cleaning loop uses and for the same measured
+        reason: angle-arrived is not settled, and shortening it once broke coverage.
+        """
+        m, d = self.m, self.d
+        if nearest:
+            # TAKE THE SHORT WAY ROUND. The angles are logical face positions, but the
+            # actuator range is +-360 so several physical angles present the same face.
+            # Cleaning ends at 360 deg; verify then asked for 0, which is a full 360 deg
+            # UNWIND, and repeating that pattern cost 900 deg of rotation to inspect four
+            # faces. Choosing the nearest equivalent costs 360 deg for the same four
+            # views, and the render is identical because the pose is identical.
+            cur = float(np.rad2deg(d.qpos[self.tt_q]))
+            lo, hi = np.rad2deg(m.actuator_ctrlrange[self.tt_act])
+            cands = [deg + 360.0 * k for k in (-1, 0, 1)]
+            cands = [c for c in cands if lo - 1e-6 <= c <= hi + 1e-6]
+            deg = min(cands, key=lambda c: abs(c - cur))
+        t = 0.0
+        while t < t_max:
+            d.ctrl[self.act] = self.q_des
+            d.ctrl[self.tt_act] = np.deg2rad(deg)
+            d.qfrc_applied[self.dof] = d.qfrc_bias[self.dof]
+            mujoco.mj_step(m, d)
+            self._tcp_tick()
+            t += self.dt
+            if frames is not None and len(frames["f"]) < frames["max"] and \
+                    int(t / self.dt) % frames["every"] == 0:
+                frames["cb"](tag)
+            if t > 1.2 and abs(float(np.rad2deg(d.qpos[self.tt_q])) - deg) < 0.3:
+                break
+        self._charge(tag, t)
+
     def _tcp_tick(self):
         """Peak JOINT speed and peak TOOL speed, measured. Called after every mj_step.
 
@@ -693,7 +756,7 @@ class Cell:
             return "back"
         return "left" if y < 0 else "right"
 
-    def verify(self):
+    def verify(self, drive=True, frames=None):
         """Re-inspect the unit THIS cycle just cleaned. Returns residual soil seen.
 
         Deliberately NOT a fresh spawn: it renders the live model, so the geoms it looks
@@ -713,12 +776,28 @@ class Cell:
         if self.rend is None:
             self.rend = mujoco.Renderer(m, TR.CFG.cam_h, TR.CFG.cam_w)
         tt = m.jnt_qposadr[m.joint("tt_rot").id]
-        # park the arm clear of frame -- v5_check_spec asserts this pose is 0.000% of the
-        # inspect view, against 4.28% at the home pose
-        d.qpos[self.qadr] = TR.PARK
+        # PARK THE ARM CLEAR OF FRAME -- v5_check_spec asserts this pose is 0.000% of the
+        # inspect view, against 4.28% at the home pose.
+        #
+        # DRIVE THERE, DO NOT TELEPORT (default since 2026-08-11). Teleporting was free in
+        # simulated seconds and it is why VERIFY was recorded as costing ZERO -- but a real
+        # cell has to move the arm out of the camera's view and has to ROTATE THE DEVICE
+        # past that camera, and neither is free. It also produced a visible CUT in the demo
+        # at the clean->verify boundary: the arm vanished from one pose and reappeared in
+        # another. `drive=False` restores the old teleport for anything that needs the
+        # instantaneous behaviour; the measurement is identical either way, because the
+        # camera only ever renders at the settled pose.
+        if drive:
+            self._goto(TR.PARK, frames=frames, tag="VERIFY PARK")
+        else:
+            d.qpos[self.qadr] = TR.PARK
         best = {}
         for deg in TR.CFG.index_deg:
-            d.qpos[tt] = np.deg2rad(deg)
+            if drive:
+                self._index_to(deg, frames=frames, tag=f"VERIFY INDEX {deg:.0f}",
+                                nearest=True)
+            else:
+                d.qpos[tt] = np.deg2rad(deg)
             mujoco.mj_forward(m, d)
             self.rend.update_scene(d, camera=TR.CFG.cam)
             rgb = self.rend.render()
@@ -737,7 +816,10 @@ class Cell:
         top_f = None
         if self.rend_top is None:
             self.rend_top = mujoco.Renderer(m, TR.CFG.cam_h, TR.CFG.cam_w)
-        d.qpos[tt] = 0.0
+        if drive:
+            self._index_to(0.0, frames=frames, tag="VERIFY INDEX 0", nearest=True)
+        else:
+            d.qpos[tt] = 0.0
         mujoco.mj_forward(m, d)
         self.rend_top.update_scene(d, camera="verify_top")
         rgb = self.rend_top.render()

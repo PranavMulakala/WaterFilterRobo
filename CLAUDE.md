@@ -148,6 +148,30 @@ combination (feed 0.30 + row 1.50) is clean 90.7 s + membrane 39.1 = **2:09.8**,
 required since `step_frac`. 2:00 needs feed above 0.30 or row pitch at 1.7, neither of
 which has been shown safe. Recorded rather than taken.
 
+**V7.3 (2026-08-11) — ONE CONTINUOUS CYCLE, AND VERIFY IS FINALLY COUNTED.**
+Cycle **2:34.9**. The demo used to CUT at ~1:52: the arm vanished and reappeared, then
+snapped home. Two teleports, both real defects:
+
+1. **`verify()` teleported the arm to PARK and teleported the turntable through all four
+   inspection angles.** That is why VERIFY was recorded as costing **ZERO simulated
+   seconds** — the standing caveat "triage and verify are pure rendering" was true only
+   because we were not making the cell do the work. It now DRIVES (`verify(drive=True)`,
+   the default) and costs **10.0 s**. The measurement is identical — the camera only ever
+   renders at the settled pose — so residue, sabotage catch and false-verify rate are all
+   unchanged.
+2. **`reset_mem()` did a full keyframe reset mid-cycle**, snapping the arm home and
+   re-initialising the unit right after cleaning finished. `reset_mem(seed,
+   keep_cell=True)` now initialises ONLY the membrane joints and leaves the arm, gripper,
+   indexer, pad tool and clock alone. The standalone membrane eval keeps the default
+   (a genuinely fresh unit), so its published numbers are untouched.
+
+**THE CYCLE DID NOT GET SLOWER — THE MEASUREMENT GOT HONEST.** 2:27.3 → 2:34.9 is +7.6 s,
+made of +10.0 s of verification we were never counting and **−2.4 s of real work**
+(membrane 39.1 → 36.7 s, because the arm now starts the membrane from where verify left
+it instead of from home). Also fixed: verify asked for angle 0 while the turntable sat at
+360 after the top pass — a full unwind, **900° of rotation to inspect four faces**.
+Choosing the nearest equivalent angle costs 360° for the same four views (11.65 → 10.0 s).
+
 **Honesty label that must travel with the stroke number:** our model removes soil on
 CONTACT, not on DWELL. At 100 mm/s any surface point spends **0.60 s** under the 60 mm pad
 versus ~1.0 s in point mode. A shorter rub is free here and would **not** be free with real

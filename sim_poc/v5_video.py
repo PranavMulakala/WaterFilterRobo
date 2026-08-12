@@ -74,10 +74,13 @@ FRIENDLY = {
     "DRV_APPROACH": "Bringing the driver over the cap",
     "DRV_DOCK": "Holding the driver on the cap -- spindle spins only while held",
     "DRV_SPIN": "Driver spinning the cap down -- arm holds station (enforced)",
+    "VERIFY PARK": "Moving clear of the inspection camera",
 }
 
 
 def friendly(tag):
+    if tag.startswith("VERIFY INDEX"):
+        return "Turntable presenting each face to the check camera"
     if tag.startswith("WIPE top"):
         return "Wiping the TOP surface"
     if tag.startswith("WIPE"):
@@ -92,8 +95,9 @@ CAVEAT = {
               "face and a FIXED camera grades pixels. NAMES theirs, BOUNDARIES ours.",
     "CLEAN": "No cream, detergent or chemistry is simulated. What is verified is that the "
              "soil the camera could see is gone.",
-    "VERIFY": "NO ARM MOTION -- cameras only. Re-inspected through a SECOND camera: the "
-              "triage camera cannot see the top face, and that is the face cleaning misses.",
+    "VERIFY": "The arm DRIVES clear of the camera and the indexer ROTATES each face past "
+              "it -- both real motions, both counted. Re-inspected through a SECOND camera: "
+              "the triage camera cannot see the top face, and that is the face cleaning misses.",
     "MEMBRANE": "The ARM inserts the element, PLACES the cap (thread-start capture 4mm/4deg "
                 "is modelled) and HOLDS the driver -- the spindle spins only while the arm "
                 "holds station. Geometry PLACEHOLDER.",
@@ -275,7 +279,15 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         rec.info.pop("STEP", None)
 
         # ---------------- VERIFY
-        v = c.verify()
+        # DRIVEN, not teleported, and filmed. The arm moves itself out of the camera's
+        # view and the indexer physically rotates each face past it -- which is what a
+        # real cell must do and what makes this one continuous piece of footage instead
+        # of a jump cut at the clean/verify boundary.
+        vfr = {"f": rec.frames, "max": 10_000, "every": every,
+               "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
+                                  rec.grab(c.d, "VERIFY", inset="verify_top"))}
+        v = c.verify(drive=True, frames=vfr)
+        rec.info.pop("STEP", None)
         rec.info["VERIFY"] = (f"residue {v['soil_left_truth']} -> "
                               f"{'VERIFIED' if v['verified'] else 'FAILED'}")
         for _ in range(int(FPS * 2.0)):
@@ -283,7 +295,10 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
 
         if route != "easy":
             # ---------------- MEMBRANE INSERT (3.4), then multi-turn to torque
-            c.reset_mem(seed)
+            # KEEP THE CELL. A bare reset_mem() here is a full keyframe reset, so the
+            # arm snapped home and the unit re-initialised in the middle of the cycle --
+            # the second half of the cut at ~1:52.
+            c.reset_mem(seed, keep_cell=True)
             mc = c.mcfg
             # REGRESSION GUARD. reset_mem() leaves the bowl OPEN (cap absent) so the
             # element can be inserted. Between 11f9ea9 and this commit the video called

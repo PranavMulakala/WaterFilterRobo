@@ -926,3 +926,23 @@ force, insertion and the sabotage tests are all unchanged, and the peak tool spe
 *dropped*, because one of the moves we deleted was among the fastest in the cycle. **A
 guard that fires when its precondition is absent is not caution, it is cost.** Worth asking
 of every wait in a machine: what am I waiting *for*, and can it even happen right now?
+
+## 2026-08-11 — The jump cut was hiding ten seconds of work
+
+**What we built:** the demo is now one continuous take. It used to cut at 1:52 — the arm
+vanished, reappeared somewhere else, then snapped back to its start pose.
+
+**The concept: anything a simulation does instantly is still work the real machine has to
+do.** Two places wrote the robot's position directly instead of moving it there: the
+inspection step "parked" the arm out of shot, and spun the turntable to each face, both in
+zero time; and the membrane station began by resetting the whole scene, which threw the arm
+home. On screen those are jump cuts. In the numbers they were worse — they are exactly why
+our inspection step was recorded as **costing nothing**. A real cell has to drive the arm
+clear of the camera and physically rotate the device past it, and that takes ten seconds.
+
+**Why it matters:** the cycle time went from 2:27 to 2:35, and none of that is the robot
+getting slower — it is ten seconds of work we were never counting, minus two seconds we
+genuinely saved. This is the second time in three days that a *visual* complaint turned out
+to be a *measurement* defect: the flailing arm was moving three times faster than the real
+one can, and the jump cut was a station's worth of unbilled time. **If it looks wrong in
+the video, check the number before you fix the picture.**

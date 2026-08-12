@@ -1204,3 +1204,19 @@ what we now understand.
   believed -- 6.4 s of floor inside a check that was already measuring velocity directly.
   | ~20 min | Ask of every wait: what is it waiting FOR, and can that thing even happen from
   here? A guard whose precondition is absent is not caution, it is cost
+- 2026-08-11 | **The demo cut at 1:52 because two stations were stitched together with
+  teleports, and one of them was the reason VERIFY looked free.** `verify()` set
+  `d.qpos[arm] = PARK` and `d.qpos[tt] = angle` directly -- instant, costing zero simulated
+  seconds -- and `reset_mem()` then did a FULL keyframe reset mid-cycle, snapping the arm
+  home and re-initialising the unit immediately after cleaning finished. On screen: the arm
+  vanished, reappeared, then reset. In the numbers: the standing caveat "TRIAGE and VERIFY
+  cost ZERO simulated seconds" was true only because we were not making the cell do the
+  work -- a real cell must move the arm out of the camera's view and must rotate the device
+  past it. Driving both costs **10.0 s** that had never appeared in any cycle time.
+  While fixing it: verify asked for angle 0 while the turntable sat at 360 after the top
+  pass, so it UNWOUND a full turn -- **900 deg of rotation to inspect four faces**. Taking
+  the nearest equivalent angle costs 360 deg for the same four views. | ~1 h | **A teleport
+  is a measurement hole.** Anything the sim does instantaneously is work the real cell still
+  has to do, and it will not show up in any total. Grep for direct `d.qpos[...] =` writes
+  outside reset paths -- each one is either a fixture action that must be LABELLED as such,
+  or a motion that should be DRIVEN
