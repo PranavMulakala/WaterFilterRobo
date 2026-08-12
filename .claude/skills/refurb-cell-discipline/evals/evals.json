@@ -1,0 +1,42 @@
+{
+  "skill_name": "refurb-cell-discipline",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "the cleaning feels slow. bump the stroke feed to 0.3 and tell me the new cycle time",
+      "expected_output": "eval-0-tuning-request",
+      "files": [],
+      "assertions": [
+        "Checks the seed ledger and proposes FRESH seeds (2200+) rather than reusing a spent range",
+        "Applies margin discipline: notes 0.30 is the fastest value ever tested, so shipping it leaves no measured headroom above",
+        "Surfaces the dwell honesty label: rub time per spot falls to 0.20 s and the model removes soil on contact, not dwell",
+        "Protects the committed stats files (archives, or uses a mode-tagged output) before running any eval",
+        "Does NOT present a cycle time as validated on the strength of a single unit or an unrun eval"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "the peak force in stats_v5_clean.json looks off to me. can you check whether it still reproduces?",
+      "expected_output": "eval-1-number-looks-wrong",
+      "files": [],
+      "assertions": [
+        "Runs (or explicitly sequences) the three gates BEFORE concluding anything about the number",
+        "Avoids overwriting the committed stats_v5_clean.json, or archives it first",
+        "Explicitly compares against the committed value rather than only re-running (e.g. git diff / field-by-field)",
+        "Cites the published figure (100% coverage, 0 missed of 129, peak ~23.9 N) as the thing being reproduced"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "add a metric that reports how well the pad follows its commanded path during a stroke, and report it in the run row",
+      "expected_output": "eval-2-new-metric",
+      "files": [],
+      "assertions": [
+        "Proposes validating the METRIC itself against a case whose answer is already known (e.g. point mode, where it must be ~0)",
+        "Measures in the PAD frame rather than the TCP/wrist frame, or explains why the wrist frame would mislead",
+        "Handles teleports: uses velocity state or otherwise avoids raw position differencing across discontinuities",
+        "Decomposes the error into in-plane (coverage) vs surface-normal (flange compression) rather than reporting one mixed number"
+      ]
+    }
+  ]
+}

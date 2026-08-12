@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "Runs (or explicitly sequences) the three gates BEFORE concluding anything about the number",
+      "passed": false,
+      "evidence": "Only TWO gates are run, and they appear in §2d AFTER the reproduction run in §2c: \"Both pass, and neither writes anything: `v5_check_spec.py` ... `v5_check_scene.py`.\" `v5_reach.py --indexed` is never run and never mentioned anywhere in the response (grep for 'v5_reach' returns 0 hits), so the third gate is neither run nor explicitly sequenced."
+    },
+    {
+      "text": "Avoids overwriting the committed stats_v5_clean.json, or archives it first",
+      "passed": true,
+      "evidence": "\"`--run` prints the row and writes nothing (confirmed in the `__main__` block and by `git status` afterwards -- no stats file was touched).\" §6 names `--eval 8 --seed0 900` as \"The command I did NOT run... because it would overwrite a committed baseline.\""
+    },
+    {
+      "text": "Explicitly compares against the committed value rather than only re-running (e.g. git diff / field-by-field)",
+      "passed": true,
+      "evidence": "§2a diffs the working copy against `git show HEAD:sim_poc/stats_v5_clean.json` (\"Byte-identical\"), then §2c gives an 11-row field-by-field table of committed (n=8) vs `--run 900` (n=1): f_max 23.925980963125905 both, contact 0.9951518010403972, tilt_mean_deg 8.4640522875817, raster_planned 2584 = 323x8. All match the committed file I inspected."
+    },
+    {
+      "text": "Cites the published figure (100% coverage, 0 missed of 129, peak ~23.9 N) as the thing being reproduced",
+      "passed": true,
+      "evidence": "\"Expected: ... It should rewrite `stats_v5_clean.json` byte-identically -- coverage 100%, missed 0 of 129, `f_max` 23.925980963125905, `in_band` 1.0, tcp 1005.43 mm/s, joint 2.4610 rad/s.\" The table also confirms `coverage`/`missed` 1.0 / 0 against the committed row."
+    }
+  ]
+}

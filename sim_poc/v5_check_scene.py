@@ -225,7 +225,7 @@ def main():
           "That is the")
     print("        contact solver going unstable, not the pad. 45 N is the ceiling the "
           "cleaning")
-    print("        station must stay under; it peaks at 34.5 N.")
+    print("        station must stay under; it peaks at 23.9 N.")
     mujoco.mj_resetData(m, d)
     mujoco.mj_forward(m, d)
 

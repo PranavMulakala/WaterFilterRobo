@@ -15,7 +15,7 @@ and the arm works around it in three stations:
   graded easy and would have skipped the scratch-removal pass.
 - **CLEAN** — the arm picks a wiping pad off a tool changer and rasters all five exposed
   faces. **100%** coverage on held-out units, **0** spots missed of 129, and every contact
-  sample in the force band (peak **34.5 N**, inside the **45 N** the pad model is validated
+  sample in the force band (peak **23.9 N**, inside the **45 N** the pad model is validated
   to). No cream, detergent or chemistry is simulated — what is verified is that the soil
   the camera could see is gone.
 - **MEMBRANE ASSEMBLY** — Stage 10, their real named station: the threaded cap is driven
@@ -54,9 +54,14 @@ closer to the funding bar's wording than v5's dry cabinet wipe. See the videos b
 
 ## The demos
 
-**[media/v6_cell_realtime.mp4](media/v6_cell_realtime.mp4)** — **the V6 targeted cell at
-true 1× (2:33 cycle)** — every frame carries a plain-English caption of what the arm is
-doing. Same accuracy gates as v5, verified on 24 fresh units with zero residue.
+**[media/v7_clean_stroke_realtime.mp4](media/v7_clean_stroke_realtime.mp4)** — **one unit
+end to end at true 1× (2:34.9)** — one continuous take, no cuts, every frame captioned in
+plain English. Full-coverage continuous-stroke cleaning: 100% coverage and 0 spots missed
+of 273 on 16 fresh units, sabotage caught 10/10 with 0 false verifies.
+
+> The older `media/v6_cell_realtime.mp4` (2:33) films the **targeted** cleaning mode, which
+> was **WITHDRAWN on 2026-08-10** — under the arm's published speed limits it left residue
+> on 1 of 24 units. **That 2:33 figure is retracted**; see `HANDOVER.md` → RETRACTIONS.
 
 **[media/v5_cell_realtime.mp4](media/v5_cell_realtime.mp4)** — **how long a unit actually
 takes.** One complete MEDIUM cycle at **true 1×, no speed-up** — the clip's runtime *is* the
@@ -101,8 +106,9 @@ uncompressed and unedited (2:16), for anyone who wants to see true cycle times.
 | | |
 |---|---|
 | **v5 TRIAGE — grade a whole unit** | **97.5%** on 120 fresh units; **missed-hard 0.0%**, false-easy 2.5% |
-| **V6 TARGETED CLEAN (opt-in)** | wipes only where dirt was seen + camera-verified backstop: **0/24 residue on fresh units**, sabotage caught 15/15; clean ~75–120 s, **full cycle 2:33** |
-| **v5 CLEAN — wipe five faces** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **32.9 N** vs a **45 N** validity ceiling. **V6: 254.7 s → 186.8 s/unit (1.36×)** |
+| ~~V6 TARGETED CLEAN~~ | **WITHDRAWN 2026-08-10** — under the arm's published speed limits it left residue on **1 of 24** units and failed verification on one, against a published claim of 0/24. Its **2:33** cycle time is retracted. |
+| **V7 CLEAN — continuous stroke (shipping)** | **100%** coverage on 16 fresh units, **0 missed of 273**, peak **22.6 N**, sabotage **10/10**, **0** false verifies; clean **108.1 s**, full cycle **2:34.9** |
+| **v5 CLEAN — point raster (baseline)** | **100%** coverage held out (8/8), 0 missed of 129; force **100%** in band, peak **23.9 N** vs a **45 N** validity ceiling; **180.9 s/unit** |
 | **v5 VERIFY — prove the check can fail** | honest **10/10** verified with zero residue, **0/10** false verifies, sabotage caught **10/10** |
 | **v5 MEMBRANE — Stage 10** | **arm really inserts the element 10/10** (aligned 0.30 mm median vs 1.5 mm clearance); cap stalls on torque, median **9.40 turns** @ 6.00 N·m; **10/10** honest pass, **10/10** sabotage caught, **0** false pass. **The cap is presented by a fixture, not fitted by the robot** |
 | **v5 ROUTING — grade picks the route** | route-plan compliance **28/28**, right-route **26/28**, end-to-end **26/28**, false-easy **0/28** |

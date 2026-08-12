@@ -40,9 +40,10 @@ VOLUME_SCENARIOS = (100, 200, 400, 1000)
 # [measured] All from our own sim, reproducible. Commands in the comments.
 T = {
     # v5_clean.py --eval 8                     (point raster, full coverage)
-    "clean_point_full":     186.83,
+    "clean_point_full":     180.90,
     # v5_clean.py --eval 16 --stroke --seed0 1920   (V7 continuous stroke, full coverage)
-    "clean_stroke_full":    137.30,
+    # V7.1 raised the feed to 0.20 and V7.2 cut the redundant opening wait.
+    "clean_stroke_full":    108.10,
     # targeted + camera backstop, medians on fresh units
     "clean_point_targeted":  74.70,   # V6, seeds 1860-1875
     # TARGETED + STROKE IS NOT A SHIPPING MODE. Measured on fresh 2000-2015: 98.2 s
@@ -51,14 +52,17 @@ T = {
     # both remove the same per-point stall cost -- so stacking them only pays stroke's
     # per-run seat overhead many more times. Recorded, not shipped, not tuned past.
     "clean_stroke_targeted": None,
-    # v5_membrane: insert 25.6 + tighten 17.4 + dip 1.2
-    "membrane":              44.20,
-    # TRIAGE and VERIFY cost ZERO SIMULATED SECONDS -- they are pure rendering, no
-    # motion. A REAL cell must index the device past a camera and wait for a settle, so
-    # the real cycle is SLOWER than anything below, never faster. [assumed] 8 s each,
-    # range 4-15 s, from the 1.2 s indexer dwell x 4 faces plus exposure and transfer.
+    # v5_membrane, after V7.2 (carry_speed 0.20, hold_floor_s 0.20)
+    "membrane":              36.70,
+    # TRIAGE still costs ZERO simulated seconds -- it is pure rendering with the arm
+    # parked. [assumed] 8 s, range 4-15 s, from the 1.2 s indexer dwell x 4 faces plus
+    # exposure and transfer.
     "triage_real":            8.0,
-    "verify_real":            8.0,
+    # VERIFY IS NO LONGER ASSUMED. V7.3 made it DRIVE -- the arm moves clear of the camera
+    # and the indexer physically rotates each face past it -- so this is now [measured] at
+    # 10.0 s, not a guess. It used to teleport, which is exactly why it was recorded as
+    # free. The assumed 8.0 was close but low.
+    "verify_real":           10.0,
     # load/unload the device onto the indexer. NOT MODELLED AT ALL -- there is no
     # loading motion anywhere in v5. [assumed] 20 s, range 10-40 s.
     "load_unload":           20.0,
@@ -245,8 +249,9 @@ def main(md=False, clean_s=None):
     print("=" * 96)
     print(f"clean (shipping mode) = {opts['A  1x xArm7, continuous stroke']['clean_s']:.1f} s "
           f"[measured]   membrane = {T['membrane']:.1f} s [measured]")
-    print(f"triage/verify/load = {T['triage_real']:.0f}/{T['verify_real']:.0f}/"
-          f"{T['load_unload']:.0f} s [assumed]   uptime 0.85 [assumed 0.75-0.90]")
+    print(f"triage {T['triage_real']:.0f} s [assumed] / verify {T['verify_real']:.0f} s "
+          f"[MEASURED, V7.3] / load {T['load_unload']:.0f} s [assumed]   "
+          f"uptime 0.85 [assumed 0.75-0.90]")
     print(f"class mix easy/medium/hard = {MIX['easy']:.2f}/{MIX['medium']:.2f}/"
           f"{MIX['hard']:.2f} [measured, but the BOUNDARIES are ours]")
     for daily in VOLUME_SCENARIOS:
@@ -332,7 +337,9 @@ def main(md=False, clean_s=None):
     print("\n" + "=" * 96)
     print("OPTION D RISK REGISTER  (unknowns priced as risk, not as zero)")
     print("=" * 96)
-    wipe_n = 32.15
+    # 22.04 N: the post-clamp stroke peak. Was 32.15 pre-clamp -- using the old figure
+    # OVERSTATED the YAM payload risk, so this correction is against our own argument.
+    wipe_n = 22.04
     kg_equiv = wipe_n / 9.81
     for arm in ("YAM", "YAM Ultra"):
         a_ = ARMS[arm]

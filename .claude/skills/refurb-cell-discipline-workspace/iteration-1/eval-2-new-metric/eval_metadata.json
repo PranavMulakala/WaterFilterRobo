@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "new-metric",
+  "prompt": "add a metric that reports how well the pad follows its commanded path during a stroke, and report it in the run row",
+  "assertions": [
+    "Proposes validating the METRIC itself against a case whose answer is already known (e.g. point mode, where it must be ~0)",
+    "Measures in the PAD frame rather than the TCP/wrist frame, or explains why the wrist frame would mislead",
+    "Handles teleports: uses velocity state or otherwise avoids raw position differencing across discontinuities",
+    "Decomposes the error into in-plane (coverage) vs surface-normal (flange compression) rather than reporting one mixed number"
+  ]
+}
