@@ -73,6 +73,20 @@ CAB_HEIGHT = 0.45     # Z extent, standing on the bench at z = 0
 
 TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
 
+# --- V9 STAGE 3 FAITHFUL (2026-08-13): the other two cloths. Stage 3 names THREE in
+# sequence -- a wash cloth, "a clean, damp cloth" to remove the soap, and "a dry cloth"
+# -- and a one-pad cell cannot perform that; --rinse/--dry used to raise
+# NotImplementedError with exactly that reason. These are their posts. PLACEMENT IS
+# GATED, NOT EYEBALLED: both spots passed `v5_reach.py --indexed` at 100% during the V8
+# tray sweep (the tray's obvious spot cost coverage on all four vertical faces), and the
+# gate is re-run with all three tools present before anything is built on them.
+# (0.22, -0.44) was the first choice and the SCENE GATE rejected it before anything was
+# built on it: the damp pad's face interpenetrated the solution tray's corner by 23 mm at
+# the keyframe. The V8 sweep had passed that spot for the TRAY ALONE -- a clearance sweep
+# is only valid for the set of bodies it was run with.
+TOOLPOST_DAMP_XY = (0.14, -0.52)
+TOOLPOST_DRY_XY = (0.30, -0.52)
+
 # --- Solution tray (Stage 3, 0024DPCRO003). See the big comment at the geometry.
 # Sited next to the tool post, on the same -Y side as the rest of the cleaning
 # hardware, so charging the pad is a short move from picking it up. Clear of the
@@ -110,6 +124,23 @@ MEM_ORING_R = 0.028           # O-ring mean radius, sits on the bowl rim
 MEM_TORQUE_NM = 6.0
 BACKDROP_X = 0.86             # matte panel behind the device, from the arm's viewpoint
 TT_RISE = 0.010               # rotary indexer disc height above the bench
+
+# --- Membrane spindle FREE SPEED (V9, 2026-08-13). The ctrlrange of the capdrv velocity
+# actuator = the fastest the purchased spindle motor spins unloaded. It was 6 rad/s
+# (57 rpm), and that value was doing something nobody knew: MemConfig commanded
+# drive_rate=12 and MuJoCo CLAMPED it to 6 SILENTLY -- the same trap as the indexer's
+# deg2rad(270) against a +-pi ctrlrange. It is exactly why the V7.2 sweep found
+# drive_rate "identical at 12/16/20/24": every one of those was the same 6 after the
+# clamp. The dead lever was the ctrlrange.
+#
+# 30 rad/s (~286 rpm) is ordinary purchased hardware (torque-controlled DC nutrunners
+# run 100-600 rpm rundown speeds) and is HEADROOM, not the operating point: the cell
+# commands MemConfig.drive_rate (truth-restored to 6.0) or, in the declared fast-spindle
+# configuration, MemConfig.spindle_rate. forcerange stays MEM_TORQUE_NM -- THE TORQUE
+# CRITERION IS THE PRODUCT SPEC and does not move with motor speed. Raising ctrlrange
+# with the command unchanged is physics-identical (the clamp only ever bit commands
+# above 6); asserted by re-running the membrane battery on its published seeds.
+SPINDLE_FREE_RADS = 30.0
 # The arm's kinematic root sits 120 mm above the bench top -- an offset inherited from
 # the stock arm model. Something must physically hold it there, and that something is an
 # obstacle the arm can hit. It was NOT modelled until V5-C, so no arm-to-riser clearance
@@ -293,6 +324,8 @@ def build(seed=SEED, cab_x=CAB_X):
          through it while it is charging -- the dip has to be legible on camera, or
          nobody watching the demo can tell the station did anything. -->
     <material name="solmat"  rgba="0.62 0.78 0.86 0.55" reflectance="0.35"/>
+    <material name="dampmat" rgba="0.55 0.65 0.78 1" reflectance="0.05"/>
+    <material name="drymat"  rgba="0.82 0.82 0.80 1" reflectance="0.05"/>
   </asset>
 
   <worldbody>
@@ -543,6 +576,8 @@ def build(seed=SEED, cab_x=CAB_X):
     # ------------------------------------------------------------- tool post + pad
     tx, ty = TOOLPOST_XY
     sx, sy = SOLUTION_XY
+    dpx, dpy = TOOLPOST_DAMP_XY
+    drx, dry_ = TOOLPOST_DRY_XY
     # VISIBLE THREAD on the cap: a helix of small visual-only ridges. 2.5 turns at
     # 12 segments per turn reads clearly as a screw at video scale without flooding the
     # renderer. contype/conaffinity 0 and mass 0 -> cannot collide, cannot change inertia.
@@ -656,6 +691,50 @@ def build(seed=SEED, cab_x=CAB_X):
     <geom name="post_base" type="cylinder" size="0.055 0.010" pos="{tx:.3f} {ty:.3f} 0.010"
           material="postmat"/>
     <site name="post_pt" pos="{tx:.3f} {ty:.3f} 0.30" size="0.004" rgba="0 0 0 0"/>
+
+    <!-- ============ V9 STAGE 3: THE OTHER TWO CLOTHS (damp / dry) ============
+         Structural CLONES of the wash tool above -- same keyed shank, same compliant
+         face, same ACF -- because the three cloths in Stage 3 are the same object in
+         three roles, and a clone cannot drift from the original the way a re-typed
+         copy can. Distinct materials so the camera (and a human watching the demo)
+         can tell which cloth is working:
+           wash = the existing pad, damp = blue-grey, dry = light grey.
+         Each rests on its own flat post, gate-checked like the tray. -->
+    <body name="damppad" pos="{dpx:.3f} {dpy:.3f} 0.040">
+      <freejoint name="damppad_free"/>
+      <geom name="damp_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
+            material="stemmat" mass="0.18"/>
+      <site name="damp_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+      <body name="damphead" pos="0 0 0">
+        <joint name="damp_acf" type="slide" axis="0 0 1" range="-0.002 {ACF_STROKE:.4f}"
+               stiffness="{ACF_K:.0f}" damping="{ACF_C:.0f}" springref="0"
+               armature="0.002"/>
+        <geom name="damp_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
+              material="dampmat" mass="0.04" priority="1"
+              solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
+        <site name="damp_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+      </body>
+    </body>
+    <geom name="post_damp" type="cylinder" size="0.055 0.010"
+          pos="{dpx:.3f} {dpy:.3f} 0.010" material="postmat"/>
+
+    <body name="drypad" pos="{drx:.3f} {dry_:.3f} 0.040">
+      <freejoint name="drypad_free"/>
+      <geom name="dry_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
+            material="stemmat" mass="0.18"/>
+      <site name="dry_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+      <body name="dryhead" pos="0 0 0">
+        <joint name="dry_acf" type="slide" axis="0 0 1" range="-0.002 {ACF_STROKE:.4f}"
+               stiffness="{ACF_K:.0f}" damping="{ACF_C:.0f}" springref="0"
+               armature="0.002"/>
+        <geom name="dry_face" type="box" size="0.030 0.030 0.010" pos="0 0 -0.010"
+              material="drymat" mass="0.04" priority="1"
+              solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2" friction="0.7 0.02 0.001"/>
+        <site name="dry_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+      </body>
+    </body>
+    <geom name="post_dry" type="cylinder" size="0.055 0.010"
+          pos="{drx:.3f} {dry_:.3f} 0.010" material="postmat"/>
 
     <!-- =================== SOLUTION TRAY (Stage 3) ===================
          WHAT THE SOURCE DOCUMENT ACTUALLY SAYS, because this station exists only
@@ -881,6 +960,12 @@ def build(seed=SEED, cab_x=CAB_X):
          conservative direction. -->
     <weld name="toollock" body1="xarm_gripper_base_link" body2="padtool"
           active="false" solref="0.004 1" torquescale="1"/>
+    <!-- V9: one latch per cloth. A weld binds two SPECIFIC bodies at model-compile
+         time, so three tools need three welds; couple() activates exactly one. -->
+    <weld name="toollock_damp" body1="xarm_gripper_base_link" body2="damppad"
+          active="false" solref="0.004 1" torquescale="1"/>
+    <weld name="toollock_dry" body1="xarm_gripper_base_link" body2="drypad"
+          active="false" solref="0.004 1" torquescale="1"/>
     <!-- THE THREAD. MuJoCo has no screw joint, so one is built from a hinge and a slide
          tied together: cap_z = -(pitch / 2pi) * cap_rot. That single line is what makes
          the cap MULTI-TURN and axially advancing rather than our fixed-angle bayonet.
@@ -913,7 +998,8 @@ def build(seed=SEED, cab_x=CAB_X):
          cutoff are what get reported -- never a commanded angle.
          {MEM_TORQUE_NM:.1f} N.m is OUR number. Stage 10 says only "Ensure the cap is tightened
          properly with the spanner"; no torque figure exists anywhere in the corpus. -->
-    <velocity name="capdrv" joint="cap_rot" kv="3.0" ctrlrange="-6 6"
+    <velocity name="capdrv" joint="cap_rot" kv="3.0"
+              ctrlrange="{-SPINDLE_FREE_RADS:g} {SPINDLE_FREE_RADS:g}"
               forcerange="{-MEM_TORQUE_NM:.2f} {MEM_TORQUE_NM:.2f}"/>
   </actuator>
 
@@ -953,13 +1039,19 @@ def build(seed=SEED, cab_x=CAB_X):
          `qpos0` patch fixes one caller and leaves the landmine armed for the next. The
          keyframe is the single place every consumer already goes through.
 
-         qpos layout (45): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         qpos layout (61): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
+                         | 7 damppad free | 1 damp_acf | 7 drypad free | 1 dry_acf
                          | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
                          | 7 cap_blank free
+         (V9 added the damp/dry cloths -- FIFTH keyframe extension; every previous
+          free-body addition that skipped this line spawned at the world origin
+          inside the arm riser, four times running)
          ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
     <key name="v5home"
          qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0  0
+               {dpx:.3f} {dpy:.3f} 0.040 1 0 0 0  0
+               {drx:.3f} {dry_:.3f} 0.040 1 0 0 0  0
                {MEM_XY[0]:.3f} {MEM_XY[1]:.3f} 0.040 1 0 0 0  0 0
                {MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.072 1 0 0 0
                {MEM_XY[0] - 0.13:.3f} {MEM_XY[1] + 0.10:.3f} 0.046 1 0 0 0"

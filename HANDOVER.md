@@ -18,7 +18,8 @@ own evidence.
 | **V6-ARM membrane** (36.7 s, V7.3) | arm **inserts element** (10/10, worst seat 1.61/1.8 mm), **places the cap** (10/10, worst 1.86 mm into a 4 mm capture envelope) and **holds the driver**; stalls 10/10, leak 10/10, sabotage caught 10/10, **0 false pass** (1890–99) |
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
 | **V8 SOLUTION station** (opt-in, `--solution`) | the arm CHARGES THE PAD from a tray before cleaning and re-dips when low. **100% coverage, 0 missed of 252, peak 22.62 N, 1 dip/unit, 0.00 s dry-pad contact** on 16 fresh units (2204–2219). Clean 108.1 → **114.4 s** (dip 6.34 s/unit). Force/tracking/tilt **byte-identical** to the dry baseline. **Paired render, seed 1704: 2:36.1 without the dip → 2:42.6 with it** |
-| **full MEDIUM cycle** | **2:36.1** dry / **2:42.6** with the solution dip (paired, seed 1704; `media/v8_solution_realtime.mp4`). *Supersedes 2:34.9 — see the note under Done 2026-08-12 (evening).* (V7.3, `media/v7_clean_stroke_realtime.mp4`) — ONE CONTINUOUS take, no teleports, and VERIFY is counted (10.0 s) for the first time. True-1×. *The 2:33 / 2:44.5 TARGETED figures are RETRACTED — full coverage is now FASTER than the retracted shortcut, without the shortcut.* |
+| **V9 (2026-08-13)** | **inline verify** (10.0 s pass gone; battery row-identical paired + 10/10 fresh), **20 rad/s spindle** (the "dead lever" was a silent ctrlrange clamp; battery 10/10), **Stage 3 faithful: three cloths** (16/16 at 100%, 0 missed of 249, dry pad asserted never-charged), **O-ring blind spot MEASURED: 10/10 damaged seals pass the bubble check** |
+| **full MEDIUM cycle — TWO configurations (V9, paired on seed 1704, true 1×)** | **BASE 2:28.6** (`media/v9_base_realtime.mp4`: CLEAN 108.1 / MEMBRANE 34.1 / SOLUTION 6.3 / VERIFY 0.0-inline) and **FULL STAGE 3 6:20.7** (`media/v9_stage3_realtime.mp4`: + RINSE 115.3 / DRY 114.1, 2 dips). *BASE supersedes V8's 2:36.1/2:42.6 (−14.0 s: inline verify −10.0, fast spindle −4.1, new posts +0.1). 6:20.7 is the honest price of the full three-cloth work instruction — never quote 2:28.6 as "Stage 3 compliant". Earlier figures 2:34.9 (V7.3) and the retracted 2:33 stand as recorded.* |
 
 ## The honesty labels that must travel with any demo
 
@@ -45,10 +46,16 @@ saying the opposite of the truth — see the note at the end.*
    **pick stem** — a design-for-automation feature we added, not a stock part.
 5. HARD route = software decision, **no physical handoff (0/6 implemented)**.
 6. Leak result is a **measured image of a modelled outcome**: torque → `seal_holds` →
-   bubbles → camera. A damaged O-ring at full torque would pass. Not independently falsified.
+   bubbles → camera. **A damaged O-ring at full torque DOES pass — measured 2026-08-13,
+   10/10 damaged units missed** (`--oring` battery, 2280–2289). The model even shows the
+   damage (seal preload halves) but nothing reads it and a real cell couldn't. The fix is
+   hardware: an independent pressure-decay sensor on the 85 PSI charge line.
 7. **TRIAGE still costs zero simulated seconds** — the arm parks and a camera renders. So
-   every cycle time here remains an optimistic bound. (VERIFY used to be the second zero
-   and no longer is: V7.3 made it drive, and it costs 10.0 s.) Load/unload is unmodelled.
+   every cycle time here remains an optimistic bound. Load/unload is unmodelled.
+   **VERIFY's history, in one line: teleported (free, dishonest) → driven (10.0 s, V7.3)
+   → inline (V9: graded during dwells the clean cycle already owns — not free, PRE-PAID,
+   and measured identical to the driven pass).** Say "inline" wherever a V9 cycle time is
+   quoted, or it reads like the retracted teleport.
 
 > **Two labels were removed on 2026-08-12 because they had become false, and that is worth
 > recording rather than quietly deleting.** The old label 2 described *targeted cleaning*,

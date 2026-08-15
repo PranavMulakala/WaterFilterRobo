@@ -1270,3 +1270,46 @@ what we now understand.
   and different only where you are not. And when a phase supersedes an earlier one, update
   every command that names the old seed block **in the same commit**; a stale `--seed0` in a
   reference doc is a loaded gun pointed at a protected file |
+| 2026-08-13 | **The spindle's "dead lever" was a ctrlrange clamp — the third silent-clamp
+  incident.** MemConfig commanded drive_rate=12 while the capdrv actuator declared
+  ctrlrange ±6; MuJoCo clamps silently, so the V6 sweep that "measured" identical times at
+  12/16/20/24 rad/s was sweeping the clamp, not the driver, and the conclusion "drive rate
+  is a dead lever" went into the docs as a finding. Found while spec'ing a faster spindle:
+  the free speed would not rise past 6 no matter the command. | ~20 min to find, months of
+  a false finding | **When a commanded value does nothing, CHECK THE CTRLRANGE FIRST** —
+  this is now the indexer-270° trap, the tt ±π trap, and this, three for three |
+| 2026-08-13 | **My inline-verify equivalence check was vacuous on the first try.** I
+  compared paired battery rows on field names that did not exist in the rows
+  (`soil_seen`), so `all([])` returned True for every row and printed "identical".
+  Caught it because the output ALSO printed the row keys and none matched. Redone on the
+  real fields (hon_seen/sab_seen/...): genuinely identical, all 10 seeds. | ~5 min |
+  **A comparison that cannot fail is not a comparison** — same law as the sabotage
+  battery; print the fields you compared, not just the verdict |
+| 2026-08-13 | **The scene gate rejected the damp post before anything was built on it** —
+  first choice (0.22,−0.44) interpenetrated the solution tray's corner by 23 mm at the
+  keyframe. The V8 sweep had passed that exact spot FOR THE TRAY ALONE. | ~5 min |
+  **A clearance sweep is only valid for the set of bodies it was run with** — re-gate
+  after every addition, which is exactly why the gates are cheap |
+| 2026-08-13 | **A structural-insert edit swallowed half of __init__ into a new method.**
+  I anchored a code insertion on "the last line that happened to match" (the self.eq
+  binding) instead of a section boundary; everything after it became the body of
+  select_tool and the file still parsed. Caught by the very next smoke test
+  (`hasattr(cell, 'plan')`). | ~10 min | **Anchor scripted edits on section headers, and
+  smoke-test constructors after structural edits — 'parses' is not 'intact'** |
+| 2026-08-13 | **A dropped variable voided two green identity checks.** The metric-split
+  edit removed the line defining `j_ok` in report(); the next eval CRASHED after all units
+  ran but before the stats file was written — and an unwritten file produces an EMPTY git
+  diff, which read as "byte-identical". Two identity re-runs were declared clean on that
+  evidence before the Stage 3 eval hit the same crash and exposed it. All affected runs
+  re-run in full after the one-line fix. | ~2 h of re-runs | **An empty diff is only
+  evidence when the run that should have written the file COMPLETED — check the exit path,
+  not just the diff** |
+| 2026-08-13 | **The video's 10,000-frame cap silently truncated the Stage 3 render.** A
+  6:20 cycle needs ~11,400 frames at 30 fps; past 10k the emission blocks stopped calling
+  the callback, the membrane phase filmed nothing, and its ~32 s of sim time was
+  attributed to the previous station mark — the split showed VERIFY 32.2 s (inline verify
+  is ~0) and NO MEMBRANE row, and the only other symptom was a 1.125× stretch factor.
+  Also caught on the same render: the first attempt omitted `--stroke`, so it filmed
+  point-mode wash — NOT the validated configuration. | ~2 render cycles | **A silent cap
+  is a silent truncation (log what was dropped), and a render is only evidence when its
+  flags match the validated config — diff the render command against the eval command** |

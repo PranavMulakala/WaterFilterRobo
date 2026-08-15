@@ -330,6 +330,28 @@ reachability study allows a **30° tilt cone** off the surface normal on that ba
 **Standoff during a cleaning pass:** TCP held **45 mm** off the target surface (the pad
 occupies the gap).
 
+**Membrane spindle (cap driver) — a purchased component with a two-number spec.**
+
+| number | value | status |
+|---|---|---|
+| torque limit (stall criterion) | **6.00 N·m** | OURS — Stage 10 says only *"tightened properly with the spanner"*; no figure exists in the corpus. This is the number the whole leak result keys off and it must come from DrinkPrime or the cap CAD before a real cell is built |
+| free (rundown) speed | **≥ 30 rad/s (~286 rpm)** headroom; operated at **20 rad/s (~191 rpm)** | any torque-controlled DC driver — 100–600 rpm rundown is the ordinary catalogue range |
+
+> The model drives the cap with a velocity actuator whose `forcerange` IS the torque
+> limit, so it stalls the way a real torque-limited driver stalls. **The speed and the
+> torque are independent numbers on the same spec sheet**: raising the rundown speed
+> from the original 6 rad/s to 20 changed the certified outcome by nothing — battery on
+> fresh seeds 2242–2251: insert 10/10, cap placed 10/10, stall 10/10, leak 10/10,
+> sabotage caught 10/10, 0 false pass; turns median 9.64 (baseline 9.53), peak seal
+> 350 N (baseline ~345). The stall detector keys on AXIAL PROGRESS collapsing, which is
+> rate-independent by construction and measured so.
+>
+> ⚠️ **History worth keeping**: the spindle spent three versions capped at 6 rad/s by a
+> `ctrlrange` nobody was looking at, while the commanded rate said 12 — MuJoCo clamps
+> silently, and the sweep that concluded "drive rate is a dead lever" was sweeping the
+> clamp, not the driver. The same silent clamp once cost a whole face of coverage
+> (indexer, 270°). If a commanded value seems to do nothing, check the ctrlrange first.
+
 ---
 
 ## 6. Tolerances and calibration
