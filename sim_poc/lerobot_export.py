@@ -142,7 +142,18 @@ def export(n_episodes, out, seed0=0, size=(256, 256), fps=30, dr=None):
         n = len(rec.state)
         state = np.stack(rec.state)
         action = np.stack(rec.action)
-        ts = np.array(rec.tstamp, dtype=np.float32)
+        # TIMESTAMPS ON THE FRAME GRID, NOT THE SIM CLOCK (fixed 2026-08-15, found by
+        # round-tripping through the REAL lerobot library -- the structural validator
+        # below passed 26/26 while the library rejected every frame pair). The recorder
+        # samples every round((1/fps)/timestep) = 17 physics steps = 0.0340 s of sim
+        # time, but fps declares 0.0333 s and the mp4s ARE encoded at exactly 30 fps --
+        # so recorded sim time drifts off video time by 0.667 ms/frame, ~31 video frames
+        # over a 1578-frame episode, and lerobot's check_timestamps_sync (tolerance
+        # 1e-4 s) refuses the dataset. The frames' TRUE spacing in dataset-time is the
+        # frame grid. The honest sim clock is not stored as an extra column (an
+        # undeclared feature would trip the library's schema checks); it is exactly
+        # recoverable as frame_index * steps_per_frame * timestep.
+        ts = (np.arange(len(rec.tstamp), dtype=np.float32) / fps).astype(np.float32)
         tbl = pa.table({
             "observation.state": pa.array(state.tolist(), type=pa.list_(pa.float32())),
             "action": pa.array(action.tolist(), type=pa.list_(pa.float32())),
@@ -225,6 +236,21 @@ def validate(out):
 
     info = json.load(open(os.path.join(out, "meta/info.json")))
     chk(info["codebase_version"] == "v2.1", "info.json codebase_version == v2.1")
+    # THE CHECK THAT WAS MISSING (2026-08-15): 26/26 structural checks passed on a
+    # dataset the real library rejected on every frame pair, because nothing here ever
+    # compared the timestamp column against the declared fps. A validator that never
+    # reads the quantity the consumer's first assertion reads is the blind-verifier
+    # defect in a new costume.
+    import numpy as _np
+    _fps = float(info["fps"])
+    for _f in sorted(os.listdir(os.path.join(out, "data/chunk-000")))[:1]:
+        _t = pq.read_table(os.path.join(out, "data/chunk-000", _f))
+        _tsc = _np.asarray(_t.column("timestamp"))
+        _d = _np.diff(_tsc)
+        chk(bool(_np.all(_np.abs(_d - 1.0 / _fps) < 1e-4)),
+            f"timestamps advance on the declared frame grid (1/fps) -- worst "
+            f"|dt-1/fps| {_np.max(_np.abs(_d - 1.0/_fps))*1e6:.0f} us "
+            f"(lerobot tolerance 100 us)")
     eps = [json.loads(l) for l in open(os.path.join(out, "meta/episodes.jsonl"))]
     sts = [json.loads(l) for l in open(os.path.join(out, "meta/episodes_stats.jsonl"))]
     chk(len(eps) == info["total_episodes"], f"episodes.jsonl has {info['total_episodes']} rows")
