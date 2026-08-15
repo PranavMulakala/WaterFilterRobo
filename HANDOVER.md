@@ -151,7 +151,15 @@ denominator. He has also **not watched the v6 video**.
   its rating to 56%**. The xArm7 decision is unchanged but **no longer rests on payload** —
   it rests on YAM's unpublished repeatability and the duty cycle. Corrected in place.
 
-## Next steps, ranked
+## Next steps, ranked (updated 2026-08-15, end of the V9 session)
+
+0. **Read `stats_v5_dr.json` when it appears** — the DR sweep (mass ±20% / friction ±30% /
+   height +5 mm, paired OFF/ON, seeds 2300–2331, POINT mode) was launched detached and its
+   results land unread. Judge them and commit them WITH their numbers; a stroke-mode DR
+   pass is the natural follow-up. Also: the founder's real photos land within days —
+   `v5_real_triage.py --prep` is the intake.
+
+## Next steps, previously ranked
 
 1. **Chase the founder.** Still unanswered since 2026-08-04. **The "cleans the filter with
    a solution" question is now much narrower than it was** — Stage 3 of their own corpus
