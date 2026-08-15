@@ -129,8 +129,11 @@ result), **[RESULTS_V4.md](RESULTS_V4.md)** (the decision loop),
 (insertion). **[CELL_SPEC.md](CELL_SPEC.md)** is what you would build a real cell from.
 
 > **Caveats that must travel with the numbers above.** The class names Easy / Medium /
-> Hard are DrinkPrime's; **the boundaries between them are ours**, because no document in
-> their set defines them — that is the top open question for the founder. **v5 CLEAN is a
+> Hard are DrinkPrime's, and (verbal, 2026-08-12) so are the **outcome** definitions —
+> EASY device not changed / MEDIUM some parts changed / HARD entire device changed.
+> **The visual boundaries the camera applies are still ours**, because no document defines
+> what an operator *sees* — that remains the top open question, now narrowed to its
+> visual half. **v5 CLEAN is a
 > dry pad wipe of the cabinet exterior; v8 charges the pad from a solution tray — but only
 > the LOGISTICS of solution are modelled, never the chemistry.** There is no fluid
 > simulation anywhere in this repo, and solution does not make soil easier to remove here,

@@ -25,7 +25,12 @@ own evidence.
 *Last audited 2026-08-12. Two entries in the previous version had gone stale and were
 saying the opposite of the truth — see the note at the end.*
 
-1. Easy/Medium/Hard **names** are DrinkPrime's; the **boundaries are ours** (asked, unanswered).
+1. Easy/Medium/Hard **names** are DrinkPrime's, and as of 2026-08-12 the **outcome
+   definitions are his too** *(verbal, relayed by Teja)*: EASY = device not changed,
+   MEDIUM = some parts changed, HARD = entire device changed — which our routes already
+   match. **The VISUAL criteria — what a camera sees on an incoming unit — are still
+   ours and still unanswered.** He is sending a process video + real images within days
+   and wants us to build the image classification.
 2. Cleaning removes soil on **CONTACT, not on dwell**. At 200 mm/s a surface point spends
    ~0.30 s under the pad against ~1.0 s in point mode. A shorter rub is free here and would
    **not** be free with real cream. Modelling limit, not a result.

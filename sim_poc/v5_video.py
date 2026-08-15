@@ -92,7 +92,8 @@ def friendly(tag):
 
 CAVEAT = {
     "TRIAGE": "NO ARM MOTION HERE -- the arm parks clear, the turntable is stepped to each "
-              "face and a FIXED camera grades pixels. NAMES theirs, BOUNDARIES ours.",
+              "face and a FIXED camera grades pixels. NAMES + OUTCOME DEFINITIONS theirs "
+              "(verbal); the VISUAL boundaries the camera applies are OURS.",
     "CLEAN": "No cream, detergent or chemistry is simulated. What is verified is that the "
              "soil the camera could see is gone.",
     "VERIFY": "The arm DRIVES clear of the camera and the indexer ROTATES each face past "
