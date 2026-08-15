@@ -764,12 +764,23 @@ script's `--seed0` default reproduces its published number rather than a spent r
 0b. ~~**Refurb v3 — cartridge swap cycle.**~~ **DONE 2026-08-02.** `sim_poc3.py` +
    `cartridge_scene_v3.xml`: extract a twist-locked spent cartridge, bin it, install
    a fresh one. 100% over 125 trials (25 + 100 held-out). See `RESULTS_V3.md`.
-1. ~~**LeRobot dataset logging**~~ **DONE** — `sim_poc/lerobot_export.py` writes a
-   LeRobot v2.1 dataset (parquet + per-camera mp4 + meta/, incl. `episodes_stats.jsonl`).
-   8-dim state/action, wrist + overhead cameras. Structurally validated;
-   **NOT round-tripped through the real lerobot library** — that remains unverified.
+1. ~~**LeRobot dataset logging**~~ **DONE — AND ROUND-TRIPPED THROUGH THE REAL LIBRARY
+   (2026-08-13).** `sim_poc/lerobot_export.py` writes a LeRobot v2.1 dataset (parquet +
+   per-camera mp4 + meta/). The round-trip found ONE real defect and validated everything
+   else: the exporter recorded honest SIM TIME as `timestamp` (0.0340 s spacing) while
+   declaring fps 30 (0.0333 s) — every frame pair violated lerobot's 100 µs sync check,
+   and frame-to-video association drifted ~31 video frames over a 1578-frame episode.
+   **Fixed: timestamps are now the frame grid (`frame_index/fps`)**, which is what the
+   mp4s are actually encoded on; the sim clock is exactly recoverable as
+   `frame_index × steps_per_frame × timestep`. With that one change the dataset loads
+   CLEANLY in lerobot 0.3.3 (native v2.1) at default tolerance, and — through the
+   library's own local v2.1→v3.0 converter — in current lerobot 0.6.1. `validate()`
+   gained the check it was missing (**its 26/26 passes had never compared timestamps
+   against fps — a validator that never reads the consumer's first assertion**).
+   Mac wrinkles, recorded: `pip install "lerobot[dataset]"` for ≥0.6, and
+   `video_backend="pyav"` (torchcodec dlopens homebrew ffmpeg dylibs absent here).
    Only successful episodes are exported, so the set contains no recovery demos.
-   `--validate-only` re-checks an existing dataset. Datasets are gitignored (~6 MB/ep).
+   Datasets are gitignored (~6 MB/ep).
 2. ~~**Swap in real geometry when the refurb docs arrive.**~~ **DOCS LANDED 2026-08-04.**
    All 13 source documents (10 stage work instructions + 3 QC flow pages) are
    transcribed in `sim_poc/dp_process.py`; the plan is
