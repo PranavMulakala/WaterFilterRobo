@@ -102,6 +102,14 @@ CAVEAT = {
     "MEMBRANE": "The ARM inserts the element, PLACES the cap (thread-start capture 4mm/4deg "
                 "is modelled) and HOLDS the driver -- the spindle spins only while the arm "
                 "holds station. Geometry PLACEHOLDER.",
+    "RINSE": "STAGE 3'S SECOND CLOTH -- 'use a clean, damp cloth to wipe away any "
+             "remaining soap'. The damp pad charges from the same tray (standing in for "
+             "a rinse bucket -- OUR substitution, labelled). No chemistry is simulated: "
+             "this pass measures the LOGISTICS of doing the step correctly.",
+    "DRY": "STAGE 3'S THIRD CLOTH -- 'dry thoroughly with a dry cloth'. This pad is "
+           "NEVER charged (asserted, not assumed: charge == 0 for the whole pass) and "
+           "REMOVES NOTHING -- drying is not representable here. Its cost is real; its "
+           "effect is not claimed.",
     "SOLUTION": "THE ARM CHARGES THE PAD from the tray -- DrinkPrime Stage 3 dips the "
                 "CLOTH, never the device. The LIQUID IS A RENDERED SLAB: no fluid sim, no "
                 "chemistry. What is real is the motion, the time, and that the charge RUNS "
@@ -208,7 +216,8 @@ def _wrap(s, n):
 
 
 def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
-                physical=False, solution=False):
+                physical=False, solution=False, inline_verify=False,
+                fast_spindle=False, stage3=False):
     import dataclasses as _dc
     import v5_clean as _CL
     # V7: stroke composes with targeted -- they are independent switches. The render
@@ -224,6 +233,17 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         # Measured consequence of the default: repositioning moves fling the pad at up
         # to 3.0 m/s. Contact motion is unaffected (the sweep runs at 93 mm/s median).
         _over["arm"] = _dc.replace(_CL.ARM, joint_rate=3.1416 * 0.002)
+    if inline_verify:
+        # THE LABEL MUST CHANGE WITH THE SCHEDULE, or the 0.0 s VERIFY row in the phase
+        # split reads exactly like the retracted "verify is free" teleport. It is not
+        # free and not skipped: each face is graded from the settled pose the cleaning
+        # schedule already reaches (measured-identical views, row-identical battery);
+        # the DEDICATED pass is what no longer exists.
+        CAVEAT["VERIFY"] = (
+            "VERIFY IS INLINE: each face is graded the moment its cleaning retreat ends "
+            "-- same camera, same angles, same extractor as the dedicated pass "
+            "(row-identical on a 10-seed paired battery). The 10 s end pass no longer "
+            "exists; its work is done inside dwells the clean cycle already owns.")
     if solution:
         CAVEAT["CLEAN"] = (
             "The pad is CHARGED FROM THE TRAY, but the CHEMISTRY is still not simulated: "
@@ -235,13 +255,22 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         # else here -- the render path has twice filmed a stale system by building its
         # own cell, and both times are recorded in CLAUDE.md.
         _over["solution"] = True
+    if inline_verify:
+        _over["inline_verify"] = True
+    if stage3:
+        _over["solution"] = True
+        _over["rinse_pass"] = True
+        _over["dry_pass"] = True
     if stroke:
         # FULL COVERAGE, deliberately. Stroke does NOT imply targeted: the two are
         # substitutes (both remove the same per-point stall cost) and stacking them
         # measured SLOWER than targeted alone, with one unit in 16 producing a 91.5 N
         # contact outside the model's validity. Full-coverage stroke is what ships.
         _over["stroke"] = True
-    c = RT.RouteCell(_dc.replace(_CL.CFG, **_over)) if _over else RT.RouteCell()
+    import v5_membrane as _MB
+    _mcfg = _dc.replace(_MB.MCFG, fast_spindle=True) if fast_spindle else _MB.MCFG
+    c = RT.RouteCell(_dc.replace(_CL.CFG, **_over), mcfg=_mcfg) if _over or fast_spindle \
+        else RT.RouteCell()
     if stroke:
         CAVEAT["CLEAN"] = (
             "V7 CONTINUOUS STROKE, FULL COVERAGE: the pad is seated once per run and "
@@ -263,8 +292,8 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
     route = RT.GRADE_ROUTE[grade]
     plan = DP.V5_ROUTES[route].steps
     rec.chips = (["TRIAGE", "SCRAP"] if route == "hard_non_rectifiable"
-                 else ["TRIAGE"] + (["SOLUTION"] if solution else []) +
-                      ["CLEAN", "VERIFY"] +
+                 else ["TRIAGE"] + (["SOLUTION"] if solution or stage3 else []) +
+                      ["CLEAN"] + (["RINSE", "DRY"] if stage3 else []) + ["VERIFY"] +
                       (["MEMBRANE", "DIP"] if route != "easy" else []))
     rec.info = {"SEED": seed, "TRUTH": truth, "GRADED": grade.upper(),
                 "ROUTE": route, "PLAN": " -> ".join(plan)}
@@ -287,14 +316,25 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         # different station from wiping with it -- different caveat, different chip -- and
         # billing its seconds to CLEAN would understate the dip exactly the way VERIFY was
         # understated when it teleported. One callback, two stations.
-        _stn = lambda tag: ("SOLUTION" if tag.startswith(("DIP", "REDIP")) else "CLEAN")
-        frames = {"f": rec.frames, "max": 10_000, "every": every,
+        def _stn(tag):
+            if tag.startswith(("DIP", "REDIP")):
+                return "SOLUTION"
+            pk = getattr(c, "_pass_kind", "wash")
+            return {"rinse": "RINSE", "dry": "DRY"}.get(pk, "CLEAN")
+        frames = {"f": rec.frames, "max": 20_000, "every": every,
                   "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                      rec.grab(c.d, _stn(tag), inset="verify_top"))}
         if v6:
             cr, v_bs, n_rc = _CL.run_with_backstop(c, seed, frames=frames)
             rec.info["COVERAGE"] = (f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
                                     f"  re-cleans {n_rc}")
+        elif stage3:
+            # THE EVALUATED METHOD, as always -- the render path may only add frame
+            # callbacks. run_stage3 is what the held-out validation ran.
+            c.dry_pass_contact_s = 0.0
+            cr = _CL.run_stage3(c, seed, frames=frames)
+            rec.info["COVERAGE"] = (f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
+                                    f"  3 cloths")
         else:
             cr = super(RT.MB.MemCell, c).run(seed, frames=frames)
             rec.info["COVERAGE"] = f"{cr['coverage']*100:.1f}%  peak {cr['f_max']:.1f} N"
@@ -305,7 +345,7 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         # view and the indexer physically rotates each face past it -- which is what a
         # real cell must do and what makes this one continuous piece of footage instead
         # of a jump cut at the clean/verify boundary.
-        vfr = {"f": rec.frames, "max": 10_000, "every": every,
+        vfr = {"f": rec.frames, "max": 20_000, "every": every,
                "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                   rec.grab(c.d, "VERIFY", inset="verify_top"))}
         v = c.verify(drive=True, frames=vfr)
@@ -331,7 +371,7 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
             # is the same lesson as V5-G's re-aimed camera. Use the real methods.
             rec.info["STEP"] = "MEMBRANE_INSERT"
             ins = c.insert_element(frames={
-                "f": rec.frames, "max": 10_000, "every": every,
+                "f": rec.frames, "max": 20_000, "every": every,
                 "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                    rec.grab(c.d, "MEMBRANE", cam="main",
                                             inset="demo_mem"))})
@@ -343,7 +383,7 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
             # frame callbacks only. (This block was previously a copied drive loop plus
             # a cap_present teleport; it silently stopped filming the actual system the
             # moment cap_place existed -- the same render-path rot as the V5-G bug.)
-            fr = {"f": rec.frames, "max": 10_000, "every": every,
+            fr = {"f": rec.frames, "max": 20_000, "every": every,
                   "cb": lambda tag: (rec.info.__setitem__("STEP", friendly(tag)),
                                      rec.grab(c.d, "MEMBRANE", cam="main",
                                               inset="demo_mem"))}
@@ -478,7 +518,8 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
 
 
 def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
-                  stroke=False, physical=False, solution=False):
+                  stroke=False, physical=False, solution=False,
+                  inline_verify=False, fast_spindle=False, stage3=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -490,7 +531,9 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
     clip = f"rt_{seed}.mp4"
     raw = f"rt_raw_{seed}.mp4"
     _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke,
-                                physical=physical, solution=solution)
+                                physical=physical, solution=solution,
+                                inline_verify=inline_verify,
+                                fast_spindle=fast_spindle, stage3=stage3)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -574,6 +617,13 @@ if __name__ == "__main__":
                     help="film the V6 targeted cell (fast clean + fast membrane)")
     ap.add_argument("--stroke", action="store_true",
                     help="film the V7 continuous-stroke cell (implies targeted)")
+    ap.add_argument("--stage3", action="store_true",
+                    help="V9: the FULL Stage 3 protocol -- wash, rinse (damp cloth), "
+                         "dry (dry cloth); implies --solution")
+    ap.add_argument("--inline-verify", action="store_true", dest="inline_verify",
+                    help="V9: verify graded inline during the clean cycle's own dwells")
+    ap.add_argument("--fast-spindle", action="store_true", dest="fast_spindle",
+                    help="V9 declared hardware: 20 rad/s spindle rundown")
     ap.add_argument("--solution", action="store_true",
                     help="film the V8 solution station: the pad is charged from the "
                          "tray before cleaning (DrinkPrime Stage 3)")
@@ -591,12 +641,16 @@ if __name__ == "__main__":
                  "../media/v6_cell_realtime.mp4" if a.v6 else
                  "../media/v5_cell_realtime.mp4")
         make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke,
-                      physical=a.physical, solution=a.solution)
+                      physical=a.physical, solution=a.solution,
+                      inline_verify=a.inline_verify, fast_spindle=a.fast_spindle,
+                      stage3=a.stage3)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
         render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke,
-                    physical=a.physical, solution=a.solution)
+                    physical=a.physical, solution=a.solution,
+                    inline_verify=a.inline_verify, fast_spindle=a.fast_spindle,
+                    stage3=a.stage3)
     else:
         ap.print_help()
         sys.exit(1)

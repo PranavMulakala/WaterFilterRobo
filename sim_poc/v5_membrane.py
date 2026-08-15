@@ -64,11 +64,24 @@ class MemConfig:
     torque_pass_nm: float = 5.4       # 90% of the limit = a genuine stall, not a stumble
     turns_min: float = 6.0            # below this the cap cannot have reached the seal
     turns_max: float = 14.0
-    drive_rate: float = 12.0          # rad/s commanded. V6: was 4.0. Swept 4/8/12/16
-                                      # with the sabotage gate: 5/5 honest, 0/5 false
-                                      # pass, loaded-turns median unchanged (9.33) at
-                                      # every rate. 12 keeps 2.6x margin to a real
-                                      # nutrunner's ~31 rad/s. Torque criterion untouched.
+    # TRUTH-RESTORED 2026-08-13: this was 12.0, and the actuator's ctrlrange was +-6,
+    # so MuJoCo silently clamped every command to 6 -- the SAME trap as the indexer's
+    # deg2rad(270). It is exactly why the V6/V7.2 sweeps found this a "dead lever",
+    # identical at 12/16/20/24: every one of those commands WAS 6 after the clamp. The
+    # constant now says what the cell was actually doing all along; the scene's
+    # ctrlrange is raised to SPINDLE_FREE_RADS = 30 (headroom of a purchasable driver),
+    # so from now on a command above 6 is REAL and must be validated, not assumed.
+    drive_rate: float = 6.0           # rad/s commanded in the BASELINE configuration.
+    # --- V9 DECLARED HARDWARE OPTION: a faster spindle motor. DEFAULT OFF -- the
+    #     published membrane battery is byte-locked at drive_rate 6. ON commands
+    #     spindle_rate instead; the TORQUE criterion (forcerange 6.00 N*m) is identical,
+    #     so the stall still terminates the drive exactly as before -- what changes is
+    #     only how fast the free thread is run down. This is a purchased-component spec
+    #     (torque-controlled DC nutrunners run 100-600 rpm rundown), recorded in
+    #     CELL_SPEC; any accuracy or stall-detection degradation in the battery kills
+    #     the option, not the criterion.
+    fast_spindle: bool = False
+    spindle_rate: float = 20.0        # rad/s (~191 rpm), chosen by sweep -- see V9 notes
     drive_t_max: float = 26.0         # s
     # STALL IS AXIAL PROGRESS STOPPING, not rotation slowing. Measured: the cap advances
     # at ~1250 um/s while the thread is free, drops to 588 um/s as the seal takes load,
@@ -571,7 +584,8 @@ class MemCell(CL.Cell):
             dxy = float(np.hypot(tcp_now[0] - cap_now[0], tcp_now[1] - cap_now[1]))
             depth = float((tcp_now[2] - 0.045) - cap_now[2])   # 0 at dock, grows as cap sinks
             on_station = (dxy < 0.008) and (-0.004 <= depth <= 0.025)
-            self.d.ctrl[self.capdrv] = mc.drive_rate if on_station else 0.0
+            _rate = mc.spindle_rate if mc.fast_spindle else mc.drive_rate
+            self.d.ctrl[self.capdrv] = _rate if on_station else 0.0
             if frames is not None and len(frames["f"]) < frames["max"] and \
                     int(t / self.dt) % frames["every"] == 0:
                 frames["cb"]("DRV_SPIN")
@@ -704,9 +718,36 @@ class MemCell(CL.Cell):
         return int(((roi_v > 0.95) & (roi_s < 0.45)).sum())
 
     # ------------------------------------------------------------------ the cycle
+    def damage_oring(self, frac=0.35):
+        """TASK-4 SABOTAGE (2026-08-13): a damaged O-ring, at full torque.
+
+        The 12 O-ring segment geoms are shrunk to `frac` of their height -- a nicked,
+        aged or extruded ring. THIS IS THE FAILURE THE CURRENT CHECK STRUCTURALLY
+        CANNOT CATCH, and the point of building it is to MEASURE that, not to fix it:
+        `pressurise()` computes seal_holds FROM THE ACHIEVED TORQUE, so a cap that
+        stalls at 6.00 N*m on a ruined seal still gets seal_holds=True, no bubbles are
+        emitted, and the camera passes a unit that would leak on the real line. The
+        honest labels have said this in prose since V5-E ("a damaged O-ring at full
+        torque would pass"); after this, it is a measured number instead of a sentence.
+        Returns the saved sizes so the battery can restore the model between units.
+        """
+        saved = [self.m.geom_size[g].copy() for g in self.oring]
+        for g in self.oring:
+            self.m.geom_size[g][2] *= frac
+        mujoco.mj_forward(self.m, self.d)
+        return saved
+
+    def restore_oring(self, saved):
+        for g, sz in zip(self.oring, saved):
+            self.m.geom_size[g][:] = sz
+        mujoco.mj_forward(self.m, self.d)
+
     def run(self, seed, sabotage=False, verbose=False):
         mc = self.mcfg
         self.reset_mem(seed)
+        # sabotage modes: False = honest; True = under-tighten (the published battery);
+        # "oring" = damaged seal at FULL torque -- the check's measured blind spot.
+        _oring_saved = self.damage_oring() if sabotage == "oring" else None
         # 3.4 -- the element goes into the OPEN bowl. A real motion, measured on the part.
         ins = self.insert_element(verbose=verbose)
         # 3.5a -- THE ARM places the cap (thread-start capture, modelled engagement)
@@ -725,7 +766,7 @@ class MemCell(CL.Cell):
                     "leak_pass": False, "truth_seal": False,
                     "false_pass": False, "false_fail": False}
         # 3.5b -- the ARM holds the driver that tightens it (gated in tighten())
-        tg = self.tighten(stop_turns=mc.sabotage_turns if sabotage else None,
+        tg = self.tighten(stop_turns=mc.sabotage_turns if sabotage is True else None,
                           verbose=verbose)
         chg = self.pressurise(tg["torque_nm"])
         self.emit_bubbles(chg["seal_holds"])
@@ -738,7 +779,7 @@ class MemCell(CL.Cell):
                     and tg["stalled"] and ins["inserted"])
         leak_pass = px <= mc.bubble_px_max          # what the CAMERA says
         truth_seal = chg["seal_holds"]              # what the workpiece actually did
-        return {"seed": seed, "sabotage": bool(sabotage),
+        out = {"seed": seed, "sabotage": bool(sabotage),
                 "elem_inserted": bool(ins["inserted"]), "elem_picked": bool(ins["picked"]),
                 "elem_align_mm": ins["align_mm"], "elem_seat_xy_mm": ins["seat_xy_mm"],
                 "elem_seat_dz_mm": ins["seat_dz_mm"], "elem_upright": ins["upright"],
@@ -750,7 +791,16 @@ class MemCell(CL.Cell):
                 "truth_seal": bool(truth_seal),
                 # the dangerous error: the camera passes a unit whose seal did not hold
                 "false_pass": bool(leak_pass and not truth_seal),
-                "false_fail": bool((not leak_pass) and truth_seal)}
+                "false_fail": bool((not leak_pass) and truth_seal),
+                # Task-4 O-ring falsification. `truth_seal` above is the MODEL's truth
+                # (torque-derived); a damaged ring is damage the model's truth cannot
+                # represent, so it gets its own ground-truth flag and its own miss
+                # metric: the camera passing a unit whose seal is KNOWN ruined.
+                "oring_damaged": bool(sabotage == "oring"),
+                "oring_missed": bool(sabotage == "oring" and leak_pass)}
+        if _oring_saved is not None:
+            self.restore_oring(_oring_saved)
+        return out
 
 
 def report(rows, label="V5-E MEMBRANE"):
@@ -827,9 +877,17 @@ def report(rows, label="V5-E MEMBRANE"):
           "sabotage_caught": int(sum(not r["leak_pass"] for r in sab)),
           "false_pass": int(sum(r["false_pass"] for r in sab)),
           "rows": rows}
-    with open("stats_v5_membrane.json", "w") as f:
+    # PROTECT THE PUBLISHED BASELINE: a fast-spindle battery is a different experiment
+    # and must never land in stats_v5_membrane.json -- the same rule as the cleaning
+    # station's _stroke/_solution/_feed filename tags.
+    st["fast_spindle"] = bool(MCFG.fast_spindle)
+    st["drive_rate_rad_s"] = float(MCFG.spindle_rate if MCFG.fast_spindle
+                                   else MCFG.drive_rate)
+    _out = ("stats_v5_membrane_fast.json" if MCFG.fast_spindle
+            else "stats_v5_membrane.json")
+    with open(_out, "w") as f:
         json.dump(st, f, indent=2)
-    print("\nwrote stats_v5_membrane.json")
+    print(f"\nwrote {_out}")
     return st
 
 
@@ -842,12 +900,52 @@ if __name__ == "__main__":
     # 1800 reproduces the PUBLISHED result. 1400-1409 are the paired diagnostic range and
     # are permanently labelled development seeds -- a bare run must reproduce, not replace.
     ap.add_argument("--seed0", type=int, default=1800)
+    ap.add_argument("--fast-spindle", action="store_true", dest="fast_spindle",
+                    help="V9 declared hardware: command spindle_rate instead of "
+                         "drive_rate (torque criterion identical); writes _fast stats")
+    ap.add_argument("--oring", type=int, metavar="N",
+                    help="Task-4 falsification: N units with a DAMAGED O-RING at full "
+                         "torque -- measures the leak check's structural blind spot; "
+                         "writes stats_v5_membrane_oring.json")
     a = ap.parse_args()
-    if a.run is not None:
-        c = MemCell()
+    if a.fast_spindle:
+        import dataclasses as _dc
+        MCFG = _dc.replace(MCFG, fast_spindle=True)
+    if a.oring:
+        # THE SABOTAGE THE CURRENT SYSTEM CANNOT CATCH, run to measure that it cannot.
+        # Expected outcome, stated before running: the check passes ~N/N, because
+        # seal_holds is computed from torque and a ruined ring does not stop the stall.
+        # The deliverable is the measured miss rate and whatever secondary signals move.
+        c = MemCell(mcfg=MCFG)
+        rows = []
+        for k in range(a.oring):
+            r = c.run(a.seed0 + k, sabotage="oring")
+            rows.append(r)
+            print(f"  seed {a.seed0+k}: O-RING DAMAGED, torque {r['torque_nm']:.2f} Nm, "
+                  f"turns {r['turns']:5.2f}, seal_n {r['seal_n']:6.1f} N "
+                  f"(peak {r['peak_seal_n']:6.1f}), bubbles px {r['bubble_px']:>5} -> "
+                  f"{'** PASSED (the miss) **' if r['leak_pass'] else 'caught'}")
+        missed = sum(r["oring_missed"] for r in rows)
+        print(f"\n  MEASURED MISS RATE: {missed}/{len(rows)} damaged-seal units passed "
+              f"the bubble check.")
+        print("  Why, structurally: seal_holds is COMPUTED FROM TORQUE; a cap that")
+        print("  stalls at 6.00 N*m on a ruined ring still reads sealed, emits no")
+        print("  bubbles, and the camera has nothing to see. The honest fix is an")
+        print("  INDEPENDENT measurement -- a pressure-decay sensor on the charge line")
+        print("  (hold 80-90 PSI, watch the gauge) -- hardware, in CELL_SPEC terms.")
+        st = {"n": len(rows), "missed": int(missed),
+              "turns_median": float(np.median([r["turns"] for r in rows])),
+              "seal_n_median": float(np.median([r["seal_n"] for r in rows])),
+              "peak_seal_median": float(np.median([r["peak_seal_n"] for r in rows])),
+              "seed0": a.seed0, "damage_frac": 0.35, "rows": rows}
+        with open("stats_v5_membrane_oring.json", "w") as f:
+            json.dump(st, f, indent=2)
+        print("\nwrote stats_v5_membrane_oring.json")
+    elif a.run is not None:
+        c = MemCell(mcfg=MCFG)   # explicit: the default arg bound the ORIGINAL MCFG
         print(c.run(a.run, verbose=True))
     elif a.sabotage:
-        c = MemCell()
+        c = MemCell(mcfg=MCFG)   # explicit: the default arg bound the ORIGINAL MCFG
         rows = []
         for k in range(a.sabotage):
             for sab in (False, True):
@@ -862,7 +960,7 @@ if __name__ == "__main__":
                   f"{'** FALSE PASS **' if s['leak_pass'] else 'caught'}")
         report(rows)
     elif a.eval:
-        c = MemCell()
+        c = MemCell(mcfg=MCFG)   # explicit: the default arg bound the ORIGINAL MCFG
         rows = []
         for k in range(a.eval):
             r = c.run(a.seed0 + k)

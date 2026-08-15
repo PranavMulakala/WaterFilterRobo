@@ -148,6 +148,119 @@ combination (feed 0.30 + row 1.50) is clean 90.7 s + membrane 39.1 = **2:09.8**,
 required since `step_frac`. 2:00 needs feed above 0.30 or row pitch at 1.7, neither of
 which has been shown safe. Recorded rather than taken.
 
+**V9 (2026-08-13) — INLINE VERIFY, THE SPINDLE'S HIDDEN CLAMP, THREE CLOTHS, AND A
+MEASURED BLIND SPOT.** Four things, each validated separately.
+
+**THE TWO CYCLE CONFIGURATIONS, paired on seed 1704, true 1×, final scene — never let one
+masquerade as the other:**
+
+| configuration | cycle | split | clip |
+|---|---|---|---|
+| **BASE** (wash + solution dip, inline verify, 20 rad/s spindle) | **2:28.6** | CLEAN 108.1 / MEMBRANE 34.1 / SOLUTION 6.3 / VERIFY 0.0 (inline) | `media/v9_base_realtime.mp4` |
+| **FULL STAGE 3** (three cloths: wash → damp rinse → dry) | **6:20.7** | CLEAN 108.1 / RINSE 115.3 / DRY 114.1 / MEMBRANE 32.2 / SOLUTION 11.0 (2 dips) / VERIFY 0.0 | `media/v9_stage3_realtime.mp4` |
+
+**BASE supersedes the V8 pair (2:36.1 dry / 2:42.6 with dip): 2:42.6 → 2:28.6 is
+−14.0 s** — inline verify −10.0, fast spindle −4.1, and the two new posts cost 0.1 s
+(2:28.5 pre-posts → 2:28.6 final, measured on purpose this time). **FULL STAGE 3 is the
+honest price of the whole work instruction: +3:52.1 over BASE** — two more full sweeps
+(~230 s), a second dip, and two tool swaps. Nobody should quote 2:28.6 as "Stage 3
+compliant" — 2:28.6 is the wash; 6:20.7 is the instruction.
+
+**UNDER 2:00: the BASE floor is now 2:28.6 and the remaining seconds are CLEAN (108.1 s =
+73% of the cycle).** Under 2:00 needs the clean station below ~75 s, which every measured
+lever (feed above 0.20, row above 1.20) has been shown unsafe or below margin — the
+hardware that breaks 2:00 is a second arm/cell in parallel or option C's fixed brushes
+(TRADE_STUDY), not a software knob this cell has left.
+
+**1. VERIFY IS INLINE (`CleanConfig.inline_verify`, DEFAULT OFF — the end-pass battery
+stays byte-locked).** The dedicated 10.0 s verify pass is gone from the schedule: each
+face is graded at the settle the cleaning cycle already owns — after face F's post-clean
+retreat to SAFE the indexer still sits at F's angle, WHICH IS THE SAME ANGLE AND SAME BEST
+VIEW the end pass used (measured cosangs identical: −0.633/−0.597/−0.623/−0.597); the top
+face comes from `verify_top` at the post-return CLEAR pose (0.000% occlusion). **The
+equivalence is measured three ways, not argued:** arm+tool pixels INSIDE the graded ROI =
+0.0000% at every window (the arm's 2.84% of FRAME is outside the region the extractor
+reads); paired same-instant renders (SAFE vs teleport-to-PARK) give IDENTICAL feature
+counts on honest and sabotaged units; and the battery re-run on the PUBLISHED seeds
+2140–2149 is **ROW-IDENTICAL on every field of all 10 seeds**. Fresh battery (2220–2229,
+final scene): **10/10 honest verified, 0/10 false, 10/10 sabotage caught, 0 would-escape**
+(`stats_v5_verify_stroke_inline.json`). Preconditions are ASSERTED per capture (indexer
+settled on the face angle; in-ROI occlusion == 0); a failed capture degrades to the driven
+end pass, never to blindness. **This is NOT the retracted "verify is free" teleport: every
+capture is a real render at a real settled pose, and the label "inline" must travel with
+any cycle time quoted from it.**
+
+**2. THE SPINDLE'S DEAD LEVER WAS A HIDDEN CTRLRANGE CLAMP — THE THIRD SILENT-CLAMP
+INCIDENT.** `MemConfig.drive_rate` commanded 12 rad/s against `capdrv`'s ctrlrange ±6:
+MuJoCo clamps silently, so **the V6/V7.2 sweep that "measured" identical times at
+12/16/20/24 rad/s was sweeping the clamp, not the driver** — the finding "drive_rate is a
+dead lever" is RETRACTED as an artifact of the clamp (indexer 270° and tt ±π are the same
+trap; three for three now). `SPINDLE_FREE_RADS = 30` (headroom of a purchasable
+torque-controlled nutrunner; 100–600 rpm rundown is catalogue-ordinary), `drive_rate`
+truth-restored to 6.0 (what it always really was — membrane baseline reproduces
+physics-byte-identical), and the DECLARED HARDWARE option `--fast-spindle` commands
+**20 rad/s** (1.5× headroom to the ceiling). forcerange (6.00 N·m) untouched — **the
+torque criterion is the product spec and does not move with motor speed**. Sweep
+12/20/30 on dev 2238–2239: turns/torque/stall/alignment IDENTICAL, peak seal 344→350 N.
+Full battery at 20 on fresh 2242–2251: **10/10 insert, 10/10 cap, 10/10 stall, 10/10
+leak, 10/10 sabotage caught, 0 false pass**, turns median 9.64
+(`stats_v5_membrane_fast.json`). In `CELL_SPEC.md` §5 as a purchased-component spec;
+`v5_check_spec.py` asserts both numbers (**57 values**).
+
+**3. STAGE 3 IS NOW FAITHFUL: THREE CLOTHS ON THREE POSTS (`--rinse --dry`, was
+NotImplementedError).** Wash → *"a clean, damp cloth"* → *"a dry cloth"*, per the work
+instruction. Two structural clones of the wash tool (damppad/drypad, own posts, own
+welds), selected through one registry so the wipe path cannot drift between cloths. The
+damp pad charges from the tray (standing in for a rinse bucket — OUR substitution,
+labelled); **the dry pad is NEVER charged and REMOVES NOTHING — asserted per unit
+(charge == 0, dips == 0 for the whole pass), and its contact seconds are billed to their
+own counter so `dry_contact_s` keeps meaning "a wet pass ran out"**. Held out on 16 fresh
+units (2260–2275): **100% coverage, 0 missed of 249, 1 dip/unit wash + 1 rinse, 0.00 s
+wet-pass dry contact, peak 26.0 N** (the dry pad presses slightly harder through its own
+coupling offset — under the 45 N ceiling with 1.7× margin). The scene gate REJECTED the
+first damp-post spot before anything was built on it (pad face 23 mm into the tray's
+corner at the keyframe): **a clearance sweep is only valid for the set of bodies it was
+run with.**
+
+**4. THE LEAK CHECK'S BLIND SPOT IS NOW A MEASURED NUMBER (Task 4).** A damaged O-ring
+(segments shrunk to 35% height) at FULL torque: **the bubble check passed 10/10 damaged
+units** (2280–2289, `stats_v5_membrane_oring.json`) — exactly as the honesty label always
+said in prose, now measured. Structurally unavoidable in this model: `seal_holds` is
+computed FROM torque, and a ruined ring does not stop the stall at 6.00 N·m. **The model
+even shows the damage — steady seal preload halves, 336 → ~178 N — but no acceptance
+criterion reads it, and on a real line that quantity is not measurable anyway.** The
+honest fix is hardware and is named in CELL_SPEC terms: an independent pressure-decay
+sensor on the 85 PSI charge line. *A blind spot you have measured is a spec item; one you
+have merely asserted is a hope.*
+
+**THE METRIC THAT HAD TO MOVE, AND WHY IT IS NOT A RELAXATION.** Stage 3's rinse pass
+showed the held pad at **1.16 m/s** during INDEX dwells — while the wrist did 0.55 and
+every joint stayed at 2.47 rad/s. The pad rides a compliant mount (soft weld + ACF
+spring): it RINGS briefly faster than the arm ever moves, like a ruler twanged off a desk
+edge. UFACTORY's 1 m/s bounds the ARM's TCP, so **the datasheet assertion now reads the
+wrist (`arm_tcp_speed_max`, 0.82 m/s in Stage 3) and the pad keeps its own 1.25× bound**
+— both printed, neither dropped. Also added on the way: `_settle_at` waits on VELOCITY
+before commanding any rotation (move_planned completes on position, and the wrist could
+still be finishing its reorientation when the indexer started — the retract-then-index
+ordering, completed in velocity, not just position).
+
+**IDENTITY ON THE FINAL SCENE (two new posts in every planner's collision world):**
+stroke (2120), point (900) and triage (700) baselines **byte-identical**; the membrane
+baseline's HEADLINES are identical (10/10 across the board, 0 false both ways) while its
+per-row margins nudged both directions (worst pre-insert align 0.97 → **0.52 mm** BETTER,
+seat 1.575 → 1.591 of 1.8, cap place 1.90 → 2.25 of 4.0) — the V8 tray effect, this time
+looked for and quantified up front. Superseded honestly, not retracted.
+
+**FLUIDITY GATE (paired headless profiles, seed 1704, final scene):** stop events 5 → 4
+(one FEWER), longest stall unchanged, moving fraction 0.773 → 0.830, contact figures
+identical. No new judder; the V9 schedule is strictly smoother.
+
+**AND THE CRASH THAT VOIDED TWO GREEN CHECKS:** the metric split dropped `j_ok` from
+`report()`, so the first identity chain CRASHED after the units ran and before the stats
+were written — and an unwritten file produces an EMPTY DIFF, which read as
+"byte-identical". **An empty diff is only evidence when the run that should have written
+the file actually completed.** Fixed, and every affected run was re-run in full.
+
 **V8-SOLUTION (2026-08-12) — THE PAD IS CHARGED FROM A TRAY, AND THE CORPUS SETTLED THE
 DESIGN.** `CleanConfig.solution` (**DEFAULT OFF** — the dry wipe is the byte-locked
 published baseline). Clean station 108.1 → **114.4 s** — the dip is a MEASURED **6.34 s/unit**,
@@ -492,8 +605,14 @@ generalisation claim)**; 1500–1539 V5-F; 1700–1727 V5-F metric re-measure;
 truth to the transcript — one command, one seed, gone); **1960–1999 VLM-vs-HSV paired
 triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**;
 **2200–2203 V8 charge_contact_s sweep**; **2204–2219 V8 solution held-out validation
-— the published 16-unit number**.
-Next free block: **2220+**.
+— the published 16-unit number**; **2220–2229 V9 inline-verify fresh battery**;
+**2238–2239 V9 spindle-rate sweep (dev, burned)**; **2242–2251 V9 fast-spindle battery**;
+**2260–2275 V9 Stage-3 (three-cloth) held-out validation**; **2280–2289 Task-4 O-ring
+falsification battery**; **2299 BURNED (dwell-speed probe)**; **2140–2149 RE-USED for the
+V9 inline-verify PAIRED diagnostic only — against their own published rows, the 800–807
+precedent; never a fresh claim**; **2300–2331 RESERVED: DR sweep (dr_sweep.py, runs
+unattended)**.
+Next free block: **2340+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of

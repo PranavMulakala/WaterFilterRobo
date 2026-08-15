@@ -118,6 +118,11 @@ def main():
         ("solution tray inner width", 2 * sw_p, 0.130),
         ("solution tray wall height above floor", 2 * sws[2], 0.040),
         ("solution liquid surface Z", sl_p[2] + sl_s[2], 0.028),
+        # --- V9 membrane spindle: a purchased component with a two-number spec. The
+        # torque limit is the stall criterion the leak result keys off; the free speed
+        # is the ctrlrange that silently capped three versions of "drive rate" sweeps.
+        ("spindle torque limit (N*m)", m.actuator_forcerange[m.actuator("capdrv").id][1], 6.00),
+        ("spindle free speed (rad/s)", m.actuator_ctrlrange[m.actuator("capdrv").id][1], 30.0),
     ]
 
     bad = 0

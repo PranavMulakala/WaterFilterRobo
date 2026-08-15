@@ -77,3 +77,18 @@ Two things follow. **Diff the stats file, don't eyeball the printout** — the p
 perfect. And when a phase supersedes an earlier one, **update every command that names the
 old seed block in the same commit**, because a stale `--seed0` in a reference doc is a
 loaded gun pointed at a protected file.
+
+## V9 additions (2026-08-13)
+
+New tagged stats files — same protection rule, each is its own experiment:
+
+| command | writes | published result |
+|---|---|---|
+| `v5_clean.py --sabotage 10 --seed0 2220 --stroke --inline-verify` | `stats_v5_verify_stroke_inline.json` | inline verify battery (row-identical to the end-pass battery on the 2140–2149 paired diagnostic) |
+| `v5_membrane.py --sabotage 10 --seed0 2242 --fast-spindle` | `stats_v5_membrane_fast.json` | 10/10 across the board at 20 rad/s rundown |
+| `v5_membrane.py --oring 10 --seed0 2280` | `stats_v5_membrane_oring.json` | **10/10 damaged-seal units PASS the bubble check** — the measured blind spot |
+| `v5_clean.py --eval 16 --stroke --solution --inline-verify --rinse --dry --seed0 2260` | `stats_v5_clean_stroke_solution_inline_rinse_dry.json` | FULL STAGE 3 (three cloths) |
+
+The datasheet TCP assertion is on the **arm's wrist** (`arm_tcp_speed_max`); the pad keeps
+its own 1.25× sprung-tool bound. The pad can ring briefly faster than the arm moves — that
+is the compliance, not the servo.

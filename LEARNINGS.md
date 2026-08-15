@@ -997,3 +997,52 @@ with it. Two independent routes to the same answer is the closest thing to a che
 and we can catch a failure that used to be undetectable — a pad that has run dry still
 presses with the right force, still covers every surface, and cleans nothing. Coverage
 cannot see that. We measure it separately, because a check that cannot fail is not evidence.
+
+## 2026-08-13 — The dead lever was a hidden clamp, and the check that could not fail
+
+**What we built:** three speedups and one deliberately built failure. The verification
+photos are now taken during pauses the cleaning cycle already has, instead of a dedicated
+10-second pass at the end — same camera, same angles, proven identical row-for-row on a
+paired 10-unit battery. The cap-tightening motor got a faster spec — and the story matters
+more than the seconds: we had "measured" that commanding it faster changed nothing, and
+called it a dead lever. It was not dead. The simulator silently caps any command at the
+actuator's declared range, and the declared range was the real limit — every "faster"
+command we swept was being flattened to the same 6 rad/s before it reached the motor.
+The same silent-clamp once cost us a whole face of coverage on the turntable. **A knob
+that does nothing is usually a knob that is not connected.**
+
+**The failure we built on purpose:** the leak test's blind spot, made into a number. A
+damaged O-ring at full torque passed the bubble check **10 times out of 10** — as the
+honesty label always warned in prose — because the bubbles are driven by measured torque,
+and a ruined ring does not stop the wrench reaching its torque. The measurement even
+showed the damage plainly (the seal's clamping force halved) — but nothing reads that
+signal, and on a real line nothing could. The fix is hardware: a pressure gauge that
+watches the 85 PSI charge actually hold. **A blind spot you have measured is a spec item;
+one you have merely asserted is a hope.**
+
+**Also:** the arm's speed limit is now asserted on the arm's own wrist, not on the pad —
+the pad rides a spring and can briefly "ring" faster than the arm ever moves, the way a
+ruler twanged on a desk edge moves faster than the hand that bent it. The pad keeps its
+own, looser bound so tool motion cannot quietly grow either.
+
+## 2026-08-13 (later) — Two cycle numbers, and why the honest one is the slow one
+
+**What we built:** the full three-cloth cleaning sequence DrinkPrime's Stage 3 actually
+describes — wash with the solution-charged pad, wipe the soap off with a damp cloth, dry
+with a dry cloth — on three separate pads, each on its own stand. The demo now has two
+numbers: **2:28.6** for the cell as we'd pitch it (wash only), and **6:20.7** for the
+letter of their work instruction.
+
+**The concept: a faithful process costs what it costs, and hiding that behind the fast
+number would be the same lie as a step that passes by being named.** The two extra cloths
+are nearly pure logistics — two more full sweeps of every face, a second dip, two tool
+changes — and none of it improves what our simulation can measure, because the wash pass
+already removes everything removable. What the 6:20.7 buys is the right to say "this is
+the instruction, performed": the dry cloth is provably never wet (checked every unit, not
+sampled), the damp cloth provably never runs dry, and the coverage check still passes on
+all sixteen fresh units.
+
+**Why it matters for the real robot:** the founder can now choose with real prices — the
+wash-only cell at ~2.5 minutes, or the full protocol at ~6.3, or the full protocol with
+the rinse and dry running on a second, cheaper arm in parallel. That is a business
+decision, and it could not be made before there were two honest numbers to compare.
