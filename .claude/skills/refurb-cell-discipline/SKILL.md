@@ -165,7 +165,7 @@ byte-identical and which moved. Then:
 
 These travel with any demo or quoted figure; do not drop them to make a claim cleaner:
 
-1. Easy/Medium/Hard **names** are DrinkPrime's; the **boundaries are ours**, still unconfirmed.
+1. Easy/Medium/Hard **names** and (verbal, 2026-08-12) **outcome definitions** are DrinkPrime's; the **visual boundaries the camera applies are ours**, still unconfirmed.
 2. Cleaning removes soil on **contact, not dwell** — the sim cannot see a rub being too brief.
 3. No cream, detergent or chemistry is simulated. v5 CLEAN is a **dry wipe of the cabinet
    exterior**, and the funding bar says *"cleans the filter with a solution"*. That gap is

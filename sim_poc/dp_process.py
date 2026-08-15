@@ -668,7 +668,40 @@ class Route:
 
 # The class NAMES are DrinkPrime's. The class BOUNDARIES are OURS -- not because an
 # annexure is missing, but because NO document in the set defines them at all.
+#
+# PARTIAL UPDATE 2026-08-12, VERBAL -- see FOUNDER_VERBAL below. The founder has now
+# defined the grades BY OUTCOME (device not changed / some parts changed / entire device
+# changed). That is a definition of what each grade MEANS, not of how to RECOGNISE one:
+# the VISUAL criteria the camera needs are still undefined, so the triage station's class
+# boundaries remain OURS and must go on being labelled that way.
 TRIAGE_GRADES = ("easy", "medium", "hard")
+
+# ============================================== founder statements, VERBAL only
+# Everything in this block is SECONDHAND: relayed by Teja, same provenance chain as the
+# Anirudh feedback. Nothing here is in writing. Do not blur these with the 13 source
+# documents above (which are primary) or with our sim boundaries (which are ours).
+FOUNDER_VERBAL = {
+    "date": "2026-08-12",
+    "provenance": "verbal, relayed by Teja -- secondhand, not recorded, not in writing",
+    "grade_definitions_by_outcome": {
+        # His words, as relayed. These are OUTCOME definitions -- what happened to the
+        # unit -- not visual criteria a camera can apply to an incoming one.
+        "easy": "device not changed",
+        "medium": "some parts changed",
+        "hard": "entire device changed",
+    },
+    "note_ours": "Checked against V5_ROUTES above, our route semantics already match "
+                 "his outcomes: EASY = clean only (nothing replaced), MEDIUM = membrane "
+                 "subassembly rebuilt (some parts changed), HARD non-rectifiable = "
+                 "scrap/replace (entire device). That agreement is OUR observation, not "
+                 "his confirmation. What remains undefined is the VISUAL criterion: what "
+                 "an operator SEES on an incoming unit that predicts which outcome it "
+                 "needs. Our soil/scratch/dent pools are a stand-in for that and must "
+                 "keep being labelled OURS.",
+    "incoming": "process VIDEO and REAL IMAGES promised within days; founder wants US "
+                "to build the image classification. v5_real_triage.py is the intake "
+                "harness (blind protocol, missed-hard headline, exact binomial CIs).",
+}
 
 V5_ROUTES = {
     "easy": Route(
@@ -709,7 +742,9 @@ MISSING = (
     "CORRECTED 2026-08-04: Annexure 1 governs CABINET/STICKER accept-reject, NOT the "
     "Easy/Medium/Hard triage. Asking only for 'Annexure 1' returns a cabinet cosmetics "
     "spec and does NOT answer the founder's image-processing bar.",
-    "*** THE EASY / MEDIUM / HARD CRITERIA. No annexure and no document in this set "
+    "*** THE EASY / MEDIUM / HARD *VISUAL* CRITERIA. (Half-answered 2026-08-12: the "
+    "founder verbally defined the grades BY OUTCOME -- see FOUNDER_VERBAL. Still missing "
+    "is what an operator SEES that predicts the outcome.) No annexure and no document in this set "
     "defines them. The correct ask is open-ended: what document, if any, defines them -- "
     "and if none does, do operators grade by eye, by a wear indicator, or by FEEL? "
     "Either answer unblocks work; 'by feel' would mean camera-only inspection is the "

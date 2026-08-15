@@ -38,3 +38,8 @@ venv
 sim_poc/rt_raw_*.mp4
 sim_poc/rt_*.mp4
 sim_poc/concat_rt.txt
+
+# Harness-generated mirrors of CLAUDE.md / .claude content (regenerated per session).
+# The canonical copies are CLAUDE.md and .claude/ -- committing both invites drift.
+AGENTS.md
+.agents/
