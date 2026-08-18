@@ -330,6 +330,14 @@ reachability study allows a **30° tilt cone** off the surface normal on that ba
 **Standoff during a cleaning pass:** TCP held **45 mm** off the target surface (the pad
 occupies the gap).
 
+**The pad should be sourced as a POWERED BUFF (plant video, 2026-08-18).** The plant's
+own cabinet polishing is a hand drill driving a foam buffing pad with Cif — the sim's
+compliant pad-on-ACF is that tool class held still. A production cell should buy the
+same thing the plant already trusts: a low-speed rotary buffing head on the compliance
+flange. **The sim does not yet model the spin** (its removal is contact-binary, so a
+spinning pad would change no measured number today) — modelling the reaction torque
+through the tool changer is the named follow-up before sourcing.
+
 **Membrane spindle (cap driver) — a purchased component with a two-number spec.**
 
 | number | value | status |
@@ -345,6 +353,12 @@ occupies the gap).
 > sabotage caught 10/10, 0 false pass; turns median 9.64 (baseline 9.53), peak seal
 > 350 N (baseline ~345). The stall detector keys on AXIAL PROGRESS collapsing, which is
 > rate-independent by construction and measured so.
+>
+> **Pressure-decay sensor (the O-ring fix): the plant already owns the instrument
+> class.** Their final QC tests the assembled device with pneumatic air through a dial
+> gauge on the line (plant video, 1:19–1:28). Specifying a transducer + hold-time
+> criterion at the membrane station is an extension of equipment they already use, not
+> new exotic hardware. Test pressure still unresolved (45 vs 80 PSI).
 >
 > ⚠️ **History worth keeping**: the spindle spent three versions capped at 6 rad/s by a
 > `ctrlrange` nobody was looking at, while the commanded rate said 12 — MuJoCo clamps

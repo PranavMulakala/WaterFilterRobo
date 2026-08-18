@@ -2988,6 +2988,14 @@ def report(rows):
     assert pad_ok, (f"peak PAD speed {vmax*1000:.0f} mm/s exceeds the sprung-tool bound "
                     f"{vlim*1250:.0f} mm/s -- the compliance is ringing harder than the "
                     f"headroom allows; find the excitation before shipping")
+    # THE PLANT'S OWN BENCHMARK (plant video, 2026-08-18, dp_process.PLANT_VIDEO):
+    # manual cleaning is ~5 min typical and 15-20 min for poorer-condition units, and
+    # their stated target is ALL devices' cleaning under 5 minutes. Printed beside our
+    # number so every eval reads against the number the plant actually cares about --
+    # this is the denominator the speedup claims lacked for four months.
+    print(f"\n  vs the PLANT (video 2026-08-18): manual clean ~5 min typical, 15-20 min")
+    print(f"  poor-condition; their target is ALL UNDER 5:00. This station: see the")
+    print(f"  cycle figures above (dry 108.1 s / with dip 114.4 s at publication).")
     print("\n  Coverage is of ALL FIVE faces -- the back panel carries soil too, since the")
     print("  indexer reaches it. No fluid or chemistry is simulated: what is verified is")
     print("  that the soil the camera could see is gone.")

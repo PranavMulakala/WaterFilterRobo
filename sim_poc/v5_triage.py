@@ -17,6 +17,16 @@ and their remedies, quoted in make_scene_v5:
     scratch  -> needs the rubbing-component pass (Stage 2)          -> MEDIUM
     dent     -> no remedy in ANY of the ten stages                  -> HARD
 
+TWO LATER CONFIRMATIONS STRENGTHEN THE AXES WITHOUT SUPPLYING THE BOUNDARIES:
+  * founder, verbal 2026-08-12 (dp_process.FOUNDER_VERBAL): the grades are defined BY
+    OUTCOME -- easy = device not changed, medium = some parts changed, hard = entire
+    device changed -- which the soil/scratch/dent mapping above already matches.
+  * the plant video, 2026-08-18 (dp_process.PLANT_VIDEO): "if the DENT is more, then
+    only we proceed for the replacement; if the dents is minimal, then we polish it"
+    -- DENT SEVERITY gating replace-vs-polish, on film. The dent->HARD row above is
+    therefore their rule, not our guess. What remains OURS is every NUMERIC threshold
+    (how many dents, how large, is "more").
+
 Every number this file prints must carry that caveat.
 
 WHY A FIXED CAMERA AND A ROTATING DEVICE. V5_PLAN originally specified the arm orbiting

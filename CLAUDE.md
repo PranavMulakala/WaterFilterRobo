@@ -675,6 +675,14 @@ script's `--seed0` default reproduces its published number rather than a spent r
   starts seated **and twist-locked** (locked lug axis 25–50°, randomized per seed;
   the slot gap spans ~72–108°, so anything outside ~[64,116]° is captive), an open
   bin at (0.46, 0.0), and dull "spent" materials.
+- `meetings/refurb_video_2026-08-18.md` — **the PLANT VIDEO, transcribed + dissected: a
+  14th primary source.** Manual clean ~5 min typical / 15–20 poor-condition, plant target
+  ALL UNDER 5:00; dent severity gates replace-vs-polish (on film); their polish tool is a
+  powered buffing pad; panels are cleaned DETACHED after teardown (v5's
+  assembled-cabinet-on-turntable is a CELL DESIGN CHOICE, not their manual practice —
+  label it whenever coverage is quoted); final QC = pneumatic air + dial gauge; grades
+  live in their Frappe ERP beside a rectification-cost column. Structured data:
+  `dp_process.PLANT_VIDEO`.
 - `docs/drinkprime/` — **the 13 source PDFs.** See its README before reading them.
   **The three QC pages are pure vector line art: text extraction returns labels with NO
   EDGES.** Render them (PyMuPDF is in the venv; there is no `pdftoppm` on this machine)

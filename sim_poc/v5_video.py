@@ -605,6 +605,11 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
     for name, d in sorted(merged.items(), key=lambda kv: -kv[1]):
         print(f"    {name:<10} {d:7.1f} s  {d/dur*100:5.1f}%"
               if dur > 0 else f"    {name:<10} {d:7.1f} s")
+    # THE PLANT'S OWN BENCHMARK, beside every cycle figure this file ever prints
+    # (plant video 2026-08-18, dp_process.PLANT_VIDEO): manual cleaning ~5 min typical,
+    # 15-20 min poorer-condition, and their stated target is ALL under 5:00.
+    print("    [plant, on film: manual clean ~5:00 typical / 15-20:00 poor condition; "
+          "their target: ALL under 5:00]")
     return out
 
 
