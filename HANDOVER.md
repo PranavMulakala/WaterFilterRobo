@@ -153,11 +153,24 @@ denominator. He has also **not watched the v6 video**.
 
 ## Next steps, ranked (updated 2026-08-15, end of the V9 session)
 
-0. **Read `stats_v5_dr.json` when it appears** — the DR sweep (mass ±20% / friction ±30% /
-   height +5 mm, paired OFF/ON, seeds 2300–2331, POINT mode) was launched detached and its
-   results land unread. Judge them and commit them WITH their numbers; a stroke-mode DR
-   pass is the natural follow-up. Also: the founder's real photos land within days —
-   `v5_real_triage.py --prep` is the intake.
+0. ~~Read `stats_v5_dr.json`~~ **DONE 2026-08-18 — the DR sweep landed and was read
+   before committing.** Result on 16 paired units (2300–2315): **coverage 100%, 0 missed,
+   both OFF and ON** — the cleaning cycle is robust to mass ±20% / friction ±30% / height
+   +5 mm. **The finding: peak force rises 23.9 → 33.9 N under perturbation** (worst at
+   mass ×1.16), shrinking the 45 N-ceiling margin from 1.88× to **1.33×** — and the 8 kg
+   cabinet mass is itself a placeholder, so until the real mass lands, the force margin
+   carries the mass uncertainty. Stroke-mode DR is the follow-up.
+0b. **The plant video landed 2026-08-18 and is wired into the sim** — benchmark printed
+   beside every eval and demo figure (their target: ALL cleaning under 5:00; our station:
+   108–114 s), the on-film dent rule recorded in triage's header, `dp_process.PLANT_VIDEO`
+   holds the structured facts. **Queued physical-fidelity builds, each needing its own
+   validated session:** (1) POWERED BUFF — model the pad's spin + reaction torque through
+   the tool changer (their actual tool class; changes no measured number today, so it
+   must be built with the force/tracking/battery re-validation, not before); (2)
+   INSIDE-BOWL cleaning (brownish/blackish impurities on film; new geometry). Sharpened
+   founder asks: the dent threshold, the pneumatic test PSI, and a **Frappe Stock Entry
+   export** (grades + rectification costs + volumes are per-unit data in their ERP).
+   The founder's real PHOTOS remain incoming — `v5_real_triage.py --prep` is the intake.
 
 ## Next steps, previously ranked
 
