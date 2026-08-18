@@ -676,6 +676,63 @@ class Route:
 # boundaries remain OURS and must go on being labelled that way.
 TRIAGE_GRADES = ("easy", "medium", "hard")
 
+# ================================================== the plant video, 2026-08-18
+# refurbished_4.mp4 -- the process video promised on 2026-08-12. UNLIKE the verbal
+# block below, this is PRIMARY-SOURCE footage of their line, transcribed and
+# frame-dissected in meetings/refurb_video_2026-08-18.md (whisper cross-checked against
+# the video's own burned-in captions; three ambiguities resolved by Pranav 2026-08-18).
+# Facts here are THEIRS, on film. Anything that is our inference says so.
+PLANT_VIDEO = {
+    "source": "refurbished_4.mp4, 1:47.8, received 2026-08-18",
+    "transcript": "meetings/refurb_video_2026-08-18.md",
+
+    # THE DENOMINATOR, at last. His words: "Some devices take around 5 minutes, and if
+    # the device comes with 'less standard' [poorer condition], it may go up to 15 to 20
+    # minutes." And the target: "all the devices cleaning will be remained under the
+    # 5 minutes." NOTE this is about CLEANING specifically, and the 15-20 bucket is
+    # CONDITION-gated -- manual time scales with the same condition axis the grades
+    # encode, which is the triage premise.
+    "manual_clean_min_typical": 5.0,
+    "manual_clean_min_poor_condition": (15.0, 20.0),
+    "plant_target": "ALL devices' cleaning under 5 minutes",
+    "stated_challenges": "manpower, cycle time (two listed challenges -- captions' "
+                         "comma; OUR reading, Pranav unsure himself)",
+
+    # The triage rule, on camera: "There we check for the dents and damages. If the
+    # dent is more, then only we proceed for the replacement. If the dents is minimal,
+    # then we polish it." DENT SEVERITY GATES REPLACE-VS-POLISH. No numeric threshold
+    # given -- the boundary is still undefined, but the AXIS is now theirs on film.
+    "dent_rule": "dent more -> replacement; dent minimal -> polish",
+
+    # Their cabinet polishing tool is a POWERED ROTATING BUFFING PAD (hand drill + foam
+    # buff), with Cif polish, brushes, and spray solutions -- and panels are cleaned
+    # DETACHED, in hand, after teardown. v5's assembled-cabinet-on-turntable is a CELL
+    # DESIGN CHOICE, not their manual practice; label it that way.
+    "polish_tool": "hand drill + foam buffing pad; Cif polish; brushes; spray bottles",
+    "panels_cleaned_detached": True,
+
+    # Bowl: impurities "brownish or blackish in color ... present INSIDE the bowl",
+    # cleaned with Cif + sanitizer + different brushes; bowl sticker replaced; ELBOWS
+    # replaced because of SALT CONTENTS (confirmed) inside them.
+    "bowl_interior_impurities": "brownish/blackish, inside the bowl",
+    "elbow_replacement_cause": "salt contents in the elbow",
+
+    # Final QC: "device is tested using the pneumatic air" -- an air line with a DIAL
+    # PRESSURE GAUGE, on film. The independent pressure instrument the O-ring
+    # falsification (Task 4) named as the honest fix ALREADY EXISTS at their final QC.
+    # The test PRESSURE remains unknown (the 45-vs-80 PSI contradiction stands).
+    "final_qc": "pneumatic air test, dial gauge on the line",
+
+    # Identity flow: old/new PID (Purifier ID) scanned in an app; ERP is Frappe at
+    # drinkprime.frappe.cloud; Stock Entry rows carry per-unit GRADE chips (Medium,
+    # Hard seen on screen) NEXT TO a rupee rectification-cost column, plus Old/New
+    # Purifier ID, Old/New Bot ID, Sponsor Code fields. Grades are per-unit DATA in
+    # their system -- class priors and cost distributions are queryable; ask for an
+    # export.
+    "erp": "Frappe (drinkprime.frappe.cloud), Stock Entry: grade chips Medium/Hard + "
+           "rupee cost + Old/New Purifier ID + Old/New Bot ID + Sponsor Code",
+}
+
 # ============================================== founder statements, VERBAL only
 # Everything in this block is SECONDHAND: relayed by Teja, same provenance chain as the
 # Anirudh feedback. Nothing here is in writing. Do not blur these with the 13 source
@@ -762,7 +819,10 @@ MISSING = (
     "ANY torque value, despite three stages saying 'tighten with spanner without damage' "
     "and 'not too tight to avoid damage'.",
     "ANY mass or weight -- so no gripper payload or arm sizing can be derived.",
-    "Cycle time / takt per stage, daily refurb volume, line balance, operator count.",
+    "Cycle time / takt per stage -- HALF-ANSWERED 2026-08-18 by the plant video: manual "
+    "CLEANING is ~5 min typical, 15-20 min for poorer-condition units, and the plant's "
+    "own target is all-under-5 (see PLANT_VIDEO). Still missing: takt for the OTHER "
+    "stages, daily refurb volume, line balance, operator count.",
     "The Easy/Medium/Hard split percentages -- we do not know the class priors.",
     "A DISASSEMBLY / TEARDOWN work instruction. The set runs Checking -> Cleaning -> "
     "ASSEMBLY. Nothing documents how covers come off, how filters are extracted, or how "
