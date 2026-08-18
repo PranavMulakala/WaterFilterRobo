@@ -1,4 +1,4 @@
-# HANDOVER — state as of 2026-08-12 (evening)
+# HANDOVER — state as of 2026-08-18
 
 **Read `CLAUDE.md` first** (phase table + seed ledger are authoritative). This is the
 five-minute version. `git log` is the detailed one; every commit message carries its
@@ -30,8 +30,10 @@ saying the opposite of the truth — see the note at the end.*
    definitions are his too** *(verbal, relayed by Teja)*: EASY = device not changed,
    MEDIUM = some parts changed, HARD = entire device changed — which our routes already
    match. **The VISUAL criteria — what a camera sees on an incoming unit — are still
-   ours and still unanswered.** He is sending a process video + real images within days
-   and wants us to build the image classification.
+   ours**, though narrower since 2026-08-18: the plant video shows DENT SEVERITY gating
+   replace-vs-polish on film (axis theirs; every numeric threshold still ours). The
+   promised video ARRIVED and is transcribed (`meetings/refurb_video_2026-08-18.md`);
+   the real images are still incoming — `v5_real_triage.py --prep` is the intake.
 2. Cleaning removes soil on **CONTACT, not on dwell**. At 200 mm/s a surface point spends
    ~0.30 s under the pad against ~1.0 s in point mode. A shorter rub is free here and would
    **not** be free with real cream. Modelling limit, not a result.
@@ -68,9 +70,12 @@ saying the opposite of the truth — see the note at the end.*
 
 ## Open with the founder — sent 2026-08-04 evening, STILL UNANSWERED as of 2026-08-09
 
-Grading criteria; annexure scans; 45-vs-80 PSI; CAD (bowl/cap/O-ring). Plus, added by V6:
-**manual cycle time and daily refurb volume** — without them no speedup claim has a
-denominator. He has also **not watched the v6 video**.
+Grading criteria; annexure scans; 45-vs-80 PSI; CAD (bowl/cap/O-ring, **and the real
+cabinet MASS — the DR sweep shows the force margin carries the mass uncertainty**).
+**Manual cycle time is ANSWERED by the plant video (2026-08-18): cleaning ~5 min typical,
+15–20 poor-condition, target all-under-5.** Still missing: daily refurb volume. Sharpened
+by the video: the dent threshold, the pneumatic test PSI, and a Frappe **Stock Entry
+export** (grades + rectification costs are per-unit data in their ERP, on film).
 
 > **The "cleans the filter with a solution" question narrowed on 2026-08-12, from their own
 > documents.** Stage 3 (`0024DPCRO003`) says *"Dip the CLOTH in the solution and wring out
