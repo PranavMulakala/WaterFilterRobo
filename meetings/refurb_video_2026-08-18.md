@@ -6,7 +6,8 @@ promised on 2026-08-12). Narrator: a plant engineer (name unknown), non-native E
 **Provenance of this transcript:** Whisper-medium (local) cross-checked word-by-word
 against the video's own burned-in captions, plus the on-screen evidence (ERP field names,
 product labels). Corrections applied where all sources agree are marked inline the first
-time. Three spots are flagged `[?]` — Pranav to confirm.
+time. The three flagged spots were resolved by Pranav on 2026-08-18; his corrections are
+now inline and the flags removed.
 
 ## Corrected transcript
 
@@ -30,8 +31,8 @@ time. Three spots are flagged `[?]` — Pranav to confirm.
   this is also cleaned with the same Cif polish **and sanitizer**, and we use different
   brushes for different operations.
 - [0:51] And once impurities are cleared, then the sticker gets replaced in the bowl, and
-  the **elbows** are also replaced, because we have **salt contents** `[? "salt" is
-  whisper's hearing; captions omit the word]` in the elbow.
+  the **elbows** are also replaced, because we have **salt contents** in the elbow.
+  (Confirmed by Pranav — salt/scale deposits inside the elbows.)
 - [0:58] Once the polishing operation is done, the next process is like wiring and
   assembly. So first operation is wiring, where he does connect the **bot, harness, SV,
   pump**, and the tubing will be done in the next stage, which is called as assembly zone.
@@ -43,11 +44,14 @@ time. Three spots are flagged `[?]` — Pranav to confirm.
   the final testing area, where device is tested using the **pneumatic air** (captions;
   whisper heard "wire"; a line gauge and air gun are on screen). You can see the device
   which is ready for testing. So you can see the testing operations right now.
-- [1:28] The major challenges we are facing here is the **manpower, cycle time** `[? one
-  phrase "manpower cycle time" or two listed challenges — captions split them]`, where
-  based on the devices we have multiple cycle times. **Some devices take around 5
-  minutes, and [if] the device comes with more dust on it** `[? whisper: "dust under
-  it"]`, **it may go up to 15 to 20 minutes.**
+- [1:28] The major challenges we are facing here is the **manpower, cycle time** — read
+  as TWO listed challenges (manpower AND cycle time), per the captions' comma; the
+  elaboration that follows is about cycle time, and in practice the two are one
+  bottleneck: labour minutes per device. (Pranav: unsure himself; this is the recorded
+  best inference, not his confirmation.) — where based on the devices we have multiple
+  cycle times. **Some devices take around 5 minutes, and if the device comes with "less
+  standard"** (Pranav's correction — his phrase for a device in POORER CONDITION; whisper
+  had misheard "more dust"), **it may go up to 15 to 20 minutes.**
 - [1:39] **So the major challenge is to reduce the cycle time so that all the devices'
   cleaning will be remained under the 5 minutes, so that we can concentrate more on the
   productivity part of the work.**
@@ -89,8 +93,10 @@ Entry with grade + cost + status for a few months.
 
 ## What this video settles / changes (against dp_process.py and the sim)
 
-1. **Manual clean cycle time, finally: ~5 min typical, 15–20 min dirty, and the plant's
-   own TARGET is "all devices under 5 minutes".** The denominator the speedup claims
+1. **Manual clean cycle time, finally: ~5 min typical, 15–20 min for poorer-condition
+   ("less standard") units, and the plant's own TARGET is "all devices under 5
+   minutes".** Note the 15–20 bucket is CONDITION-gated, not dust-gated — time scales
+   with the same condition axis the grades encode, which is exactly the triage premise. The denominator the speedup claims
    lacked. BASE sim cycle (wash+membrane+verify, 2:28.6) sits well inside their target;
    even FULL STAGE 3 (6:20.7) is at the boundary of their typical-to-bad range.
 2. **Their cabinet polishing is already a POWERED ROTATING PAD** (drill + buffing pad,
