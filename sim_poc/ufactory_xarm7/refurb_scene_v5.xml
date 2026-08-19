@@ -55,6 +55,7 @@
     <material name="solmat"  rgba="0.62 0.78 0.86 0.55" reflectance="0.35"/>
     <material name="dampmat" rgba="0.55 0.65 0.78 1" reflectance="0.05"/>
     <material name="drymat"  rgba="0.82 0.82 0.80 1" reflectance="0.05"/>
+    <material name="buffmat" rgba="0.93 0.85 0.35 1" reflectance="0.05"/>
   </asset>
 
   <worldbody>
@@ -493,6 +494,45 @@
     <geom name="post_dry" type="cylinder" size="0.055 0.010"
           pos="0.300 -0.520 0.010" material="postmat"/>
 
+    <!-- ================= V10 POWERED BUFF (the plant's polish tool) =================
+         Same keyed shank and ACF as every other tool; the head carries a SPIN hinge and
+         a round face. The spin axis is the pad normal, so reaction torque loads the
+         shank in torsion -- exactly what the tool-changer weld must resist on a real
+         cell, and what coupling_drift_mm + the new buff metrics measure. -->
+    <body name="bufftool" pos="0.460 -0.520 0.040">
+      <freejoint name="bufftool_free"/>
+      <geom name="buff_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
+            material="stemmat" mass="0.18"/>
+      <site name="buff_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+      <body name="buffhead" pos="0 0 0">
+        <joint name="buff_acf" type="slide" axis="0 0 1" range="-0.002 0.0300"
+               stiffness="800" damping="12" springref="0"
+               armature="0.002"/>
+        <!-- the bearing housing / backing plate the motor pushes against. Real part
+             (a buff has one), and REQUIRED here: the head carries the spin joint's
+             stator side, and a moving body must have mass. Non-colliding -- it sits
+             fully behind the foam face. -->
+        <geom name="buff_plate" type="cylinder" size="0.030 0.003" pos="0 0 0.003"
+              material="stemmat" mass="0.02" contype="0" conaffinity="0"/>
+        <body name="buffspin" pos="0 0 0">
+          <!-- armature: a small foam disc + backing plate has real rotor inertia;
+               damping models bearing drag so a cut motor spins DOWN, not forever -->
+          <!-- armature = REFLECTED rotor inertia: the motor spins through a gearbox,
+               so the pad sees J_rotor x gear^2 -- orders above the bare disc's 1.8e-5.
+               damping = bearing + gear drag; a geared spindle does not freewheel. -->
+          <joint name="buff_spin" type="hinge" axis="0 0 1" damping="0.01"
+                 armature="0.005"/>
+          <geom name="buff_face" type="cylinder" size="0.030 0.010"
+                pos="0 0 -0.010" material="buffmat" mass="0.04" priority="1"
+                solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2"
+                friction="0.7 0.02 0.001"/>
+          <site name="buff_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+        </body>
+      </body>
+    </body>
+    <geom name="post_buff" type="cylinder" size="0.055 0.010"
+          pos="0.460 -0.520 0.010" material="postmat"/>
+
     <!-- =================== SOLUTION TRAY (Stage 3) ===================
          WHAT THE SOURCE DOCUMENT ACTUALLY SAYS, because this station exists only
          because of it. Stage 3 (0024DPCRO003, "Back Panel & Top Cover Cleaning"):
@@ -846,6 +886,19 @@
        loading it, and the driver never stalled. Explicit pairs override that filtering.
        This is the seal that makes the torque criterion mean anything. -->
   <contact>
+    <!-- V10, THE MIRROR-IMAGE OF THE CAP/O-RING LESSON ABOVE: the buff FACE must be
+         told NOT to touch its own STEM. The pad's face is a direct CHILD of its stem
+         body, so MuJoCo's parent-child filtering eats their face-top/stem-bottom
+         contact silently. The buff's face sits one body FURTHER down (the spin hinge
+         in between), the automatic filter no longer applies, and the face -- whose top
+         plane rests exactly on the stem's bottom plane -- pressed against its own tool
+         from the first micron of ACF travel: measured 164 N median at 2.5 mm of slide
+         compression (the spring alone would give 2 N), 922 N peak, with the ACF never
+         doing its job. One probe chain found it: motor-off still exploded (not the
+         spin), box-face-with-hinge exploded while disc-without-hinge was healthy (the
+         HINGE's presence, not the disc), and the ACF trace showed the force bypassing
+         the spring. -->
+    <exclude body1="bufftool" body2="buffspin"/>
     <pair geom1="mem_cap_body" geom2="mem_oring0" solref="0.02 1"
           solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
     <pair geom1="mem_cap_body" geom2="mem_oring1" solref="0.02 1"
@@ -919,6 +972,8 @@
           active="false" solref="0.004 1" torquescale="1"/>
     <weld name="toollock_dry" body1="xarm_gripper_base_link" body2="drypad"
           active="false" solref="0.004 1" torquescale="1"/>
+    <weld name="toollock_buff" body1="xarm_gripper_base_link" body2="bufftool"
+          active="false" solref="0.004 1" torquescale="1"/>
     <!-- THE THREAD. MuJoCo has no screw joint, so one is built from a hinge and a slide
          tied together: cap_z = -(pitch / 2pi) * cap_rot. That single line is what makes
          the cap MULTI-TURN and axially advancing rather than our fixed-angle bayonet.
@@ -954,6 +1009,15 @@
     <velocity name="capdrv" joint="cap_rot" kv="3.0"
               ctrlrange="-30 30"
               forcerange="-6.00 6.00"/>
+    <!-- V10: the buff motor. Velocity actuator, forcerange = motor torque -- the same
+         honest construction as capdrv: it stalls the way a real motor stalls, and the
+         torque it applies is the reaction the tool changer must carry. kv=0.4 is the
+         speed-loop stiffness: at the measured ~0.26 N*m pressed-friction load the slip
+         is ~0.65 rad/s (a drill holds its speed), where the first draft's kv=0.05
+         slipped 26% -- measured, self-consistent (slip x kv == reaction). -->
+    <velocity name="buffdrv" joint="buff_spin" kv="0.4"
+              ctrlrange="-60 60"
+              forcerange="-0.80 0.80"/>
   </actuator>
 
   <keyframe>
@@ -992,22 +1056,25 @@
          `qpos0` patch fixes one caller and leaves the landmine armed for the next. The
          keyframe is the single place every consumer already goes through.
 
-         qpos layout (61): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         qpos layout (70): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
                          | 7 damppad free | 1 damp_acf | 7 drypad free | 1 dry_acf
+                         | 7 bufftool free | 1 buff_acf | 1 buff_spin
                          | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
                          | 7 cap_blank free
-         (V9 added the damp/dry cloths -- FIFTH keyframe extension; every previous
-          free-body addition that skipped this line spawned at the world origin
-          inside the arm riser, four times running)
-         ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
+         ctrl layout (11): 7 arm | 1 gripper | 1 tt | 1 capdrv | 1 buffdrv
+         (V10 added the buff -- SIXTH keyframe extension, and the first that also
+          extends CTRL; every free-body addition that skipped the qpos line spawned
+          at the world origin inside the arm riser, four times running)
+         ctrl layout (11): 7 arm | 1 gripper | 1 tt | 1 capdrv | 1 buffdrv -->
     <key name="v5home"
          qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  0.300 -0.340 0.040 1 0 0 0  0
                0.140 -0.520 0.040 1 0 0 0  0
                0.300 -0.520 0.040 1 0 0 0  0
+               0.460 -0.520 0.040 1 0 0 0  0 0
                0.340 0.300 0.040 1 0 0 0  0 0
                0.210 0.300 0.072 1 0 0 0
                0.210 0.400 0.046 1 0 0 0"
-         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0"/>
+         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0 0"/>
   </keyframe>
 </mujoco>

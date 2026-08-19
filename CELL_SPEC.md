@@ -338,6 +338,33 @@ flange. **The sim does not yet model the spin** (its removal is contact-binary, 
 spinning pad would change no measured number today) — modelling the reaction torque
 through the tool changer is the named follow-up before sourcing.
 
+**Powered buff (V10) — the plant's own polish tool, now modelled, with a three-number
+purchased-component spec.**
+
+| number | value | status |
+|---|---|---|
+| motor free speed | **≥ 60 rad/s (~573 rpm)** headroom; operated per `CleanConfig.buff_rate` | low end of any cordless drill |
+| motor torque | **0.80 N·m** | ~2.9× the measured pressed-friction load (~0.27 N·m at ~20 N press) |
+| speed-loop stiffness | kv **0.4 N·m·s** | at the measured load the slip is ~0.65 rad/s — a drill holds its speed |
+
+> The disc is **⌀60 mm foam** on the same ACF; its radius equals the wipe geometry's
+> in-plane radius, so **coverage math is identical to the passive pad by construction**
+> (the square pad's inscribed circle was always what the coverage bound used). The
+> REACTION TORQUE flows through the ACF and the tool-changer weld — that reaction, under
+> press, is the sourcing question for any powered tool on a changer, and it is now a
+> **measured number: median 0.29 N·m, peak 0.47 N·m through the changer** (16 fresh
+> units, 2344–2359, at 10 rad/s under ~13–23 N press; `buff_react_*` in the stats). Spec
+> the changer's locking interface for ≥ 1 N·m continuous torsion (2× the measured peak).
+> Operating rate is 10 rad/s — chosen because the CONTACT SOLVER goes unstable at 15
+> (90.6 N, non-monotonic, the model's documented >45 N signature), not because a real
+> buff spins that slowly; the rpm does not transfer, the torque does.
+>
+> ⚠️ **Build note that cost a debugging session:** if the spinning face is modelled one
+> body below the stem (hinge in between), MuJoCo's parent-child contact filtering no
+> longer protects the face-top/stem-bottom interface — they touch at zero gap and the
+> tool presses against itself from the first micron (measured: 164 N median at 2.5 mm of
+> ACF travel, 922 N peak). The scene carries an explicit `<exclude>` with the story.
+
 **Membrane spindle (cap driver) — a purchased component with a two-number spec.**
 
 | number | value | status |

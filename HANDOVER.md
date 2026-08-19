@@ -19,6 +19,7 @@ own evidence.
 | routing | declared-trace 28/28 · right-route 26/28 · **fully backed 22/28** ← quote this one · false-easy 0/28 (byte-identical after the clamp) |
 | **V8 SOLUTION station** (opt-in, `--solution`) | the arm CHARGES THE PAD from a tray before cleaning and re-dips when low. **100% coverage, 0 missed of 252, peak 22.62 N, 1 dip/unit, 0.00 s dry-pad contact** on 16 fresh units (2204–2219). Clean 108.1 → **114.4 s** (dip 6.34 s/unit). Force/tracking/tilt **byte-identical** to the dry baseline. **Paired render, seed 1704: 2:36.1 without the dip → 2:42.6 with it** |
 | **V9 (2026-08-13)** | **inline verify** (10.0 s pass gone; battery row-identical paired + 10/10 fresh), **20 rad/s spindle** (the "dead lever" was a silent ctrlrange clamp; battery 10/10), **Stage 3 faithful: three cloths** (16/16 at 100%, 0 missed of 249, dry pad asserted never-charged), **O-ring blind spot MEASURED: 10/10 damaged seals pass the bubble check** |
+| **V10 POWERED BUFF** (opt-in, `--buff`) | the plant's own polish tool on the changer: spinning ⌀60 mm disc, honest motor (0.8 N·m / kv 0.4). **16/16 at 100%, 0 missed of 332, 23.35 N, spin 9.3/10 rad/s, 0% stall, REACTION THROUGH THE CHANGER 0.29 med / 0.47 peak N·m** (2344–2359); sabotage 9/10 caught + 1 vacuous zero-soil draw, 0 false, 0 would-escape (2360–2369). Rate 10 chosen by sweep — force NON-MONOTONIC (15 rad/s → 90.6 N, solver signature), 1.5× rate-margin. **Cannot show polishing quality (removal is contact-binary) — it exports the changer's reaction torque, the sourcing number** |
 | **full MEDIUM cycle — TWO configurations (V9, paired on seed 1704, true 1×)** | **BASE 2:28.6** (`media/v9_base_realtime.mp4`: CLEAN 108.1 / MEMBRANE 34.1 / SOLUTION 6.3 / VERIFY 0.0-inline) and **FULL STAGE 3 6:20.7** (`media/v9_stage3_realtime.mp4`: + RINSE 115.3 / DRY 114.1, 2 dips). *BASE supersedes V8's 2:36.1/2:42.6 (−14.0 s: inline verify −10.0, fast spindle −4.1, new posts +0.1). 6:20.7 is the honest price of the full three-cloth work instruction — never quote 2:28.6 as "Stage 3 compliant". Earlier figures 2:34.9 (V7.3) and the retracted 2:33 stand as recorded.* |
 
 ## The honesty labels that must travel with any demo
@@ -171,11 +172,14 @@ export** (grades + rectification costs are per-unit data in their ERP, on film).
 0b. **The plant video landed 2026-08-18 and is wired into the sim** — benchmark printed
    beside every eval and demo figure (their target: ALL cleaning under 5:00; our station:
    108–114 s), the on-film dent rule recorded in triage's header, `dp_process.PLANT_VIDEO`
-   holds the structured facts. **Queued physical-fidelity builds, each needing its own
-   validated session:** (1) POWERED BUFF — model the pad's spin + reaction torque through
-   the tool changer (their actual tool class; changes no measured number today, so it
-   must be built with the force/tracking/battery re-validation, not before); (2)
-   INSIDE-BOWL cleaning (brownish/blackish impurities on film; new geometry). Sharpened
+   holds the structured facts. **Queued physical-fidelity builds:** (1) ~~POWERED
+   BUFF~~ **BUILT 2026-08-19 with its full re-validation — see the V10 block in
+   `CLAUDE.md`** (four real bugs flushed out on the way: the grandchild
+   contact-exclusion trap, the planner carrying the wrong tool, the parked-pad veto, and
+   the long-leg wrist sprint — that last caught by the datasheet gate on the first
+   battery and fixed as a written distance rule, legs > 0.51 m go via SAFE); (2)
+   INSIDE-BOWL cleaning (brownish/blackish impurities on film; new geometry) — still
+   queued. Sharpened
    founder asks: the dent threshold, the pneumatic test PSI, and a **Frappe Stock Entry
    export** (grades + rectification costs + volumes are per-unit data in their ERP).
    The founder's real PHOTOS remain incoming — `v5_real_triage.py --prep` is the intake.

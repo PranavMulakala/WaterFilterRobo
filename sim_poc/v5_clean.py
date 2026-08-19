@@ -348,6 +348,34 @@ class CleanConfig:
     # is binary on contact. So this station CANNOT tell you that detergent cleans
     # better. It tells you what it costs to use detergent correctly.
     solution: bool = False
+    # --- V10 POWERED BUFF (2026-08-19). DEFAULT OFF: every published cleaning number
+    #     was measured with the passive pad, which stays untouched on its own post.
+    #     ON, the WASH pass couples the buff tool instead: a round foam disc (their
+    #     actual polish tool, on film -- dp_process.PLANT_VIDEO) spinning about the pad
+    #     normal, driven by a velocity actuator whose forcerange IS the motor torque.
+    #
+    #     WHAT THIS CAN AND CANNOT SHOW. Removal here is binary on contact, so a
+    #     spinning pad cleans no better than a still one IN THIS MODEL -- this build
+    #     cannot demonstrate polishing quality, and any claim that it does would be the
+    #     chemistry lie with a motor attached. What it MEASURES is what spinning COSTS:
+    #     the reaction torque the tool-changer weld must carry (the real sourcing
+    #     question for a powered tool on a changer), whether the motor stalls under
+    #     press, and what the spinning contact does to tracking, force and coverage.
+    buff: bool = False
+    # CHOSEN BY SWEEP (2340-2343), and the table is the reason -- force is
+    # NON-MONOTONIC in rate, the documented solver-instability signature (V6's feed
+    # sweep printed the same shape at 108 N):
+    #   rate  5: fmax 21.16 N   rate 10: 23.34   rate 15: **90.60**   rate 20: 37.24
+    # Coverage 100% and tracking ~15.9 mm at every rate. Rates >= 15 sit in territory
+    # where the contact solver cannot be trusted (the pad's own curve is documented
+    # intermittently unstable above 45 N). 10 rad/s is the fastest CLEAN rate, at 1.5x
+    # rate-margin to the measured 15 rad/s cliff -- the same margin shape as
+    # stroke_feed 0.20 vs the fastest-tested 0.30. HONESTY LABEL: 10 rad/s (~95 rpm) is
+    # slower than a real buff runs; the model gains nothing from spin (removal is
+    # contact-binary) so nothing is lost, and what this station EXPORTS is the measured
+    # REACTION TORQUE through the changer, not an rpm claim.
+    buff_rate: float = 10.0        # rad/s. Motor: ctrlrange 60, torque 0.8 N*m, kv 0.4
+                                   # (the purchased component, asserted in CELL_SPEC).
     # --- V9 INLINE VERIFY (2026-08-13). DEFAULT OFF: the published verify battery
     #     (stats_v5_verify_stroke.json, seeds 2140-2149) was measured with the end-pass
     #     protocol and stays byte-locked. ON is validated separately and tagged _inline.
@@ -606,8 +634,28 @@ class Cell:
                     break
                 p = m.body_parentid[p]
         self.arm_geoms = {g for g in range(m.ngeom) if m.geom_bodyid[g] in arm_bodies}
-        tool_bodies = {m.body("padtool").id, m.body("padhead").id}
-        self.tool_geoms = {g for g in range(m.ngeom) if m.geom_bodyid[g] in tool_bodies}
+        # PER-TOOL geom sets, selected with the tool (V10). This set answers "is this
+        # contact the CARRIED tool touching something" in the planner's classifier. It
+        # was hard-coded to the wash pad, which was invisibly correct for three tools:
+        # the carried tool is teleported to the wrist in the plan copy, so the wash
+        # pad's resting contact with its own post (-0.9 mm soft settle) only exists in
+        # the plan when the wash pad is NOT the carried tool -- and the first such tool
+        # (the buff) had every approach rejected by the parked wash pad's rest contact,
+        # classified as "the tool is touching a post". With the set following the
+        # active tool, a parked tool's rest contact is neither arm nor tool and falls
+        # into the ignored world-vs-world class, where it belongs.
+        def _subtree_geoms(root):
+            bodies = set()
+            stack = [m.body(root).id]
+            while stack:
+                b_ = stack.pop()
+                bodies.add(b_)
+                stack += [k for k in range(m.nbody) if m.body_parentid[k] == b_]
+            return {g for g in range(m.ngeom) if m.geom_bodyid[g] in bodies}
+        self._tool_geom_sets = {name: _subtree_geoms(body) for name, body in
+                                (("wash", "padtool"), ("damp", "damppad"),
+                                 ("dry", "drypad"), ("buff", "bufftool"))}
+        self.tool_geoms = self._tool_geom_sets["wash"]
         self.pad_jq = m.jnt_qposadr[m.body_jntadr[m.body("padtool").id]]
         self.tool_rel = None
         self.rend = None            # built lazily; rendering is the expensive part
@@ -644,9 +692,11 @@ class Cell:
         self.tools = {
             "wash": {"body": self.pad_body, "face": self.pad_face, "stem": self.stem,
                      "acf_q": self.acf_q, "eq": self.eq,
+                     "jq": m.jnt_qposadr[m.body_jntadr[m.body("padtool").id]],
                      "couple_tcp": np.array(cfg.couple_tcp)},
             "damp": {"body": m.body("damppad").id, "face": m.geom("damp_face").id,
                      "stem": m.geom("damp_stem").id,
+                     "jq": m.jnt_qposadr[m.body_jntadr[m.body("damppad").id]],
                      "acf_q": m.jnt_qposadr[m.joint("damp_acf").id],
                      "eq": _eqid("toollock_damp"),
                      "couple_tcp": np.array([SCN.TOOLPOST_DAMP_XY[0],
@@ -654,20 +704,53 @@ class Cell:
                                              cfg.couple_tcp[2]])},
             "dry": {"body": m.body("drypad").id, "face": m.geom("dry_face").id,
                     "stem": m.geom("dry_stem").id,
+                    "jq": m.jnt_qposadr[m.body_jntadr[m.body("drypad").id]],
                     "acf_q": m.jnt_qposadr[m.joint("dry_acf").id],
                     "eq": _eqid("toollock_dry"),
                     "couple_tcp": np.array([SCN.TOOLPOST_DRY_XY[0],
                                             SCN.TOOLPOST_DRY_XY[1],
                                             cfg.couple_tcp[2]])},
+            # V10: the powered buff. Same shank, same ACF; the face spins.
+            "buff": {"body": m.body("bufftool").id, "face": m.geom("buff_face").id,
+                     "stem": m.geom("buff_stem").id,
+                     "jq": m.jnt_qposadr[m.body_jntadr[m.body("bufftool").id]],
+                     "acf_q": m.jnt_qposadr[m.joint("buff_acf").id],
+                     "eq": _eqid("toollock_buff"),
+                     "couple_tcp": np.array([SCN.BUFFPOST_XY[0],
+                                             SCN.BUFFPOST_XY[1],
+                                             cfg.couple_tcp[2]])},
         }
         self.tool_name = "wash"
+        self.buffdrv = m.actuator("buffdrv").id
+        self.buff_spin_dof = m.jnt_dofadr[m.joint("buff_spin").id]
+
+    def _buff_drive(self, on):
+        """Motor trigger. ctrl persists across steps, so this is set at engagement
+        boundaries: after the coupled LIFT, off before the RETURN, and off during a
+        dip (nobody dips a spinning buff)."""
+        self.d.ctrl[self.buffdrv] = self.cfg.buff_rate if on else 0.0
 
     def select_tool(self, name):
-        """Re-point every per-tool binding at one cloth. The wipe path reads only these."""
+        """Re-point every per-tool binding at one cloth. The wipe path reads only these.
+
+        `pad_jq` IS one of these, and it was not here at first: _carry_tool() writes the
+        CARRIED tool's free-joint qpos in the planner's copy at self.pad_jq, which stayed
+        bound to the WASH pad -- so with any other tool coupled, the planner teleported
+        the wash pad to the wrist and left the ACTUAL tool floating at its stale live
+        pose, mid-air phantom collisions included. Measured on the buff: raster
+        infeasible 17 -> 74, stroke runs fragmented 5 -> 20, and two side-face patches
+        missed by a full 40 mm at every spin rate INCLUDING zero. Latent since the
+        three-cloth build and invisible there, because the rinse and dry passes have no
+        soil left to miss -- the first wash-pass tool that was not the wash pad exposed
+        it. "A planner must model what the robot is carrying" has a corollary: it must
+        model THE tool it is carrying, not whichever one the binding froze on.
+        """
         t = self.tools[name]
         self.tool_name = name
         self.pad_body, self.pad_face = t["body"], t["face"]
         self.stem, self.acf_q, self.eq = t["stem"], t["acf_q"], t["eq"]
+        self.pad_jq = t["jq"]
+        self.tool_geoms = self._tool_geom_sets[name]
         return t
 
     # ------------------------------------------------------- tool changer
@@ -1083,7 +1166,9 @@ class Cell:
         f = TR.image_features(self.rend.render(), roi, TR.CFG)
         if f is None:
             return False
-        if fid not in self._inline_best or self._inline_best[fid][0] > cos:
+        # >= : an equal-view RECAPTURE wins, so a later, more-cleaned state replaces an
+        # earlier one at the same angle rather than losing to it.
+        if fid not in self._inline_best or self._inline_best[fid][0] >= cos:
             self._inline_best[fid] = (cos, f)
         return True
 
@@ -1276,6 +1361,12 @@ class Cell:
         f = self.pad_contact_force()
         if f < self.cfg.contact_min_n:
             return 0
+        # V10: sample the buff's spin and reaction WHILE PRESSING -- the only regime
+        # where the motor fights friction and the changer carries the reaction.
+        if self.cfg.buff and getattr(self, "_pass_kind", "wash") == "wash" \
+                and float(self.d.ctrl[self.buffdrv]) > 0:
+            self.buff_spin.append(float(self.d.qvel[self.buff_spin_dof]))
+            self.buff_react.append(float(self.d.actuator_force[self.buffdrv]))
         if self.sabotage:
             return 0                # V5-D: contact happened, removal deliberately withheld
         if getattr(self, "_pass_kind", "wash") == "dry":
@@ -1938,6 +2029,10 @@ class Cell:
         """
         cfg = self.cfg
         gm = grasp_mat()
+        _buff_was_on = cfg.buff and self._pass_kind == "wash" \
+            and float(self.d.ctrl[self.buffdrv]) > 0
+        if _buff_was_on:
+            self._buff_drive(False)   # nobody dips a spinning buff
         sx, sy = SCN.SOLUTION_XY
         # the pad face bottom must end SOL_SUBMERGE below the liquid surface; plan_pad
         # takes where the PAD must be, because the pad hangs 105 mm off the wrist and
@@ -1996,6 +2091,8 @@ class Cell:
 
         self.pad_charge = 1.0
         self.dips += 1
+        if _buff_was_on:
+            self._buff_drive(True)
         spent = float(self.d.time) - t0
         self.dip_s += spent
         return spent
@@ -2163,6 +2260,8 @@ class Cell:
         # V9: pick THIS pass's cloth off its own post. "wash" resolves to the exact ids
         # the published stations always used.
         _tool = {"wash": "wash", "rinse": "damp", "dry": "dry"}[self._pass_kind]
+        if cfg.buff and self._pass_kind == "wash":
+            _tool = "buff"           # V10: the wash pass runs the powered buff instead
         want = self.select_tool(_tool)["couple_tcp"].astype(float)
 
         # --- couple the tool changer
@@ -2187,6 +2286,16 @@ class Cell:
                     "soil0": n0, "cleaned": 0, "missed": n0, "f_med": 0.0, "f_max": 0.0,
                     "in_band": 0.0, "contact_frac": 0.0,
                     "couple_mm": perr * 1000, "couple_deg": aerr}
+
+        # V10: the buff motor is triggered PER FACE, after the settle -- seat first,
+        # then spin, exactly the operator's touch-down-then-trigger. The first draft
+        # held the trigger for the whole pass and produced exactly one >30 N event per
+        # unit, a 37.2 N transient in a face SETTLE where the spinning disc met the
+        # surface; engaging after the settle removes the only over-30 event and costs
+        # ~12 ms of spin-up (J/kv) per face. Reaction and spin are SAMPLED during
+        # contact (see wipe()) so the claim is measured, not assumed.
+        self.buff_react = []
+        self.buff_spin = []
 
         # --- CHARGE THE PAD before the first face (Stage 3). Done HERE, right after the
         #     tool is latched and `pad_rel` has been MEASURED, because the dip is planned
@@ -2243,7 +2352,21 @@ class Cell:
             # through the cabinet, and that reason does not apply when nothing rotates.
             _tt_now = float(np.rad2deg(self.d.qpos[self.tt_q]))
             _rotating = abs(_tt_now - deg) > 0.5
-            if _rotating:
+            # THE SKIP-SAFE OPTIMIZATION'S PRECONDITION, NOW WRITTEN AND ENFORCED. V7.2
+            # skipped the SAFE retreat when no rotation was commanded, on the unwritten
+            # assumption that the arm arrives from near the work zone. That assumption
+            # has now been broken twice by new stations: the V8 tray (tracking 15->59 mm,
+            # fixed by the dip's round trip) and the V10 buff post at (0.46,-0.52),
+            # whose post-dip TO FACE transit drove the WRIST to 1182 mm/s -- the servo
+            # sprints on a long leg's error, and the datasheet gate caught it on the
+            # first battery. The rule is now the DISTANCE, not the rotation: a long leg
+            # goes through SAFE, full stop. The measured legs: wash/damp LIFT 0.374 and
+            # wash RETURN 0.45 (direct, published paths byte-unchanged) vs the buff
+            # post's 0.577 dip-return and 0.57 RETURN (via SAFE). 0.51 is the midpoint
+            # of the nearest pair, +-12% to each -- and the wash side is additionally
+            # anchored by the byte-identity re-run, not by the margin alone.
+            _far = float(np.linalg.norm(self.d.site_xpos[self.site] - safe)) > 0.51
+            if _rotating or _far:
                 pl = self.plan_pose(safe, tool_mat_face(deg), self.q_des)
                 if pl is not None:
                     self.move_planned(pl[0], safe, cfg.grip_open, index_deg=prev_deg,
@@ -2252,7 +2375,11 @@ class Cell:
                 # still settled at its angle (the same angle the end pass would use, at
                 # the same best view) and the arm has just been measured out of the ROI.
                 # This render is the whole cost; the rotation dwell below is untouched.
-                if cfg.inline_verify:
+                # GUARDED ON _rotating, not on the SAFE trip: the _far-only entry (a
+                # long transit into the FIRST face) reaches here before anything has
+                # been cleaned, and a pre-clean capture of face 0 would win the
+                # best-view dedup and hand verify a pre-clean image.
+                if cfg.inline_verify and _rotating:
                     self._inline_capture_face()
                 # settle in VELOCITY before commanding the rotation -- see _settle_at
                 self._settle_at(safe, tool_mat_face(deg), cfg.grip_open,
@@ -2328,6 +2455,8 @@ class Cell:
                               tol=0.006, t_max=10.0, tag="TO FACE", frames=frames)
             self.dwell(0.3, mat_ap, approach, cfg.grip_open, index_deg=deg,
                        frames=frames, tag="SETTLE")
+            if cfg.buff and self._pass_kind == "wash":
+                self._buff_drive(True)          # seat first, then trigger
             tcp_n = self.d.site_xpos[self.site]
             Rn = self.d.site_xmat[self.site].reshape(3, 3)
             pad_rel = Rn.T @ (self.d.geom_xpos[self.pad_face] - tcp_n)
@@ -2508,6 +2637,8 @@ class Cell:
                                                  index_deg=deg, tol=cfg.wipe_tol,
                                                  t_max=2.5, wipe=True, log=forces,
                                                  tag=f"WIPE {deg:.0f}", frames=frames)
+            if cfg.buff and self._pass_kind == "wash":
+                self._buff_drive(False)         # trigger off before leaving the face
             retract = np.array([fx - cfg.standoff - 0.05, cy, zc]) - tm @ pad_rel
             pl = self.plan_pose(retract, tm, self.q_des)
             if pl is not None:
@@ -2576,6 +2707,8 @@ class Cell:
                 self.q_warm = pl[0]
                 self.move_planned(pl[0], appr, cfg.grip_open, index_deg=top_deg,
                                   tol=0.006, t_max=10.0, tag="TO TOP", frames=frames)
+            if cfg.buff and self._pass_kind == "wash":
+                self._buff_drive(True)
             self.dwell(0.3, tmt, appr, cfg.grip_open, index_deg=top_deg,
                        frames=frames, tag="SETTLE")
             tcp_n = self.d.site_xpos[self.site]
@@ -2685,6 +2818,8 @@ class Cell:
             if pl is not None:
                 self.move_planned(pl[0], clear, cfg.grip_open, index_deg=top_deg,
                                   tol=0.006, t_max=8.0, tag="TOP CLEAR", frames=frames)
+            if cfg.buff and self._pass_kind == "wash":
+                self._buff_drive(False)
 
         # measure how far the tool moved relative to the wrist across the whole job,
         # while it is STILL LATCHED -- measuring after unlatch just reports the holder
@@ -2698,6 +2833,18 @@ class Cell:
             Re.T @ (self.d.geom_xpos[self.stem] - tcp_e) - self.stem_rel) * 1000)
         acf_mm = float(self.d.qpos[self.acf_q] * 1000)
 
+        if cfg.buff and self._pass_kind == "wash":
+            self._buff_drive(False)
+        # LONG RETURN LEGS GO THROUGH SAFE -- the same rule, on the way out. The buff's
+        # RETURN (TOP CLEAR -> its far post, 0.57 m) drove the WRIST to 1182 mm/s; the
+        # wash pad's 0.45 m leg stays direct and byte-identical. Same 0.51 threshold,
+        # same reason: the servo sprints on a long leg's error.
+        _ret_tgt = want + np.array([0, 0, 0.14])
+        if float(np.linalg.norm(self.d.site_xpos[self.site] - _ret_tgt)) > 0.51:
+            pl = self.plan_pose(SAFE_WP, grasp_mat(), self.q_des)
+            if pl is not None:
+                self.move_planned(pl[0], SAFE_WP, cfg.grip_open, index_deg=top_deg,
+                                  tol=0.006, t_max=8.0, tag="RETURN", frames=frames)
         # --- return the tool to its holder and unlatch
         # HOLD the indexer where the job left it for the tool return. Letting index_deg
         # fall back to its 0.0 default here commands a 360 deg unwind while the arm is
@@ -2762,6 +2909,20 @@ class Cell:
                 #     where it was told -- and remove nothing. Report it beside coverage
                 #     always, the same way false-verify is reported beside sabotage.
                 "solution": bool(self.cfg.solution),
+                # V10 buff, measured during contact only
+                "buff": bool(self.cfg.buff),
+                "buff_rate_cmd": float(self.cfg.buff_rate) if self.cfg.buff else 0.0,
+                "buff_spin_med": float(np.median(self.buff_spin))
+                                 if getattr(self, "buff_spin", None) else 0.0,
+                "buff_spin_min": float(np.min(self.buff_spin))
+                                 if getattr(self, "buff_spin", None) else 0.0,
+                "buff_react_med_nm": float(np.median(np.abs(self.buff_react)))
+                                     if getattr(self, "buff_react", None) else 0.0,
+                "buff_react_peak_nm": float(np.max(np.abs(self.buff_react)))
+                                      if getattr(self, "buff_react", None) else 0.0,
+                "buff_stall_frac": float(np.mean(np.array(self.buff_spin)
+                                                 < 0.5 * self.cfg.buff_rate))
+                                   if getattr(self, "buff_spin", None) else 0.0,
                 "dips": int(self.dips),
                 "dip_s": float(self.dip_s),
                 "contact_s": float(self.contact_s),
@@ -2861,6 +3022,20 @@ def report(rows):
     totm = sum(r["missed"] for r in ok)
     print(f"  MISSED SPOTS    : {totm} of {tot0} soil patches "
           f"({totm/max(tot0,1)*100:.1f}%)   <- Stage 3's own QC check")
+    if ok and ok[0].get("buff"):
+        sp = [r["buff_spin_med"] for r in ok]
+        rc = [r["buff_react_peak_nm"] for r in ok]
+        st_ = [r["buff_stall_frac"] for r in ok]
+        print(f"  POWERED BUFF    : commanded {ok[0]['buff_rate_cmd']:.0f} rad/s, "
+              f"spin under press median {np.median(sp):.1f} rad/s "
+              f"(worst-unit min {min(r['buff_spin_min'] for r in ok):.1f})")
+        # THE REACTION TORQUE IS THE SOURCING NUMBER: it is what the tool-changer weld
+        # and the real changer's locking pins must carry, continuously, while buffing.
+        print(f"  BUFF REACTION   : median {np.median([r['buff_react_med_nm'] for r in ok]):.2f} N*m, "
+              f"peak {max(rc):.2f} N*m through the tool changer "
+              f"(motor limit {0.80:.2f})")
+        print(f"  stall fraction  : {np.mean(st_)*100:.1f}% of contact steps under half "
+              f"the commanded rate   <- a stalled buff wipes like a passive pad")
     if ok and ok[0].get("solution"):
         dips = [r.get("dips", 0) for r in ok]
         dry = [r.get("dry_contact_s", 0.0) for r in ok]
@@ -3108,14 +3283,17 @@ def falsify(n, seed0, cfg=CFG):
     # stats_v5_verify.json is V5-D's recorded 10/10 on the point-mode station.
     _tag = ("_stroke" if cfg.stroke else "") + ("_targeted" if cfg.targeted else "") \
            + ("_solution" if cfg.solution else "") \
-           + ("_inline" if cfg.inline_verify else "")
+           + ("_inline" if cfg.inline_verify else "") \
+           + ("_buff" if cfg.buff else "")
     out = f"stats_v5_verify{_tag}.json"
     st["mode"] = ("stroke" if cfg.stroke else "point") + \
                  ("+targeted" if cfg.targeted else "+full") + \
                  ("+solution" if cfg.solution else "") + \
-                 ("+inline" if cfg.inline_verify else "")
+                 ("+inline" if cfg.inline_verify else "") + \
+                 ("+buff" if cfg.buff else "")
     st["solution"] = bool(cfg.solution)
     st["inline_verify"] = bool(cfg.inline_verify)
+    st["buff"] = bool(cfg.buff)
     st["seed0"] = seed0
     with open(out, "w") as f:
         json.dump(st, f, indent=2)
@@ -3289,6 +3467,12 @@ if __name__ == "__main__":
     ap.add_argument("--inline-verify", action="store_true", dest="inline_verify",
                     help="V9: verify captures taken inline during the clean cycle's own "
                          "dwells (measured-identical views; battery-validated)")
+    ap.add_argument("--buff", action="store_true",
+                    help="V10: the wash pass runs the POWERED BUFF (spinning disc, the "
+                         "plant's own polish tool class) instead of the passive pad")
+    ap.add_argument("--buff-sweep", type=int, metavar="N", dest="buff_sweep",
+                    help="V10: sweep buff_rate over N units each -- watches force, "
+                         "tracking, coverage, stall fraction and reaction torque")
     ap.add_argument("--charge-sweep", type=int, metavar="N", dest="charge_sweep",
                     help="V8: sweep charge_contact_s over N units each -- finds the "
                          "point where patches start being wiped by a DRY pad")
@@ -3305,6 +3489,8 @@ if __name__ == "__main__":
         _over["solution"] = True
     if a.inline_verify:
         _over["inline_verify"] = True
+    if a.buff:
+        _over["buff"] = True
     if a.rinse:
         _over["rinse_pass"] = True
     if a.dry_pass:
@@ -3316,6 +3502,9 @@ if __name__ == "__main__":
     _tag = ("_stroke" if CFGX.stroke else "") + ("_targeted" if CFGX.targeted else "")
     _tag += ("_solution" if CFGX.solution else "")
     _tag += ("_inline" if CFGX.inline_verify else "")
+    _tag += ("_buff" if CFGX.buff else "")
+    if CFGX.buff and abs(CFGX.buff_rate - CleanConfig.buff_rate) > 1e-9:
+        _tag += f"_buffrate{CFGX.buff_rate:g}"
     _tag += ("_rinse" if CFGX.rinse_pass else "") + ("_dry" if CFGX.dry_pass else "")
     # AND TAG ANY NON-DEFAULT PARAMETER. The mode tag alone is not enough: a run at a
     # different feed or row pitch is a DIFFERENT EXPERIMENT, and without this it lands in
@@ -3341,6 +3530,13 @@ if __name__ == "__main__":
         # 1.414 R. Measure where it actually falls before believing the geometry.
         sweep("row_frac", [1.20, 1.50, 1.70, 1.85, 2.00, 2.20], a.row_sweep, a.seed0,
               "sweep_row.json", base=_dc.replace(CFGX, stroke=True))
+    elif a.buff_sweep:
+        # V10: the operating spin rate. The purchased motor (ctrlrange 60, 0.8 N*m) is
+        # fixed in the scene; this picks what the process COMMANDS, with the usual
+        # margin discipline against whatever cliff appears.
+        sweep("buff_rate", [5.0, 10.0, 15.0, 20.0], a.buff_sweep, a.seed0,
+              "sweep_buff.json",
+              base=_dc.replace(CFGX, stroke=True, buff=True))
     elif a.charge_sweep:
         # V8: how long one pad charge must last. The ANCHOR is DrinkPrime's own
         # consumable ratio -- Stage 2 lists "Colin liquid 5 Ltr (300 devices)" = 16.7 mL
@@ -3383,6 +3579,7 @@ if __name__ == "__main__":
                      ("+targeted" if CFGX.targeted else "+full") + \
                      ("+solution" if CFGX.solution else "") + \
                      ("+inline" if CFGX.inline_verify else "") + \
+                     ("+buff" if CFGX.buff else "") + \
                      ("+rinse" if CFGX.rinse_pass else "") + \
                      ("+dry" if CFGX.dry_pass else "")
         st["stroke_feed"] = CFGX.stroke_feed if CFGX.stroke else None

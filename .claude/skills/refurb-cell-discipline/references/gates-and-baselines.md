@@ -92,3 +92,15 @@ New tagged stats files — same protection rule, each is its own experiment:
 The datasheet TCP assertion is on the **arm's wrist** (`arm_tcp_speed_max`); the pad keeps
 its own 1.25× sprung-tool bound. The pad can ring briefly faster than the arm moves — that
 is the compliance, not the servo.
+
+## V10 additions (2026-08-19)
+
+| command | writes | published result |
+|---|---|---|
+| `v5_clean.py --eval 16 --stroke --solution --inline-verify --buff --seed0 2344` | `stats_v5_clean_stroke_solution_inline_buff.json` | 16/16 at 100%, 0 missed of 332, 23.35 N, reaction 0.29/0.47 N·m |
+| `v5_clean.py --sabotage 10 --seed0 2360 --stroke --inline-verify --buff` | `stats_v5_verify_stroke_inline_buff.json` | 9/10 caught + 1 vacuous zero-soil draw (seed 2364), 0 false, 0 would-escape |
+| `v5_clean.py --buff-sweep N --seed0 S --stroke --buff` | `sweep_buff.json` | rate table; 15 rad/s is a measured solver cliff (90.6 N) |
+
+The spec gate now asserts **63 values** (buff post, disc radius, motor torque/speed, tool
+mass). A sabotaged-cleaning unit that drew ZERO soil is a vacuous case, not an escape —
+check `sab_left` before reading `sab_pass`.
