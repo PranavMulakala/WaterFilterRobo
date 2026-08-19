@@ -87,6 +87,29 @@ TOOLPOST_XY = (0.30, -0.34)   # where the wiping pad lives when not held
 TOOLPOST_DAMP_XY = (0.14, -0.52)
 TOOLPOST_DRY_XY = (0.30, -0.52)
 
+# --- V10 POWERED BUFF (2026-08-19): the plant's ACTUAL polish tool, on film. Their
+# cabinet polishing is a hand drill driving a round foam buffing pad with Cif
+# (dp_process.PLANT_VIDEO, 0:28-0:33). This tool is that, on our tool changer: a DISC
+# face (their pad is round; a spinning square would grind on its corners and the wipe
+# logic's in-plane radius has been the disc's 0.030 m all along) on the same compliant
+# ACF, with a SPIN hinge driven by a velocity actuator whose forcerange is the motor's
+# torque limit -- so the reaction torque is REAL and flows through the ACF and the
+# tool-changer weld, which is precisely the quantity this build exists to measure.
+BUFFPOST_XY = (0.46, -0.52)   # gate-swept like the tray and the damp post
+BUFF_FACE_R = 0.030           # disc radius == pad_radius: the wipe/coverage geometry
+                              # is IDENTICAL by construction (the square's inscribed
+                              # circle was always what the coverage math used)
+BUFF_FREE_RADS = 60.0         # motor free speed (ctrlrange): ~573 rpm, low end of a
+                              # cordless drill -- HEADROOM, not the operating point.
+                              # The operating rate is CleanConfig.buff_rate, chosen by
+                              # sweep. (The spindle taught this split: ctrlrange is the
+                              # purchased motor, the command is the process.)
+BUFF_TORQUE_NM = 0.80         # motor torque limit. Friction torque of a 30 mm foam
+                              # disc pressed at ~20 N with mu 0.7 is ~(2/3)*mu*N*r
+                              # ~ 0.28 N*m; 0.8 gives ~2.9x so the pad does not stall
+                              # under normal press -- IF it stalls anyway, that is a
+                              # finding, not a tuning failure.
+
 # --- Solution tray (Stage 3, 0024DPCRO003). See the big comment at the geometry.
 # Sited next to the tool post, on the same -Y side as the rest of the cleaning
 # hardware, so charging the pad is a short move from picking it up. Clear of the
@@ -326,6 +349,7 @@ def build(seed=SEED, cab_x=CAB_X):
     <material name="solmat"  rgba="0.62 0.78 0.86 0.55" reflectance="0.35"/>
     <material name="dampmat" rgba="0.55 0.65 0.78 1" reflectance="0.05"/>
     <material name="drymat"  rgba="0.82 0.82 0.80 1" reflectance="0.05"/>
+    <material name="buffmat" rgba="0.93 0.85 0.35 1" reflectance="0.05"/>
   </asset>
 
   <worldbody>
@@ -578,6 +602,7 @@ def build(seed=SEED, cab_x=CAB_X):
     sx, sy = SOLUTION_XY
     dpx, dpy = TOOLPOST_DAMP_XY
     drx, dry_ = TOOLPOST_DRY_XY
+    bfx, bfy = BUFFPOST_XY
     # VISIBLE THREAD on the cap: a helix of small visual-only ridges. 2.5 turns at
     # 12 segments per turn reads clearly as a screw at video scale without flooding the
     # renderer. contype/conaffinity 0 and mass 0 -> cannot collide, cannot change inertia.
@@ -735,6 +760,45 @@ def build(seed=SEED, cab_x=CAB_X):
     </body>
     <geom name="post_dry" type="cylinder" size="0.055 0.010"
           pos="{drx:.3f} {dry_:.3f} 0.010" material="postmat"/>
+
+    <!-- ================= V10 POWERED BUFF (the plant's polish tool) =================
+         Same keyed shank and ACF as every other tool; the head carries a SPIN hinge and
+         a round face. The spin axis is the pad normal, so reaction torque loads the
+         shank in torsion -- exactly what the tool-changer weld must resist on a real
+         cell, and what coupling_drift_mm + the new buff metrics measure. -->
+    <body name="bufftool" pos="{bfx:.3f} {bfy:.3f} 0.040">
+      <freejoint name="bufftool_free"/>
+      <geom name="buff_stem" type="box" size="0.030 0.020 0.045" pos="0 0 0.045"
+            material="stemmat" mass="0.18"/>
+      <site name="buff_grip" pos="0 0 0.045" size="0.004" rgba="0 0 0 0"/>
+      <body name="buffhead" pos="0 0 0">
+        <joint name="buff_acf" type="slide" axis="0 0 1" range="-0.002 {ACF_STROKE:.4f}"
+               stiffness="{ACF_K:.0f}" damping="{ACF_C:.0f}" springref="0"
+               armature="0.002"/>
+        <!-- the bearing housing / backing plate the motor pushes against. Real part
+             (a buff has one), and REQUIRED here: the head carries the spin joint's
+             stator side, and a moving body must have mass. Non-colliding -- it sits
+             fully behind the foam face. -->
+        <geom name="buff_plate" type="cylinder" size="0.030 0.003" pos="0 0 0.003"
+              material="stemmat" mass="0.02" contype="0" conaffinity="0"/>
+        <body name="buffspin" pos="0 0 0">
+          <!-- armature: a small foam disc + backing plate has real rotor inertia;
+               damping models bearing drag so a cut motor spins DOWN, not forever -->
+          <!-- armature = REFLECTED rotor inertia: the motor spins through a gearbox,
+               so the pad sees J_rotor x gear^2 -- orders above the bare disc's 1.8e-5.
+               damping = bearing + gear drag; a geared spindle does not freewheel. -->
+          <joint name="buff_spin" type="hinge" axis="0 0 1" damping="0.01"
+                 armature="0.005"/>
+          <geom name="buff_face" type="cylinder" size="{BUFF_FACE_R:.3f} 0.010"
+                pos="0 0 -0.010" material="buffmat" mass="0.04" priority="1"
+                solref="0.035 1" solimp="0.80 0.99 0.003 0.5 2"
+                friction="0.7 0.02 0.001"/>
+          <site name="buff_tip" pos="0 0 -0.020" size="0.004" rgba="0 0 0 0"/>
+        </body>
+      </body>
+    </body>
+    <geom name="post_buff" type="cylinder" size="0.055 0.010"
+          pos="{bfx:.3f} {bfy:.3f} 0.010" material="postmat"/>
 
     <!-- =================== SOLUTION TRAY (Stage 3) ===================
          WHAT THE SOURCE DOCUMENT ACTUALLY SAYS, because this station exists only
@@ -929,6 +993,19 @@ def build(seed=SEED, cab_x=CAB_X):
        loading it, and the driver never stalled. Explicit pairs override that filtering.
        This is the seal that makes the torque criterion mean anything. -->
   <contact>
+    <!-- V10, THE MIRROR-IMAGE OF THE CAP/O-RING LESSON ABOVE: the buff FACE must be
+         told NOT to touch its own STEM. The pad's face is a direct CHILD of its stem
+         body, so MuJoCo's parent-child filtering eats their face-top/stem-bottom
+         contact silently. The buff's face sits one body FURTHER down (the spin hinge
+         in between), the automatic filter no longer applies, and the face -- whose top
+         plane rests exactly on the stem's bottom plane -- pressed against its own tool
+         from the first micron of ACF travel: measured 164 N median at 2.5 mm of slide
+         compression (the spring alone would give 2 N), 922 N peak, with the ACF never
+         doing its job. One probe chain found it: motor-off still exploded (not the
+         spin), box-face-with-hinge exploded while disc-without-hinge was healthy (the
+         HINGE's presence, not the disc), and the ACF trace showed the force bypassing
+         the spring. -->
+    <exclude body1="bufftool" body2="buffspin"/>
     {"".join(f"""<pair geom1="mem_cap_body" geom2="mem_oring{i}" solref="0.02 1"
           solimp="0.85 0.93 0.0025" friction="0.9 0.9 0.02 0.001 0.001"/>
     """ for i in range(12))}
@@ -966,6 +1043,8 @@ def build(seed=SEED, cab_x=CAB_X):
           active="false" solref="0.004 1" torquescale="1"/>
     <weld name="toollock_dry" body1="xarm_gripper_base_link" body2="drypad"
           active="false" solref="0.004 1" torquescale="1"/>
+    <weld name="toollock_buff" body1="xarm_gripper_base_link" body2="bufftool"
+          active="false" solref="0.004 1" torquescale="1"/>
     <!-- THE THREAD. MuJoCo has no screw joint, so one is built from a hinge and a slide
          tied together: cap_z = -(pitch / 2pi) * cap_rot. That single line is what makes
          the cap MULTI-TURN and axially advancing rather than our fixed-angle bayonet.
@@ -1001,6 +1080,15 @@ def build(seed=SEED, cab_x=CAB_X):
     <velocity name="capdrv" joint="cap_rot" kv="3.0"
               ctrlrange="{-SPINDLE_FREE_RADS:g} {SPINDLE_FREE_RADS:g}"
               forcerange="{-MEM_TORQUE_NM:.2f} {MEM_TORQUE_NM:.2f}"/>
+    <!-- V10: the buff motor. Velocity actuator, forcerange = motor torque -- the same
+         honest construction as capdrv: it stalls the way a real motor stalls, and the
+         torque it applies is the reaction the tool changer must carry. kv=0.4 is the
+         speed-loop stiffness: at the measured ~0.26 N*m pressed-friction load the slip
+         is ~0.65 rad/s (a drill holds its speed), where the first draft's kv=0.05
+         slipped 26% -- measured, self-consistent (slip x kv == reaction). -->
+    <velocity name="buffdrv" joint="buff_spin" kv="0.4"
+              ctrlrange="{-BUFF_FREE_RADS:g} {BUFF_FREE_RADS:g}"
+              forcerange="{-BUFF_TORQUE_NM:.2f} {BUFF_TORQUE_NM:.2f}"/>
   </actuator>
 
   <keyframe>
@@ -1039,23 +1127,26 @@ def build(seed=SEED, cab_x=CAB_X):
          `qpos0` patch fixes one caller and leaves the landmine armed for the next. The
          keyframe is the single place every consumer already goes through.
 
-         qpos layout (61): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
+         qpos layout (70): 7 arm | 6 gripper | 1 tt_rot | 7 padtool free (xyz + wxyz)
                          | 1 acf (compliance flange, 0 = fully extended)
                          | 7 damppad free | 1 damp_acf | 7 drypad free | 1 dry_acf
+                         | 7 bufftool free | 1 buff_acf | 1 buff_spin
                          | 7 mem_bowl free | 1 cap_rot | 1 cap_z | 7 mem_elem free
                          | 7 cap_blank free
-         (V9 added the damp/dry cloths -- FIFTH keyframe extension; every previous
-          free-body addition that skipped this line spawned at the world origin
-          inside the arm riser, four times running)
-         ctrl layout (10): 7 arm | 1 gripper | 1 tt | 1 capdrv -->
+         ctrl layout (11): 7 arm | 1 gripper | 1 tt | 1 capdrv | 1 buffdrv
+         (V10 added the buff -- SIXTH keyframe extension, and the first that also
+          extends CTRL; every free-body addition that skipped the qpos line spawned
+          at the world origin inside the arm riser, four times running)
+         ctrl layout (11): 7 arm | 1 gripper | 1 tt | 1 capdrv | 1 buffdrv -->
     <key name="v5home"
          qpos="0 -.247 0 .909 0 1.15644 0  0 0 0 0 0 0  0  {tx:.3f} {ty:.3f} 0.040 1 0 0 0  0
                {dpx:.3f} {dpy:.3f} 0.040 1 0 0 0  0
                {drx:.3f} {dry_:.3f} 0.040 1 0 0 0  0
+               {bfx:.3f} {bfy:.3f} 0.040 1 0 0 0  0 0
                {MEM_XY[0]:.3f} {MEM_XY[1]:.3f} 0.040 1 0 0 0  0 0
                {MEM_XY[0] - 0.13:.3f} {MEM_XY[1]:.3f} 0.072 1 0 0 0
                {MEM_XY[0] - 0.13:.3f} {MEM_XY[1] + 0.10:.3f} 0.046 1 0 0 0"
-         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0"/>
+         ctrl="0 -.247 0 .909 0 1.15644 0 0 0 0 0"/>
   </keyframe>
 </mujoco>
 ''')

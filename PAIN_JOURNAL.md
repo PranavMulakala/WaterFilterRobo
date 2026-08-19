@@ -1313,3 +1313,48 @@ what we now understand.
   point-mode wash — NOT the validated configuration. | ~2 render cycles | **A silent cap
   is a silent truncation (log what was dropped), and a render is only evidence when its
   flags match the validated config — diff the render command against the eval command** |
+| 2026-08-19 | **The buff face pressed against its own stem from the first micron — MuJoCo
+  excludes parent-child contacts, and the spinning face is a GRANDCHILD.** The pad's face
+  is a direct child of its stem body, so their face-top/stem-bottom interface (which sits
+  at exactly zero gap by construction) has always been silently filtered. Adding the spin
+  hinge put one body between them and the filter stopped applying: 164 N median at 2.5 mm
+  of ACF travel (the spring alone would give 2 N), 922 N peak, in-band 0.2%. Found by a
+  three-way split: motor-off still exploded (not the spin); box-face-with-hinge exploded
+  while disc-without-hinge was healthy (the hinge's presence, not the disc); and the ACF
+  trace showed 164 N bypassing a 2-N spring — force that is not going through the spring
+  is going through something rigid. | ~45 min | **When you deepen a kinematic chain,
+  re-derive which contact exclusions you were silently living on** — the cap/O-ring
+  lesson was "tell MuJoCo TO touch"; this is its mirror, "tell it NOT to" |
+| 2026-08-19 | **The planner was carrying the wrong tool — and three tools' worth of runs
+  never noticed.** `_carry_tool()` writes the carried tool's pose in the plan copy at
+  `self.pad_jq`, which stayed bound to the WASH pad through the V9 registry refactor. With
+  the buff coupled, the planner teleported the wash pad to the wrist and left the buff
+  floating at its stale live pose: infeasible 17→74, runs fragmented 5→20, two side-face
+  patches missed by 40 mm at every spin rate INCLUDING zero. Latent since the three-cloth
+  build and invisible there because rinse/dry passes have no soil left to miss. Fixing the
+  binding then exposed the SECOND half: the contact classifier's `tool_geoms` was also
+  hard-coded to the wash pad, so the parked wash pad's −0.9 mm rest contact on its own
+  post — present in every plan the moment the wash pad ISN'T carried — read as "the tool
+  is touching a post" and vetoed every approach on every face. | ~1.5 h | **A registry
+  refactor is finished when every consumer reads through it — grep for the old binding's
+  NAME after moving it**; and a bug that three configurations tolerate is not absent, it
+  is waiting for the first configuration that exercises it |
+| 2026-08-19 | **My phase attribution was garbage because stroke_run's wipe calls carry a
+  stale tag.** I attributed the single 37 N event to "SETTLE", built a seat-then-trigger
+  fix on that reading, and the number did not move — because `stroke_run` steps without
+  re-tagging, so `_cur_tag` still said SETTLE from the previous phase. The event was
+  inside a stroke all along. | ~20 min | **An attribution read from a variable nobody
+  writes on that code path is a guess wearing a label** — verify the tagger covers the
+  path before believing the tag |
+| 2026-08-19 | **The datasheet gate caught the buff's first battery: the WRIST at
+  1182 mm/s — and my first fix aimed at the wrong leg.** Attribution said "TO FACE", so I
+  routed the post-dip approach through SAFE; the peak did not move by a millimetre per
+  second, because the true peak was in RETURN (the tool carry back to the far post) and my
+  first attribution had only printed the first crossings above 1.0, not the tag AT the
+  maximum. Both long legs now route via SAFE on one written rule — distance > 0.51 m —
+  which also fires for the damp/dry posts (equally far), so the Stage-3 numbers were
+  re-validated rather than assumed unchanged. | ~40 min | **Attribute the MAXIMUM, not the
+  first exceedance** — the first crossings and the peak can live in different phases; and
+  V7.2's skip-SAFE assumption has now been broken by new stations TWICE (tray: tracking;
+  far posts: speed) — the precondition is finally written as an enforced distance rule
+  rather than prose |

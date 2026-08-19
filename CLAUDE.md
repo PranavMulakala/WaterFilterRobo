@@ -148,6 +148,74 @@ combination (feed 0.30 + row 1.50) is clean 90.7 s + membrane 39.1 = **2:09.8**,
 required since `step_frac`. 2:00 needs feed above 0.30 or row pitch at 1.7, neither of
 which has been shown safe. Recorded rather than taken.
 
+**V10 (2026-08-19) — THE POWERED BUFF: THE PLANT'S POLISH TOOL, MODELLED, AND THE FOUR
+BUGS IT FLUSHED OUT.** `CleanConfig.buff` (DEFAULT OFF — every published number is the
+passive pad's). The wash pass couples a fourth tool: a ⌀60 mm foam DISC on the same ACF,
+spinning about the pad normal, driven by a velocity actuator whose forcerange IS the
+motor torque (0.80 N·m; free speed 60 rad/s; kv 0.4 — the purchased component, asserted
+in CELL_SPEC, **63 values**). Their actual tool, on film (`dp_process.PLANT_VIDEO`).
+
+**WHAT IT CANNOT SHOW, said before any number:** removal here is binary on contact, so a
+spinning pad cleans no better than a still one IN THIS MODEL — this build cannot
+demonstrate polishing quality. **WHAT IT MEASURES:** the reaction torque a powered tool
+feeds through the tool changer (THE sourcing number for a changer-mounted buff), whether
+the motor stalls under press, and what spinning costs force/tracking/coverage.
+
+**HELD OUT on 2344–2359 (full modern config: stroke+solution+inline+buff):** coverage
+**100% (16/16), 0 missed of 332**, peak **23.35 N**, in-band 99.97%, 1 dip/unit, 0.00 s
+dry contact, ARM TCP 1005 mm/s. **Spin under press 9.3 rad/s of 10 commanded, stall 0%,
+REACTION THROUGH THE CHANGER: median 0.29 N·m, peak 0.47 N·m** (motor limit 0.80) —
+`stats_v5_clean_stroke_solution_inline_buff.json`. Sabotage 2360–2369: **9/10 caught,
+0 false verifies, 0 would-escape — the 10th sabotaged unit drew ZERO soil patches**
+(seed 2364: dents 10, soil 0; a cleaning sabotage is vacuous on a unit with nothing to
+clean — verified seed-intrinsic, not buff-related).
+
+**THE RATE IS 10 rad/s AND THE SWEEP TABLE IS THE REASON — force is NON-MONOTONIC in
+rate, the documented solver-instability signature** (V6's feed sweep, the pad's own >45 N
+zone): rate 5 → 21.16 N, 10 → 23.34, **15 → 90.60 (twice the ceiling)**, 20 → 37.24;
+coverage 100% at every rate. 10 is the fastest CLEAN rate at 1.5× rate-margin to the
+measured 15 rad/s cliff — the stroke_feed 0.20-vs-0.30 shape exactly. **HONESTY LABEL:
+10 rad/s (~95 rpm) is slower than a real buff; the model gains nothing from spin, so
+nothing is lost — what transfers to hardware is the reaction torque, not the rpm.**
+
+**THE FOUR BUGS, each worth its journal entry:**
+1. **The grandchild exclusion trap.** The pad's face is a direct CHILD of its stem, so
+   MuJoCo silently filtered their zero-gap face-top/stem-bottom contact forever. The
+   buff's face sits one body deeper (spin hinge between) — the filter stopped applying
+   and the tool pressed against ITSELF from the first micron: 164 N median at 2.5 mm of
+   ACF travel (the spring alone gives 2 N), 922 N peak. Found by a three-way split:
+   motor-off still exploded (not the spin); box-face-with-hinge exploded while
+   disc-without-hinge was healthy (the hinge's PRESENCE); the ACF trace showed 164 N
+   bypassing a 2 N spring. Fix: an explicit `<exclude>`, mirror of the cap/O-ring pair.
+2. **The planner carried the wrong tool.** `_carry_tool` wrote the carry pose at
+   `pad_jq`, frozen to the WASH pad through the V9 registry refactor: with the buff
+   coupled, the planner teleported the wash pad to the wrist and left the buff floating
+   at its stale pose — infeasible 17→74, runs 5→20, two side-face patches missed by
+   40 mm at every rate INCLUDING zero. **Latent since the three-cloth build and
+   invisible there: rinse/dry passes have no soil left to miss.**
+3. **The classifier vetoed poses off a PARKED tool.** `tool_geoms` was also frozen to
+   the wash pad, so once the wash pad stayed on its post in the plan, its −0.9 mm rest
+   contact read as "the tool is touching a post" and rejected EVERY approach on EVERY
+   face. Both bindings now live in the tool registry and move with `select_tool`.
+4. **The wrist sprinted to 1182 mm/s on long free-space legs — caught by the datasheet
+   gate on the FIRST battery**, and my first fix aimed at the wrong leg (attribution
+   printed the first crossings, not the tag at the MAXIMUM, which was RETURN, not
+   TO FACE). V7.2's skip-SAFE optimisation had its unwritten precondition broken by new
+   stations for the SECOND time (V8 tray: tracking; V10 far posts: speed) — it is now a
+   WRITTEN, ENFORCED rule: **any leg longer than 0.51 m routes through SAFE** (measured
+   legs: wash 0.374/0.45 direct and byte-anchored; buff & damp/dry posts 0.55–0.60 via
+   SAFE). ARM TCP 1182 → **1005 mm/s**.
+
+**IDENTITY ON THE FINAL SCENE + SHARED-PATH CODE (re-run after every fix):** stroke
+(2120), point (900), solution (2204 — its first re-verification since V8) all hold every
+ACCEPTANCE field at quoting precision (coverage/missed untouched; f_max −0.004 N; in-band
+7th decimal); free-space stats shifted honestly (arm-TCP 823→860 mm/s — the new SAFE
+routing; point-mode exact-normal IMPROVED 36→42%, tilt 8.5→7.8°); membrane headlines
+identical (3 medians nudge); triage byte-identical. **The Stage-3 file was re-validated
+rather than assumed: the damp/dry posts sit in the same distance class as the buff's, so
+the routing rule changes their passes too** (its re-run was still in flight at this
+commit; the follow-up commit carries it).
+
 **V9 (2026-08-13) — INLINE VERIFY, THE SPINDLE'S HIDDEN CLAMP, THREE CLOTHS, AND A
 MEASURED BLIND SPOT.** Four things, each validated separately.
 
@@ -611,8 +679,12 @@ triage comparison**; **2000–2015 targeted+stroke (the REJECTED mode)**;
 falsification battery**; **2299 BURNED (dwell-speed probe)**; **2140–2149 RE-USED for the
 V9 inline-verify PAIRED diagnostic only — against their own published rows, the 800–807
 precedent; never a fresh claim**; **2300–2331 RESERVED: DR sweep (dr_sweep.py, runs
-unattended)**.
-Next free block: **2340+**.
+unattended; 2300–2315 consumed and committed)**; **2340–2343 V10 buff-rate sweep (dev)**;
+**2344–2359 V10 buff held-out validation**; **2360–2369 V10 buff sabotage battery**.
+**2260–2275 were RE-RUN 2026-08-19 against their own published file** (the Stage-3
+validation) after the planner's carried-tool binding was fixed — a re-baseline with
+cause, not a fresh claim; the seeds stay assigned to that experiment.
+Next free block: **2370+**.
 **Demo/rendered (outcomes watched, never held-out again): 1604, 1607, and the reel's
 1700 / 1704 / 1702** — the reel deliberately films units that are ALREADY rows in
 `stats_v5_route.json`, so the footage is traceable to a published artifact instead of

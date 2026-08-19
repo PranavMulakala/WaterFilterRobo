@@ -43,6 +43,7 @@ def main():
     ps_p, ps_s = geom("pad_stem")
     pf_p, pf_s = geom("pad_face")
     st_p, st_s = geom("sol_floor")          # V8 solution tray
+    bp_p, bp_s = geom("post_buff")          # V10 buff post
     sl_p, sl_s = geom("sol_liquid")
     swp, sws = geom("sol_w_yp")             # a side wall: its inner face gives the basin
     sw_p = abs(swp[1] - st_p[1]) - sws[1]   # half of the inner width
@@ -123,6 +124,16 @@ def main():
         # is the ctrlrange that silently capped three versions of "drive rate" sweeps.
         ("spindle torque limit (N*m)", m.actuator_forcerange[m.actuator("capdrv").id][1], 6.00),
         ("spindle free speed (rad/s)", m.actuator_ctrlrange[m.actuator("capdrv").id][1], 30.0),
+        # --- V10 powered buff: the purchased motor + the geometry the coverage math
+        # inherits. The disc radius EQUALS the wipe logic's in-plane radius by design;
+        # if either moves without the other, coverage claims silently detach from the
+        # tool that earns them.
+        ("buff post X", bp_p[0], 0.460),
+        ("buff post Y", bp_p[1], -0.520),
+        ("buff disc radius", m.geom_size[m.geom("buff_face").id][0], 0.030),
+        ("buff motor torque (N*m)", m.actuator_forcerange[m.actuator("buffdrv").id][1], 0.80),
+        ("buff motor free speed (rad/s)", m.actuator_ctrlrange[m.actuator("buffdrv").id][1], 60.0),
+        ("buff tool total mass (kg)", m.body_subtreemass[m.body("bufftool").id], 0.240),
     ]
 
     bad = 0

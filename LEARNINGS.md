@@ -1046,3 +1046,30 @@ all sixteen fresh units.
 wash-only cell at ~2.5 minutes, or the full protocol at ~6.3, or the full protocol with
 the rinse and dry running on a second, cheaper arm in parallel. That is a business
 decision, and it could not be made before there were two honest numbers to compare.
+
+## 2026-08-19 — The buff spins, and the simulator taught us three things on the way
+
+**What we built:** the plant's actual polish tool — a motor-driven spinning foam disc,
+exactly what their video shows — as a fourth tool the arm can pick up. The motor is honest:
+it has a torque limit and a speed loop like a real drill, so when the pad presses hard the
+motor genuinely fights the friction, and the twisting force that fight sends back through
+the tool coupling is now a measured number (about 0.4–0.6 newton-metres). That number is
+what you'd size a real tool changer against — it was the whole point of the build.
+
+**The concept: a simulator's conveniences are load-bearing, and you find out when you
+change the shape of a thing.** MuJoCo quietly ignores contact between a part and the part
+it's bolted to — which had been silently protecting us, because our pad's face touches its
+own handle at exactly zero gap. Putting a spinning joint between them broke that
+protection, and the tool spent a debugging session pressing against itself. Separately,
+the motion planner had the wash pad's identity baked in from before we had four tools: it
+kept imagining the wash pad on the wrist whichever tool was really there, and the parked
+real pad's resting touch on its stand vetoed every move. Three earlier tools never
+tripped either bug. **A bug three configurations tolerate is not absent — it is waiting.**
+
+**Why it matters for the real robot:** the spin speed had a surprise in it. At middling
+speeds the simulated contact force exploded (90 N at 15 rad/s, clean at 10 and messy-but-
+lower at 20) — the same "unstable in the middle" signature this simulator has shown twice
+before. So we run the buff at a deliberately slow 10 rad/s, state plainly that real buffs
+spin faster and that nothing in our model rewards speed anyway, and export the one number
+that transfers to hardware: the reaction torque a powered tool feeds back through its
+coupling. A slower number with zero caveats beats a faster number with one.
