@@ -85,6 +85,9 @@ export** (grades + rectification costs are per-unit data in their ERP, on film).
 > leak test, not a wash. **So it almost certainly means a solution-charged cloth wiping the
 > cabinet, which is v5 CLEAN plus v8's dip — NOT a bath the device goes into.** Still ask
 > him: this is our reading of his words against their documents, not his answer.
+> **Corroborated 2026-08-19 (verbal, Teja–Anirudh thread): the founder said "cleaning the
+> external body is the first problem to solve" — the cleaning wedge confirmed in his own
+> words. Still not a written answer to the question as asked; the ask stays open.**
 
 ## Done this session (2026-08-09 evening) — all three advisor items closed
 
