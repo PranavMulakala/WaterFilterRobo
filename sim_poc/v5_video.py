@@ -217,7 +217,7 @@ def _wrap(s, n):
 
 def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
                 physical=False, solution=False, inline_verify=False,
-                fast_spindle=False, stage3=False):
+                fast_spindle=False, stage3=False, buff=False):
     import dataclasses as _dc
     import v5_clean as _CL
     # V7: stroke composes with targeted -- they are independent switches. The render
@@ -257,6 +257,17 @@ def render_unit(seed, speed=1.0, out=None, v6=False, stroke=False,
         _over["solution"] = True
     if inline_verify:
         _over["inline_verify"] = True
+    if buff:
+        # V10: the powered buff replaces the wash pad. The render must say what the
+        # model cannot: spin does not improve removal here -- the honest show is the
+        # plant's own tool class running, and the reaction torque is the measured claim.
+        _over["buff"] = True
+        CAVEAT["CLEAN"] = (
+            "V10 POWERED BUFF -- the plant's own polish tool class (drill + foam disc, "
+            "on film) on the tool changer, spinning at 10 rad/s under press. Spin does "
+            "NOT improve removal in this model (removal is contact-binary); what is "
+            "measured is the reaction torque through the changer: 0.29 median / 0.47 "
+            "peak N*m. Coverage and force criteria unchanged and passing.")
     if stage3:
         _over["solution"] = True
         _over["rinse_pass"] = True
@@ -519,7 +530,8 @@ def make_reel(speed=4.0, out="media/v5_cell_reel.mp4"):
 
 def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
                   stroke=False, physical=False, solution=False,
-                  inline_verify=False, fast_spindle=False, stage3=False):
+                  inline_verify=False, fast_spindle=False, stage3=False,
+                  buff=False):
     """ONE complete cycle at TRUE 1x. The runtime IS the cycle time.
 
     Deliberately not a reel and deliberately not sped up: the question this answers is
@@ -533,7 +545,7 @@ def make_realtime(seed=1704, out="../media/v5_cell_realtime.mp4", v6=False,
     _, marks, dur = render_unit(seed, 1.0, raw, v6=v6, stroke=stroke,
                                 physical=physical, solution=solution,
                                 inline_verify=inline_verify,
-                                fast_spindle=fast_spindle, stage3=stage3)
+                                fast_spindle=fast_spindle, stage3=stage3, buff=buff)
     # RE-TIME so the clip's RUNTIME IS THE CYCLE TIME.
     #
     # Frames are not grabbed at a uniform simulated cadence -- some phases step the sim
@@ -622,6 +634,8 @@ if __name__ == "__main__":
                     help="film the V6 targeted cell (fast clean + fast membrane)")
     ap.add_argument("--stroke", action="store_true",
                     help="film the V7 continuous-stroke cell (implies targeted)")
+    ap.add_argument("--buff", action="store_true",
+                    help="V10: the wash pass runs the powered buff (validated config)")
     ap.add_argument("--stage3", action="store_true",
                     help="V9: the FULL Stage 3 protocol -- wash, rinse (damp cloth), "
                          "dry (dry cloth); implies --solution")
@@ -648,14 +662,14 @@ if __name__ == "__main__":
         make_realtime(a.realtime, a.out or _dflt, v6=a.v6, stroke=a.stroke,
                       physical=a.physical, solution=a.solution,
                       inline_verify=a.inline_verify, fast_spindle=a.fast_spindle,
-                      stage3=a.stage3)
+                      stage3=a.stage3, buff=a.buff)
     elif a.reel:
         make_reel(a.speed if a.speed > 1 else 4.0, a.out or "../media/v5_cell_reel.mp4")
     elif a.render is not None:
         render_unit(a.render, a.speed, a.out, v6=a.v6, stroke=a.stroke,
                     physical=a.physical, solution=a.solution,
                     inline_verify=a.inline_verify, fast_spindle=a.fast_spindle,
-                    stage3=a.stage3)
+                    stage3=a.stage3, buff=a.buff)
     else:
         ap.print_help()
         sys.exit(1)
