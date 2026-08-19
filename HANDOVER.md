@@ -1,4 +1,4 @@
-# HANDOVER — state as of 2026-08-18
+# HANDOVER — state as of 2026-08-19 (end of the V10 session)
 
 **Read `CLAUDE.md` first** (phase table + seed ledger are authoritative). This is the
 five-minute version. `git log` is the detailed one; every commit message carries its
@@ -90,7 +90,33 @@ export** (grades + rectification costs are per-unit data in their ERP, on film).
 > external body is the first problem to solve" — the cleaning wedge confirmed in his own
 > words. Still not a written answer to the question as asked; the ask stays open.**
 
-## Done this session (2026-08-09 evening) — all three advisor items closed
+## THE DEMO SET — three true-1× clips, same seed (1704), all committed
+
+| clip | cycle | what it is |
+|---|---|---|
+| `media/v9_base_realtime.mp4` | **2:28.6** | the PITCH: solution-charged wash (their Stage 3), membrane rebuild, inline verify |
+| `media/v9_stage3_realtime.mp4` | **6:20.7** | the LETTER of the work instruction: wash → damp rinse → dry, three cloths |
+| `media/v10_buff_realtime.mp4` | **2:32.2** | their own polish tool (powered buff) spinning on the changer; reaction 0.29/0.47 N·m on-frame |
+
+Never present 2:28.6 as "Stage 3 compliant" — it is the wash; 6:20.7 is the instruction.
+The plant's own benchmark (manual ~5:00 typical / 15–20:00 poor condition; target ALL
+under 5:00) prints on every render and in every `report()`.
+
+## Done 2026-08-19 — V10, the powered buff (see the V10 block in CLAUDE.md)
+
+The plant's polish tool modelled on the changer with an honest motor; **reaction torque
+through the changer measured: 0.29 median / 0.47 peak N·m** (the sourcing number;
+CELL_SPEC says spec the locking interface ≥ 1 N·m). Batteries: 16/16 at 100% / 0 missed
+of 332 / 23.35 N; sabotage 9/10 + 1 verified-vacuous zero-soil draw, 0 false, 0 escape.
+Rate 10 rad/s by sweep — **15 rad/s is a measured solver cliff (90.6 N, non-monotonic)**.
+Four latent bugs flushed and journaled (grandchild exclusion, wrong-tool planner,
+parked-pad veto, long-leg wrist sprint → the 0.51 m SAFE rule). Stage-3 re-validated on
+the fixed planner. Identities: acceptance fields hold everywhere; supersedes recorded.
+Also: the founder's verbal cleaning-wedge confirmation recorded as corroboration.
+
+## Done earlier sessions (kept for the trail)
+
+### 2026-08-09 evening — all three advisor items closed
 
 1. **CONTINUOUS-STROKE CLEANING — DONE, 1.36× not 2×.** See the V7 block in `CLAUDE.md`.
    The advisor's ~2× assumed the pad could sweep as fast as we liked; there is a
