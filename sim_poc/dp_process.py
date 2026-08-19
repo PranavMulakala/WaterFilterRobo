@@ -757,7 +757,22 @@ FOUNDER_VERBAL = {
                  "keep being labelled OURS.",
     "incoming": "process VIDEO and REAL IMAGES promised within days; founder wants US "
                 "to build the image classification. v5_real_triage.py is the intake "
-                "harness (blind protocol, missed-hard headline, exact binomial CIs).",
+                "harness (blind protocol, missed-hard headline, exact binomial CIs). "
+                "(The video arrived 2026-08-18 -- see PLANT_VIDEO. Photos still pending.)",
+
+    # 2026-08-19, VERBAL, secondhand (a Teja-Anirudh text thread): the founder said
+    # "cleaning the external body is the first problem to solve."
+    #
+    # WHAT THIS IS: the founder directly confirming the CLEANING WEDGE -- and the
+    # strongest corroboration yet of our Stage-3 reading of the funding bar ("cleans the
+    # filter with a solution" = a solution-charged cloth on the CABINET, not a bath).
+    # WHAT THIS IS NOT: a written answer to the question as asked. The ask stays OPEN in
+    # HANDOVER; quote this as "corroborated [verbal]", never as "confirmed in writing".
+    "2026-08-19_cleaning_wedge": {
+        "provenance": "verbal, Teja-Anirudh text thread, secondhand",
+        "quote_as_relayed": "cleaning the external body is the first problem to solve",
+        "status": "corroborates the Stage-3 reading; the written ask remains open",
+    },
 }
 
 V5_ROUTES = {
