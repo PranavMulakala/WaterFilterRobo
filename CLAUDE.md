@@ -224,8 +224,18 @@ masquerade as the other:**
 
 | configuration | cycle | split | clip |
 |---|---|---|---|
-| **BASE** (wash + solution dip, inline verify, 20 rad/s spindle) | **2:28.6** | CLEAN 108.1 / MEMBRANE 34.1 / SOLUTION 6.3 / VERIFY 0.0 (inline) | `media/v9_base_realtime.mp4` |
-| **FULL STAGE 3** (three cloths: wash → damp rinse → dry) | **6:20.7** | CLEAN 108.1 / RINSE 115.3 / DRY 114.1 / MEMBRANE 32.2 / SOLUTION 11.0 (2 dips) / VERIFY 0.0 | `media/v9_stage3_realtime.mp4` |
+| **BASE** (wash + solution dip, inline verify, 20 rad/s spindle) | **2:24.8** | CLEAN 108.9 / MEMBRANE 29.5 / SOLUTION 6.3 / VERIFY 0.0 (inline) | `media/v10_base_realtime.mp4` |
+| **FULL STAGE 3** (three cloths: wash → damp rinse → dry) | **6:12.4** | CLEAN 108.9 / RINSE 111.1 / DRY 110.9 / MEMBRANE 30.4 / SOLUTION 11.0 (2 dips) / VERIFY 0.0 | `media/v10_stage3_realtime.mp4` |
+
+**RE-RENDERED 2026-08-20 ON V10 CODE — the V9 figures above the line were 2:28.6 and
+6:20.7 and are SUPERSEDED, not retracted** (HANDOVER "SUPERSEDED"). The V9 clips were
+rendered 2026-08-15, before the V10 planner fixes. Same seed, same flags. **CLEAN did NOT
+get faster (108.1 → 108.9); every second came out of carry/handling** — MEMBRANE −4.6 s
+in BASE, RINSE/DRY −7.4 s combined in Stage 3. Consistent with the V10 carried-tool and
+registry fixes, **attribution plausible but NOT isolated.** The buff clip needed no
+re-render (already V10), which makes BASE-vs-BUFF a genuine PAIRED comparison for the
+first time: the powered buff costs **+7.4 s**, not the +3.6 s the cross-version pairing
+implied.
 
 **BASE supersedes the V8 pair (2:36.1 dry / 2:42.6 with dip): 2:42.6 → 2:28.6 is
 −14.0 s** — inline verify −10.0, fast spindle −4.1, and the two new posts cost 0.1 s

@@ -92,13 +92,21 @@ export** (grades + rectification costs are per-unit data in their ERP, on film).
 
 ## THE DEMO SET — three true-1× clips, same seed (1704), all committed
 
+**Re-rendered 2026-08-20 — all three clips are now V10 code, same seed, same flags.**
+
 | clip | cycle | what it is |
 |---|---|---|
-| `media/v9_base_realtime.mp4` | **2:28.6** | the PITCH: solution-charged wash (their Stage 3), membrane rebuild, inline verify |
-| `media/v9_stage3_realtime.mp4` | **6:20.7** | the LETTER of the work instruction: wash → damp rinse → dry, three cloths |
+| `media/v10_base_realtime.mp4` | **2:24.8** | the PITCH: solution-charged wash (their Stage 3), membrane rebuild, inline verify |
+| `media/v10_stage3_realtime.mp4` | **6:12.4** | the LETTER of the work instruction: wash → damp rinse → dry, three cloths |
 | `media/v10_buff_realtime.mp4` | **2:32.2** | their own polish tool (powered buff) spinning on the changer; reaction 0.29/0.47 N·m on-frame |
 
-Never present 2:28.6 as "Stage 3 compliant" — it is the wash; 6:20.7 is the instruction.
+The V9 renders (`v9_base_realtime.mp4` 2:28.6, `v9_stage3_realtime.mp4` 6:20.7) are kept
+in `media/` as the superseded artifacts — see SUPERSEDED below. **The buff comparison is
+now PAIRED for the first time:** BASE and BUFF are the same code, so the powered buff
+costs **+7.4 s** (2:24.8 → 2:32.2). The old set paired a V9 BASE against a V10 BUFF and
+implied a misleading +3.6 s.
+
+Never present 2:24.8 as "Stage 3 compliant" — it is the wash; 6:12.4 is the instruction.
 The plant's own benchmark (manual ~5:00 typical / 15–20:00 poor condition; target ALL
 under 5:00) prints on every render and in every `report()`.
 
@@ -233,6 +241,34 @@ Also: the founder's verbal cleaning-wedge confirmation recorded as corroboration
 5. **If throughput ever becomes the constraint**, option C (fixed brushes) is the lever —
    but it cleans blind, which costs the per-patch evidence that is the actual product.
    Parked, not open: see `DECISIONS.md`.
+
+## SUPERSEDED — 2026-08-20, the demo set re-rendered on V10 code
+
+**Both headline cycle times moved, and they were in the manager update sent 2026-08-19,
+so this is recorded rather than silently edited.** The 2026-08-15 clips were rendered
+before the V10 planner fixes landed on 2026-08-19. Same seed (1704), same flags, current
+code:
+
+| | V9 render | V10 re-render | Δ |
+|---|---|---|---|
+| BASE | 2:28.6 | **2:24.8** | −3.8 s |
+| FULL STAGE 3 | 6:20.7 | **6:12.4** | −8.3 s |
+
+**Nothing was retracted — the configurations still meet their bars; the code got better
+under them.** Per-phase, BASE: CLEAN 108.1 → 108.9 (+0.8), **MEMBRANE 34.1 → 29.5
+(−4.6)**, SOLUTION 6.3 → 6.3, VERIFY 0.0 inline. STAGE 3: CLEAN +0.8, RINSE 115.3 →
+111.1, DRY 114.1 → 110.9, MEMBRANE 32.2 → 30.4, SOLUTION 11.0 unchanged.
+
+**CLEANING DID NOT GET FASTER — every second came out of the carry/handling phases.**
+That is consistent with the V10 planner work (the carried-tool binding fix and the tool
+registry moving with `select_tool`), **but the attribution is PLAUSIBLE, NOT ISOLATED,
+and is not claimed as measured** — the same standing this repo gave V8's unexplained
+1.2 s membrane shift.
+
+Verified on the way: file duration = cycle + exactly **17.0 s** on all three clips (a
+fixed title/end card, additive not proportional — which is what rules out a rate error
+and keeps the "true 1×" claim honest). Re-time factor **×1.001** on BASE, **×1.017** on
+Stage 3.
 
 ## RETRACTIONS — 2026-08-10, from adopting the arm's published speed limits
 
