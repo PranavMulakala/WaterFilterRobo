@@ -1073,3 +1073,34 @@ before. So we run the buff at a deliberately slow 10 rad/s, state plainly that r
 spin faster and that nothing in our model rewards speed anyway, and export the one number
 that transfers to hardware: the reaction torque a powered tool feeds back through its
 coupling. A slower number with zero caveats beats a faster number with one.
+
+## 2026-08-20 — A video is a measurement too, and ours had drifted
+
+**What we built.** We re-rendered two of the three demo clips on the current code,
+because they had been made five days earlier and the code had changed underneath them.
+
+**The concept: an artifact has a version, and a video hides its own.** A number in a
+stats file is obviously tied to the code that produced it — change the code, re-run, get
+a new number. A *video* feels different: it looks like a recording of reality, so it
+quietly keeps its authority long after the thing it recorded has moved. Ours had. The
+V10 session fixed a planner bug (the arm was carrying the wrong tool in its internal
+model), and we could prove that mattered because the Stage-3 *stats* were re-run after
+the fix and moved — peak force 26.0 → 29.0 N. The clips were never re-rendered, so we
+were about to send a founder footage of code that no longer exists.
+
+**What the re-render showed.** BASE 2:28.6 → **2:24.8**, Stage 3 6:20.7 → **6:12.4**.
+Both got faster, and the interesting part is *where*: cleaning did not speed up at all
+(108.1 → 108.9 s). Every second came out of the carrying and handling between stations.
+That fits the planner fix, but we have not isolated it, so we wrote it down as plausible
+rather than proven — the same standing we gave an unexplained 1.2 s shift in an earlier
+session.
+
+**A bonus we did not expect.** The buff clip was already current, so it needed no
+re-render — which means BASE and BUFF are now the *same code* for the first time. The
+powered buff costs **+7.4 s**, not the +3.6 s implied before. The old comparison was
+subtracting two numbers made by two different programs.
+
+**Why it matters for the real robot.** Demo footage is how this project is judged by
+people who will never read a stats file. If a clip and a number can disagree, the clip
+wins in the room and loses on the factory floor. Re-rendering is cheap; being wrong in
+front of the customer is not.

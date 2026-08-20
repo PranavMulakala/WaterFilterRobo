@@ -1358,3 +1358,39 @@ what we now understand.
   V7.2's skip-SAFE assumption has now been broken by new stations TWICE (tray: tracking;
   far posts: speed) — the precondition is finally written as an enforced distance rule
   rather than prose |
+
+## 2026-08-20 — The demo clips were stale, and nothing in the repo would have said so
+
+**What happened.** Asked to upload the three-clip demo set, I checked provenance before
+sending and found that two of the three clips were rendered 2026-08-15, while the V10
+planner fixes landed 2026-08-19. The Stage-3 stats file *had* been re-run after the fix
+and had moved (`f_max` 26.02 → 28.98 N, pad TCP 1164 → 1010 mm/s). The clips had not.
+
+**Why nothing caught it.** Every guard in this repo protects *stats files* — the tagged
+filenames, the byte-identity checks, the archive-before-eval rule. Media files have no
+such guard: they are committed once and never re-validated, and no gate compares a clip's
+render date against the last change to the code that produces it. The clip filenames even
+carried a version (`v9_...`), which made them *look* accounted for.
+
+**Time lost:** none, because the check happened before the upload rather than after.
+That is the entire point — this would have cost credibility, not hours, and it would have
+cost it in front of the founder.
+
+**What would have prevented it:** a rule that a render is an artifact of a code version,
+the same way a stats file is. Cheapest version: when a commit changes anything under the
+cleaning/membrane/planner path, any clip older than that commit is stale until re-rendered.
+
+**A second, smaller finding, recorded not fixed.** The re-time factors differ between the
+two clips: BASE **×1.001**, Stage 3 **×1.017**. The factor stretches raw frames to match
+the true clock, so ×1.017 means ~6 s of the Stage-3 cycle emitted no frames and got made
+up by duplication. That is the same signature as the 2026-08-09 incident (three stepping
+primitives accepted `frames` and never emitted any, turning 37 s of a 183 s cycle into
+25% duplicated output frames) — at 1.7% instead of 25%, so it is a smell rather than a
+defect. The rinse/dry passes are the newest stepping code and the obvious place to look.
+**Not chased this session; logged so the next person does not rediscover it.**
+
+**Third: a comparison that was never paired.** The set quoted BASE 2:28.6 (V9 code) next
+to BUFF 2:32.2 (V10 code) and implied the buff cost +3.6 s. Those two numbers came from
+different programs. Re-rendering BASE on V10 makes the pair valid, and the real answer is
+**+7.4 s**. *Two numbers in the same table are not a comparison unless they were made the
+same way.*
